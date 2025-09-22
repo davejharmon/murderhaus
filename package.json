@@ -1,0 +1,16 @@
+{
+  "name": "murderhaus",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "devflow": "node devflow.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "open": "^10.2.0",
+    "wait-on": "^9.0.1"
+  }
+}
