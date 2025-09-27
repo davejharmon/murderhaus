@@ -1,6 +1,6 @@
 // server/index.js
 const WebSocket = require('ws');
-
+const { MAX_PLAYERS } = require('./constants');
 const wss = new WebSocket.Server({ port: 8080 });
 
 let gameState = {
@@ -34,24 +34,26 @@ function handleMessage(ws, msg) {
   const { type, payload } = msg;
 
   switch (type) {
-    case 'REGISTER_PLAYER':
-      if (!gameState.players[payload.id]) {
-        gameState.players[payload.id] = {
-          id: payload.id,
+    case 'REGISTER_PLAYER': {
+      const id = String(payload.id);
+      if (!gameState.players[id]) {
+        gameState.players[id] = {
+          id,
           name: payload.name,
           role: 'Villager',
-          alive: true,
-          roleRevealed: false,
+          team: true,
+          isAlive: true,
+          isRevealed: false,
           vote: null,
         };
         gameState.history.push(`${payload.name} joined the game`);
         updateAll();
       } else {
-        console.log(`Player ${payload.id} already registered`);
-        // Optional: re-sync state to reconnecting client
+        // If they already exist, just re-sync
         sendTo(ws, { type: 'GAME_STATE_UPDATE', payload: gameState });
       }
       break;
+    }
 
     case 'SET_PHASE':
       gameState.phase = payload.phase;
