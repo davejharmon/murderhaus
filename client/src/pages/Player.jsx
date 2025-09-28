@@ -6,89 +6,111 @@ import { Bulb } from '../components/Bulb';
 
 export default function Player() {
   const { id } = useParams();
+  const index = Number(id);
   const [gameState, setGameState] = useState(null);
 
-  useEffect(() => {
-    connect(setGameState);
-  }, []);
+  // Connect to WS
+  useEffect(() => connect(setGameState), []);
 
+  // Register player on first available
   useEffect(() => {
     if (!gameState) return;
-    const player = gameState.players[String(id)];
-    if (!player) {
-      send('REGISTER_PLAYER', {
-        id: String(id),
-        name: `Player ${id}`,
-      });
+    if (!gameState.players[index]) {
+      send('REGISTER_PLAYER', { id: index });
     }
-  }, [gameState, id]);
+  }, [gameState, index]);
 
   if (!gameState) return <div>Loading...</div>;
-  const me = gameState.players[String(id)];
-  if (!me) return <div>Registering Player {id}...</div>;
 
-  const styles = {
-    console: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 2fr 1fr',
-      gridTemplateRows: '1fr 1fr 2fr',
-      gridTemplateAreas: `
-      "bigNum name badges"
-      "bigNum role badges"
-      "controls controls controls"
-    `,
-      gap: '0.5rem',
-      height: '100vh', // or fit parent
-      width: '100vw',
-      padding: '2rem', // ✅ new margin
-      boxSizing: 'border-box', // ensures margin doesn’t push content off screen
-    },
-    bigNum: {
-      gridArea: 'bigNum',
-      gridRow: '1 / span 2',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 'clamp(2rem, 20vw, 15rem)',
-      fontWeight: 'bold',
-    },
-    role: {
-      gridArea: 'role',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 'clamp(2rem, 10vw, 8rem)', // scales with space
-      fontWeight: 'bold',
-    },
-    name: {
-      gridArea: 'name',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 'clamp(1rem, 5vw, 4rem)', // ~50% of role size
-      fontWeight: '500',
-    },
-    badges: {
-      gridArea: 'badges',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    controls: {
-      gridArea: 'controls',
-    },
-  };
+  const me = gameState.players[index];
+  if (!me) return <div>Registering Player {index}...</div>;
 
   return (
-    <div style={styles.console}>
-      <div style={styles.bigNum}>{me.id}</div>
-      <div style={styles.name}>{me.name}</div>
-      <div style={styles.role}>{me.role}</div>
-      <div style={styles.badges}>
-        <Bulb />
-      </div>
-      <div style={styles.controls}>
-        <Keypad />
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        width: '100%',
+        padding: '1rem',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 2fr 1fr',
+          gridTemplateRows: 'auto auto 1fr',
+          gap: '1rem',
+          maxWidth: '800px', // prevent grid from stretching too wide
+          width: '100%',
+        }}
+      >
+        {/* Big number */}
+        <div
+          style={{
+            gridArea: '1 / 1 / 3 / 2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(3rem, 15vw, 10rem)',
+            fontWeight: 'bold',
+          }}
+        >
+          {me.id}
+        </div>
+
+        {/* Name */}
+        <div
+          style={{
+            gridArea: '1 / 2 / 2 / 3',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(1rem, 4vw, 2rem)',
+            fontWeight: '500',
+          }}
+        >
+          {me.name}
+        </div>
+
+        {/* Role */}
+        <div
+          style={{
+            gridArea: '2 / 2 / 3 / 3',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(2rem, 8vw, 5rem)',
+            fontWeight: 'bold',
+          }}
+        >
+          {me.role}
+        </div>
+
+        {/* Bulb */}
+        <div
+          style={{
+            gridArea: '1 / 3 / 3 / 4',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Bulb />
+        </div>
+
+        {/* Keypad */}
+        <div
+          style={{
+            gridArea: '3 / 1 / 4 / 4',
+            display: 'flex',
+            justifyContent: 'center',
+          }}
+        >
+          <Keypad />
+        </div>
       </div>
     </div>
   );

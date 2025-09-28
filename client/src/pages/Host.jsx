@@ -1,49 +1,159 @@
 import { useState, useEffect } from 'react';
 import { connect, send } from '../ws';
-
+import { Button } from '../components/Button';
+import { PHASES } from '../../../shared/constants';
+import { NumberEmoji } from '../components/NumberEmoji';
 export default function Host() {
   const [gameState, setGameState] = useState(null);
 
-  useEffect(() => {
-    connect(setGameState);
-  }, []);
+  useEffect(() => connect(setGameState), []);
 
   if (!gameState) return <div>Connecting...</div>;
 
   return (
-    <div>
-      <h1>Host Controller</h1>
+    <div style={styles.container}>
+      {/* Left Column */}
+      <div style={styles.leftColumn}>
+        <header style={styles.header}>
+          <h1>Host Dashboard</h1>
+          <h2>
+            Day {gameState.day}, {gameState.phase}
+          </h2>
+        </header>
 
-      <div>
-        <button onClick={() => send('SET_PHASE', { phase: 'day' })}>
-          Start Day
-        </button>
-        <button onClick={() => send('SET_PHASE', { phase: 'night' })}>
-          Start Night
-        </button>
-        <button onClick={() => send('SET_PHASE', { phase: 'voting' })}>
-          Start Voting
-        </button>
-        <button onClick={() => send('TALLY_VOTES')}>Tally Votes</button>
+        {/* Phase buttons */}
+        <div style={styles.phaseButtons}>
+          {PHASES.map((phase) => (
+            <Button
+              key={phase}
+              label={phase}
+              onClick={() => send('SET_PHASE', { phase })}
+              isActive={gameState.phase === phase} // <-- active styling
+            />
+          ))}
+        </div>
+
+        {/* Players list */}
+        <section style={styles.playersSection}>
+          <h2>Players</h2>
+          <div style={styles.playerList}>
+            {gameState.players
+              .filter((p) => p)
+              .map((p, i) => (
+                <div key={p.id} style={styles.playerRow}>
+                  <div style={styles.playerInfo}>
+                    <span style={styles.playerId}>
+                      <NumberEmoji number={p.id} />
+                    </span>
+                    <span style={styles.playerName}>
+                      {p.name} {p.role}
+                    </span>
+                  </div>
+                  <div style={styles.playerActions}>
+                    <Button label='KILL' />
+                    <Button label='REVEAL' />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </section>
+
+        {/* Global controls */}
+        <section style={styles.globalControls}>
+          <Button label='NEXT' onClick={() => send('SET_PHASE')} />
+          <Button label='...' />
+        </section>
       </div>
 
-      <h2>Current Phase: {gameState.phase}</h2>
-
-      <h3>Players:</h3>
-      <ul>
-        {Object.values(gameState.players).map((p) => (
-          <li key={p.id}>
-            {p.name} — {p.alive ? 'Alive' : 'Eliminated'}
-          </li>
-        ))}
-      </ul>
-
-      <h3>History:</h3>
-      <ul>
-        {gameState.history.map((h, i) => (
-          <li key={i}>{h}</li>
-        ))}
-      </ul>
+      {/* Right Column - History */}
+      <div style={styles.rightColumn}>
+        <h3>History</h3>
+        <ul style={styles.historyList}>
+          {gameState.history.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    display: 'flex',
+    height: '100vh',
+    width: '100vw',
+    fontFamily: 'sans-serif',
+    gap: '1rem',
+    padding: '1rem',
+    boxSizing: 'border-box',
+  },
+  leftColumn: {
+    flex: '4',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+  },
+  rightColumn: {
+    flex: '1',
+    overflowY: 'auto',
+    backgroundColor: '#fafafa',
+    padding: '1rem',
+    borderRadius: '0.5rem',
+  },
+  header: {
+    textAlign: 'center',
+  },
+  phaseButtons: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    justifyContent: 'center',
+  },
+  playersSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  playerList: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '0.5rem',
+  },
+  playerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0.75rem 1rem',
+    backgroundColor: '#f0f0f0',
+    borderRadius: '0.5rem',
+  },
+  playerInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    fontSize: '1.2rem',
+    fontWeight: '500',
+  },
+  playerId: {
+    fontSize: '1.5rem',
+  },
+  playerName: {
+    fontWeight: 'bold',
+  },
+  playerActions: {
+    display: 'flex',
+    gap: '0.5rem',
+  },
+  globalControls: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '1rem',
+  },
+  historyList: {
+    listStyle: 'none',
+    fontSize: '0.8rem',
+    padding: 0,
+    margin: 0,
+  },
+};
