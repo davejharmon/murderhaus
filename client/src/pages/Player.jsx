@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { connect, send } from '../ws';
 import { Keypad } from '../components/Keypad';
 import { Bulb } from '../components/Bulb';
-import { BigNum } from '../components/BigNum';
 
 export default function Player() {
   const { id } = useParams();
@@ -29,49 +28,68 @@ export default function Player() {
   if (!me) return <div>Registering Player {id}...</div>;
 
   const styles = {
-    page: {
+    console: {
       display: 'grid',
-      gridTemplateRows: 'auto auto', // first row + keypad row
-      rowGap: '2rem',
-      justifyItems: 'center', // center second row (Keypad)
-      padding: '2rem',
-    },
-    firstRow: {
-      display: 'grid',
-      gridTemplateColumns: 'auto', // single column for first row
-      justifyItems: 'center',
-      alignItems: 'center',
-      width: '100%',
-      position: 'relative',
+      gridTemplateColumns: '1fr 2fr 1fr',
+      gridTemplateRows: '1fr 1fr 2fr',
+      gridTemplateAreas: `
+      "bigNum name badges"
+      "bigNum role badges"
+      "controls controls controls"
+    `,
+      gap: '0.5rem',
+      height: '100vh', // or fit parent
+      width: '100vw',
+      padding: '2rem', // ✅ new margin
+      boxSizing: 'border-box', // ensures margin doesn’t push content off screen
     },
     bigNum: {
-      position: 'absolute',
-      left: 0,
+      gridArea: 'bigNum',
+      gridRow: '1 / span 2',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 'clamp(2rem, 20vw, 15rem)',
+      fontWeight: 'bold',
     },
-    infoColumn: {
-      display: 'grid',
-      gridTemplateRows: 'auto auto auto', // bulb, name, role
-      justifyItems: 'center',
-      rowGap: '1rem',
+    role: {
+      gridArea: 'role',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 'clamp(2rem, 10vw, 8rem)', // scales with space
+      fontWeight: 'bold',
+    },
+    name: {
+      gridArea: 'name',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 'clamp(1rem, 5vw, 4rem)', // ~50% of role size
+      fontWeight: '500',
+    },
+    badges: {
+      gridArea: 'badges',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    controls: {
+      gridArea: 'controls',
     },
   };
 
   return (
-    <div style={styles.page}>
-      {/* First row */}
-      <div style={styles.firstRow}>
-        <div style={styles.bigNum}>
-          <BigNum value={me.id} />
-        </div>
-        <div style={styles.infoColumn}>
-          <Bulb />
-          <div>{me.name}</div>
-          <div>{me.role}</div>
-        </div>
+    <div style={styles.console}>
+      <div style={styles.bigNum}>{me.id}</div>
+      <div style={styles.name}>{me.name}</div>
+      <div style={styles.role}>{me.role}</div>
+      <div style={styles.badges}>
+        <Bulb />
       </div>
-
-      {/* Second row */}
-      <Keypad />
+      <div style={styles.controls}>
+        <Keypad />
+      </div>
     </div>
   );
 }

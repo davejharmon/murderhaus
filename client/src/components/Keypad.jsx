@@ -11,7 +11,7 @@ export const Keypad = () => {
       display: 'grid',
       gridTemplateColumns: 'repeat(5, 1fr)', // 5 columns
       gridTemplateRows: 'repeat(2, 1fr)', // 2 rows
-      gap: '0.2rem',
+      gap: '1rem',
     },
   };
 
