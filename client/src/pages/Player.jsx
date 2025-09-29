@@ -90,15 +90,25 @@ export default function Player() {
         </div>
 
         {/* Bulb */}
+        {/* Bulb */}
         <div
           style={{
             gridArea: '1 / 3 / 3 / 4',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            width: '100%',
+            height: '100%',
           }}
         >
-          <Bulb />
+          <span
+            style={{
+              fontSize: 'clamp(3rem, 15vw, 12rem)',
+              lineHeight: 1,
+            }}
+          >
+            <Bulb player={me} phase={gameState.phase} />
+          </span>
         </div>
 
         {/* Keypad */}

@@ -3,6 +3,7 @@ import { connect, send } from '../ws';
 import { Button } from '../components/Button';
 import { PHASES } from '../../../shared/constants';
 import { NumberEmoji } from '../components/NumberEmoji';
+import { Bulb } from '../components/Bulb';
 export default function Host() {
   const [gameState, setGameState] = useState(null);
 
@@ -17,7 +18,8 @@ export default function Host() {
         <header style={styles.header}>
           <h1>Host Dashboard</h1>
           <h2>
-            Day {gameState.day}, {gameState.phase}
+            {gameState.phase !== 'lobby' && <span>Day {gameState.day}, </span>}
+            {gameState.phase}
           </h2>
         </header>
 
@@ -42,12 +44,12 @@ export default function Host() {
               .map((p, i) => (
                 <div key={p.id} style={styles.playerRow}>
                   <div style={styles.playerInfo}>
-                    <span style={styles.playerId}>
+                    <Bulb player={p} phase={gameState.phase} />
+                    <span style={styles.playerBulb}>
                       <NumberEmoji number={p.id} />
                     </span>
-                    <span style={styles.playerName}>
-                      {p.name} {p.role}
-                    </span>
+                    <span style={styles.playerName}>{p.name}</span>
+                    <span style={styles.playerRole}>{p.role}</span>
                   </div>
                   <div style={styles.playerActions}>
                     <Button label='KILL' />
@@ -140,6 +142,9 @@ const styles = {
   },
   playerName: {
     fontWeight: 'bold',
+  },
+  playerRole: {
+    color: 'blue',
   },
   playerActions: {
     display: 'flex',
