@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Button } from './Button';
 
-export const Keypad = () => {
+export const Keypad = ({ onKeypress, isLocked }) => {
+  const selection = useState(null);
+  const isConfirmed = useState(false);
   const handleButtonClick = (value) => {
     console.log(`Button ${value} clicked`);
+    onKeypress();
   };
 
   // Styles
@@ -26,6 +30,7 @@ export const Keypad = () => {
             key={index + 1}
             onClick={() => handleButtonClick(index + 1)}
             label={index + 1}
+            disabled={isLocked}
           />
         )
       )}
@@ -33,6 +38,7 @@ export const Keypad = () => {
         onClick={() => handleButtonClick('confirm')}
         label='confirm'
         style={styles.confirmButton}
+        disabled={isLocked}
       />
     </div>
   );

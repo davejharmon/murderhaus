@@ -22,6 +22,10 @@ export default function Player() {
 
   if (!gameState) return <div>Loading...</div>;
 
+  const onKeypress = () => {
+    console.log(`Key was pressed`);
+  };
+
   const me = gameState.players[index];
   if (!me) return <div>Registering Player {index}...</div>;
 
@@ -119,7 +123,7 @@ export default function Player() {
             justifyContent: 'center',
           }}
         >
-          <Keypad />
+          <Keypad onKeypress={onKeypress} isLocked={false} />
         </div>
       </div>
     </div>

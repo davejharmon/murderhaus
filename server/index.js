@@ -4,7 +4,7 @@ import { MAX_PLAYERS, PHASES, ROLES } from '../shared/constants.js';
 const wss = new WebSocketServer({ port: 8080 });
 
 let gameState = {
-  phase: 'lobby',
+  phase: null,
   day: null,
   players: Array(MAX_PLAYERS).fill(null), // fixed-size array
   history: [],
@@ -38,11 +38,12 @@ function handleMessage(ws, msg) {
         gameState.players[i] = {
           id: i,
           name: `Player ${i}`,
-          role: 'VILLAGER',
-          team: true,
+          role: 'UNKNOWN',
+          team: null, // 'CIRCLE', 'MURDERER'
           isAlive: true,
           isRevealed: false,
-          vote: null,
+          vote: null, // id
+          isConfirmed: false,
         };
         gameState.history.push(`Player ${i} joined the game`);
         updateAll();
@@ -50,6 +51,29 @@ function handleMessage(ws, msg) {
         // slot already taken
         sendTo(ws, { type: 'ERROR', payload: { message: 'Slot taken' } });
       }
+      break;
+    }
+    case 'UPDATE_PLAYER_NAME': {
+      const { id, name } = payload;
+      if (id < 0 || id >= MAX_PLAYERS || !gameState.players[id]) {
+        sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: 'Invalid player ID' },
+        });
+        break;
+      }
+
+      gameState.players[id].name = name;
+      gameState.history.push(`Player ${id} changed name to ${name}`);
+      updateAll();
+      break;
+    }
+
+    case 'START_GAME': {
+      gameState.day = 1;
+      gameState.phase = PHASES[0];
+      gameState.history.push(`Game started: Day 1, ${PHASES[0]}`);
+      updateAll();
       break;
     }
 
@@ -61,7 +85,7 @@ function handleMessage(ws, msg) {
         if (currentIndex === -1 || currentIndex === PHASES.length - 1) {
           // if midnight or unknown phase, start next day
           gameState.day = (gameState.day ?? 0) + 1;
-          newPhase = PHASES[1];
+          newPhase = PHASES[0];
         } else {
           newPhase = PHASES[currentIndex + 1];
         }

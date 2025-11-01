@@ -1,15 +1,22 @@
+// src/pages/Host.jsx
 import { useState, useEffect } from 'react';
 import { connect, send } from '../ws';
 import { Button } from '../components/Button';
-import { PHASES } from '../../../shared/constants';
+import { PHASES, PHASE_DESCRIPTIONS } from '../../../shared/constants';
 import { NumberEmoji } from '../components/NumberEmoji';
 import { Bulb } from '../components/Bulb';
+import { PlayerName } from '../components/PlayerName';
+import { PlayerRow } from '../components/PlayerRow';
+
 export default function Host() {
   const [gameState, setGameState] = useState(null);
+  const DEBUG = false; // toggle to true to show debug info
 
   useEffect(() => connect(setGameState), []);
 
   if (!gameState) return <div>Connecting...</div>;
+
+  const gameStarted = !!(gameState?.day && gameState?.phase);
 
   return (
     <div style={styles.container}>
@@ -18,52 +25,54 @@ export default function Host() {
         <header style={styles.header}>
           <h1>Host Dashboard</h1>
           <h2>
-            {gameState.phase !== 'lobby' && <span>Day {gameState.day}, </span>}
-            {gameState.phase}
+            {gameStarted
+              ? `DAY ${gameState.day}, PHASE: ${gameState.phase}`
+              : 'GAME NOT STARTED'}
           </h2>
+          {gameStarted && (
+            <p style={styles.phaseDescription}>
+              {PHASE_DESCRIPTIONS[gameState.phase]}
+            </p>
+          )}
         </header>
 
-        {/* Phase buttons */}
-        <div style={styles.phaseButtons}>
-          {PHASES.map((phase) => (
-            <Button
-              key={phase}
-              label={phase}
-              onClick={() => send('SET_PHASE', { phase })}
-              isActive={gameState.phase === phase} // <-- active styling
-            />
-          ))}
-        </div>
+        {/* Controls */}
+        <section style={styles.controls}>
+          {!gameStarted ? (
+            <Button label='START GAME' onClick={() => send('START_GAME')} />
+          ) : (
+            <>
+              <div style={styles.phaseButtons}>
+                {PHASES.map((phase) => (
+                  <Button
+                    key={phase}
+                    label={phase}
+                    onClick={() => send('SET_PHASE', { phase })}
+                    isActive={gameState.phase === phase}
+                  />
+                ))}
+              </div>
+              <div style={styles.globalControls}>
+                <Button label='NEXT' onClick={() => send('SET_PHASE')} isNext />
+              </div>
+            </>
+          )}
+        </section>
 
         {/* Players list */}
         <section style={styles.playersSection}>
           <h2>Players</h2>
           <div style={styles.playerList}>
-            {gameState.players
-              .filter((p) => p)
-              .map((p, i) => (
-                <div key={p.id} style={styles.playerRow}>
-                  <div style={styles.playerInfo}>
-                    <Bulb player={p} phase={gameState.phase} />
-                    <span style={styles.playerBulb}>
-                      <NumberEmoji number={p.id} />
-                    </span>
-                    <span style={styles.playerName}>{p.name}</span>
-                    <span style={styles.playerRole}>{p.role}</span>
-                  </div>
-                  <div style={styles.playerActions}>
-                    <Button label='KILL' />
-                    <Button label='REVEAL' />
-                  </div>
-                </div>
-              ))}
+            {gameState.players.map((p, i) => (
+              <PlayerRow
+                key={p?.id ?? i} // fallback key
+                player={p}
+                gameState={gameState}
+                setGameState={setGameState}
+                DEBUG={DEBUG}
+              />
+            ))}
           </div>
-        </section>
-
-        {/* Global controls */}
-        <section style={styles.globalControls}>
-          <Button label='NEXT' onClick={() => send('SET_PHASE')} />
-          <Button label='...' />
         </section>
       </div>
 
@@ -103,8 +112,18 @@ const styles = {
     padding: '1rem',
     borderRadius: '0.5rem',
   },
-  header: {
-    textAlign: 'center',
+  header: { textAlign: 'center' },
+  phaseDescription: {
+    marginTop: '0.25rem',
+    fontSize: '1rem',
+    fontStyle: 'italic',
+    color: '#555',
+  },
+  controls: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '1rem',
   },
   phaseButtons: {
     display: 'flex',
@@ -112,20 +131,11 @@ const styles = {
     gap: '0.5rem',
     justifyContent: 'center',
   },
-  playersSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  playerList: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
-    gap: '0.5rem',
-  },
+  playersSection: { display: 'flex', flexDirection: 'column', gap: '0.5rem' },
+  playerList: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' },
   playerRow: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
     padding: '0.75rem 1rem',
     backgroundColor: '#f0f0f0',
     borderRadius: '0.5rem',
@@ -137,28 +147,10 @@ const styles = {
     fontSize: '1.2rem',
     fontWeight: '500',
   },
-  playerId: {
-    fontSize: '1.5rem',
-  },
-  playerName: {
-    fontWeight: 'bold',
-  },
-  playerRole: {
-    color: 'blue',
-  },
-  playerActions: {
-    display: 'flex',
-    gap: '0.5rem',
-  },
-  globalControls: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '1rem',
-  },
-  historyList: {
-    listStyle: 'none',
-    fontSize: '0.8rem',
-    padding: 0,
-    margin: 0,
-  },
+  playerName: { fontWeight: 'bold' },
+  playerRole: { color: 'blue' },
+  playerActions: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' },
+  globalControls: { display: 'flex', justifyContent: 'center', gap: '1rem' },
+  debugLine: { fontSize: '0.8em', color: 'gray', marginTop: '4px' },
+  historyList: { listStyle: 'none', fontSize: '0.8rem', padding: 0, margin: 0 },
 };

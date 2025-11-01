@@ -4,6 +4,7 @@ export const Button = ({
   type = 'button',
   isActive = false,
   isNext = false,
+  disabled = false,
 }) => {
   const styles = {
     base: {
@@ -12,20 +13,21 @@ export const Button = ({
       border: 'none',
       borderRadius: '2rem',
       fontWeight: 'bold',
-      cursor: 'pointer',
+      cursor: disabled ? 'not-allowed' : 'pointer',
       aspectRatio: '5 / 3',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 'clamp(0.8rem, 2vw, 2rem)',
       transition: 'background-color 0.2s, color 0.2s',
+      opacity: disabled ? 0.5 : 1,
     },
     active: {
       backgroundColor: 'red',
       color: 'white',
     },
     next: {
-      backgroundColor: '#87cefa', // lighter blue for NEXT button
+      backgroundColor: '#87cefa',
       color: 'black',
     },
     inactive: {
@@ -40,7 +42,12 @@ export const Button = ({
   };
 
   return (
-    <button type={type} style={buttonStyle} onClick={onClick}>
+    <button
+      type={type}
+      style={buttonStyle}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+    >
       {label}
     </button>
   );

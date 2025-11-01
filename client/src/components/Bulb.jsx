@@ -5,6 +5,8 @@ export const Bulb = ({ player, phase }) => {
     white: '⚪',
     yellow: '🟡',
     black: '⚫',
+    blue: '🔵',
+    error: '⁉️',
   };
 
   const color = getBulbColor(player, phase);
