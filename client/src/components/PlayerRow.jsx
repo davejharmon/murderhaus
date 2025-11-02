@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { send } from '../ws';
 import { Bulb } from './Bulb';
 import { NumberEmoji } from './NumberEmoji';
 import { Button } from './Button';
+import { send } from '../ws'; // make sure you import this
 
-export function PlayerRow({ player, DEBUG = false }) {
+export function PlayerRow({ player, actions = [], DEBUG = false }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
 
+  // Update name if player object changes
   useEffect(() => {
     if (!isEditing) setName(player.name || '');
   }, [player, isEditing]);
@@ -21,9 +22,24 @@ export function PlayerRow({ player, DEBUG = false }) {
     }
   };
 
+  const rowStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    padding: '0.75rem 1rem',
+    borderRadius: '12px',
+    backgroundColor: player.isAlive ? '#f0f0f0' : '#ddd',
+    opacity: player.isAlive ? 1 : 0.5,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  };
+
+  const leftSection = { display: 'flex', alignItems: 'center', gap: '0.75rem' };
+  const rightSection = { display: 'flex', gap: '0.5rem' };
+
   return (
-    <div style={styles.card}>
-      <div style={styles.leftSection}>
+    <div style={rowStyle}>
+      <div style={leftSection}>
         <Bulb player={player} color={player.color} phase={player.phase} />
         <NumberEmoji number={player.id} />
         {isEditing ? (
@@ -34,79 +50,40 @@ export function PlayerRow({ player, DEBUG = false }) {
             onBlur={handleBlur}
             autoFocus
             onFocus={(e) => e.target.select()}
-            style={styles.input}
+            style={{
+              fontWeight: 'bold',
+              border: '1px solid #007bff',
+              borderRadius: '4px',
+              padding: '0.25rem 0.5rem',
+              minWidth: '3ch',
+            }}
           />
         ) : (
-          <span onClick={() => setIsEditing(true)} style={styles.nameLabel}>
+          <span
+            onClick={() => setIsEditing(true)}
+            style={{ fontWeight: 'bold', cursor: 'text', minWidth: '3ch' }}
+          >
             {name || 'Unnamed'}
           </span>
         )}
+        <span style={{ color: player.color, fontWeight: 'bold' }}>
+          {player.role}
+        </span>
       </div>
 
-      <div style={styles.rightSection}>
-        <span style={styles.role}>{player.role}</span>
-        <Button label='kill' size='small' />
-        <Button label='reveal' size='small' />
+      <div style={rightSection}>
+        {actions.map((act, i) => (
+          <Button key={i} label={act.label} onClick={act.action} />
+        ))}
       </div>
 
       {DEBUG && (
-        <div style={styles.debug}>
+        <div style={{ fontSize: '0.8rem', color: 'gray', marginTop: '4px' }}>
           {Object.entries(player)
-            .map(
-              ([k, v]) =>
-                `${k}: ${
-                  v === null
-                    ? 'null'
-                    : typeof v === 'object'
-                    ? JSON.stringify(v)
-                    : String(v)
-                }`
-            )
+            .map(([k, v]) => `${k}: ${v}`)
             .join(', ')}
         </div>
       )}
     </div>
   );
 }
-
-const styles = {
-  card: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.5rem',
-    backgroundColor: '#d3eaf2',
-    padding: '1rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-  },
-  leftSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    flexGrow: 1,
-  },
-  rightSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  nameLabel: {
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    padding: '0.25rem 0.5rem',
-    borderRadius: '4px',
-    backgroundColor: '#f4f4f4',
-    minWidth: '5ch',
-  },
-  input: {
-    fontWeight: 'bold',
-    border: '1px solid #007bff',
-    borderRadius: '4px',
-    padding: '0.25rem 0.5rem',
-    minWidth: '5ch',
-    backgroundColor: '#fff',
-  },
-  role: { color: '#000', fontWeight: 500 },
-  debug: { fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' },
-};

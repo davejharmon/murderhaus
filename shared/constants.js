@@ -21,6 +21,7 @@ export const PHASE_DESCRIPTIONS = {
 };
 
 export const TEAMS = ['CIRCLE', 'MURDERERS'];
+
 export const ROLES = [
   {
     name: 'NORMIE',
@@ -35,3 +36,24 @@ export const ROLES = [
     actions: ['vote', 'murder'],
   },
 ];
+
+export const ROLE_MINIMUMS = {
+  1: ['MURDERER'],
+  2: ['MURDERER'],
+  3: ['MURDERER'],
+  4: ['MURDERER'],
+  5: ['MURDERER'],
+  6: ['MURDERER'],
+  7: ['MURDERER', 'MURDERER'],
+  8: ['MURDERER', 'MURDERER'],
+  9: ['MURDERER', 'MURDERER'],
+};
+
+// Optional role pool (extra roles you may add later)
+export const ROLE_POOL = ['MURDERER']; // currently just Murderer, can add others
+
+export const getPregameHostOptions = () =>
+  ROLES.map((role) => ({
+    label: `Assign ${role.name}`,
+    role: role.name,
+  }));

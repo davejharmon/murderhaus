@@ -27,6 +27,17 @@ export function handleWSMessage(ws, data) {
     case 'SET_PHASE':
       gameManager.setPhase(payload?.phase);
       break;
+    case 'ASSIGN_ROLE': {
+      const { playerId, role } = payload;
+      gameManager.setPlayerRole(playerId, role); // ✅ use GameManager method
+      break;
+    }
+    case 'KILL_PLAYER': {
+      const { playerId } = payload;
+      gameManager.killPlayer(playerId); // ✅ use GameManager method
+      break;
+    }
+
     default:
       sendTo(ws, { type: 'ERROR', payload: { message: 'Unknown type' } });
   }

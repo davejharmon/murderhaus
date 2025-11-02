@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { connect, subscribe, subscribeStatus, send } from '../ws';
 import { Button } from '../components/Button';
-import { PHASES, PHASE_DESCRIPTIONS } from '../../../shared/constants';
+import { PHASES, PHASE_DESCRIPTIONS, ROLES } from '@shared/constants';
 import { PlayerRow } from '../components/PlayerRow';
-
+import { PhaseManager } from '../models/PhaseManager';
 export default function Host() {
   const [wsStatus, setWsStatus] = useState('disconnected');
   const [players, setPlayers] = useState([]);
@@ -73,25 +73,58 @@ export default function Host() {
         <section style={styles.playersSection}>
           <h2>Players</h2>
           <div style={styles.playerList}>
-            {players.map((p) => (
-              <PlayerRow key={p.id} player={p} />
-            ))}
+            {players.map((p) => {
+              const hostOptions =
+                PhaseManager.getHostOptions(gameInfo.phase) || [];
+              const actions = hostOptions.map((opt) => ({
+                label: opt.label,
+                action: () => opt.action(p.id, send),
+              }));
+
+              return <PlayerRow key={p.id} player={p} actions={actions} />;
+            })}
           </div>
         </section>
       </div>
-
       <div style={styles.rightColumn}>
-        <h3>History</h3>
+        <div style={styles.historyHeader}>
+          <h3 style={{ margin: 0 }}>History</h3>
+          <Button
+            label='Clear'
+            onClick={() => setGameInfo((prev) => ({ ...prev, history: [] }))}
+          />
+        </div>
+
         <ul style={styles.historyList}>
-          {gameInfo.history.map((h, i) => (
-            <li key={i}>{h}</li>
-          ))}
+          {gameInfo.history.map((entry, i) => {
+            const { message, type = 'system', timestamp } = entry;
+
+            // Define colors per type
+            const typeColors = {
+              system: '#999',
+              vote: '#1976d2',
+              murder: '#d32f2f',
+              default: '#333',
+            };
+            const color = typeColors[type] || typeColors.default;
+
+            // Format timestamp to hh:mm
+            const ts = new Date(timestamp).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+
+            return (
+              <li key={i} style={{ color, marginBottom: '0.25rem' }}>
+                [{ts}] {message}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
   );
 }
-
 const styles = {
   container: {
     display: 'flex',
@@ -115,13 +148,32 @@ const styles = {
   },
   rightColumn: {
     flex: 1,
+    minWidth: '20%',
     overflowY: 'auto',
     backgroundColor: '#fff',
     padding: '1rem',
     borderRadius: '8px',
     boxShadow: '0 1px 5px rgba(0,0,0,0.1)',
+    textAlign: 'left',
   },
-  header: { textAlign: 'center' },
+
+  historyHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.5rem',
+  },
+
+  historyList: {
+    listStyle: 'none',
+    fontSize: '0.8rem',
+    padding: 0,
+    margin: 0,
+  },
+
+  header: {
+    textAlign: 'center',
+  },
   phaseDescription: {
     marginTop: '0.25rem',
     fontStyle: 'italic',
@@ -139,8 +191,19 @@ const styles = {
     gap: '0.5rem',
     justifyContent: 'center',
   },
-  playersSection: { display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-  playerList: { display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' },
-  globalControls: { display: 'flex', justifyContent: 'center', gap: '1rem' },
-  historyList: { listStyle: 'none', fontSize: '0.8rem', padding: 0, margin: 0 },
+  playersSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  playerList: {
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '0.5rem',
+  },
+  globalControls: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '1rem',
+  },
 };

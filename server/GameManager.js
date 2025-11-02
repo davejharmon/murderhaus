@@ -1,16 +1,15 @@
 import { GameState } from './models/GameState.js';
 import { broadcast, sendTo } from './utils/Broadcast.js';
-import { PHASES } from '../shared/constants.js';
-import { logger } from './utils/Logger.js'; // singleton instance
+import { logger } from './utils/Logger.js';
 
-class GameManager {
+export class GameManager {
   constructor() {
     this.state = new GameState();
     logger.log('GameManager initialized', 'system');
   }
 
   getState() {
-    return this._serializeState();
+    return this.state.serialize();
   }
 
   registerPlayer(ws, { id }) {
@@ -47,22 +46,22 @@ class GameManager {
     this._broadcastState();
   }
 
-  // Helper: broadcast current state along with history
+  killPlayer(playerId) {
+    this.state.killPlayer(playerId);
+    logger.log(`Player ${playerId} killed`, 'game');
+    this._broadcastState();
+  }
+
+  setPlayerRole(playerId, roleName) {
+    this.state.setPlayerRole(playerId, roleName);
+    this._broadcastState();
+  }
+
   _broadcastState() {
     broadcast({
       type: 'GAME_STATE_UPDATE',
-      payload: this._serializeState(),
+      payload: this.state.serialize(),
     });
-  }
-
-  // Convert state to plain object suitable for sending over WebSocket
-  _serializeState() {
-    return {
-      day: this.state.day,
-      phase: this.state.phase,
-      players: this.state.players.map((p) => (p ? { ...p } : null)),
-      history: logger.toHistoryStrings(),
-    };
   }
 }
 
