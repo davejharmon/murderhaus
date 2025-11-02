@@ -4,7 +4,7 @@ export class Player {
     this.name = `Player ${id}`;
     this.role = 'UNKNOWN';
     this.team = null;
-    this.isAlive = true;
+    this.isAlive = null;
     this.isRevealed = false;
     this.vote = null;
     this.isConfirmed = false;

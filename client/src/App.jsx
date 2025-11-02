@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Host from './pages/Host';
 import Player from './pages/Player';
-import Dashboard from './pages/Dashboard';
 import Landing from './pages/Landing';
 import Badge from './components/Badge';
+import DebugPlayers from './pages/DebugPlayers';
 
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
         <Route path='/' element={<Landing />} />
         <Route path='/host' element={<Host />} />
         <Route path='/player/:id' element={<Player />} />
-        <Route path='/dashboard' element={<Dashboard />} />
+        <Route path='/debug/players' element={<DebugPlayers />} />
       </Routes>
     </Router>
   );

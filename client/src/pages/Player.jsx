@@ -1,27 +1,26 @@
-// src/pages/Player.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { connect, send, subscribe, subscribeStatus } from '../ws';
-import { Keypad } from '../components/Keypad';
 import { Bulb } from '../components/Bulb';
+import { Keypad } from '../components/Keypad';
+import styles from './Player.module.css';
 
-export default function Player() {
-  const { id } = useParams();
-  const playerId = Number(id);
+export default function Player({ id: propId, compact = false }) {
+  const params = useParams();
+  const playerId = propId !== undefined ? Number(propId) : Number(params.id);
+  if (isNaN(playerId)) throw new Error('Invalid player ID');
+
   const [gameState, setGameState] = useState(null);
   const [wsStatus, setWsStatus] = useState('disconnected');
-  const [isRegistered, setIsRegistered] = useState(false);
+  const registeredRef = useRef(false); // track registration
 
+  // Connect WebSocket and subscribe to messages
   useEffect(() => {
     connect();
 
     const unsubMsg = subscribe((msg) => {
       if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
         setGameState(msg.payload);
-
-        // Check if player exists in state
-        const exists = msg.payload.players?.some((p) => p?.id === playerId);
-        setIsRegistered(exists);
       }
     });
 
@@ -31,96 +30,48 @@ export default function Player() {
       unsubMsg();
       unsubStatus();
     };
-  }, [playerId]);
+  }, []);
 
-  // Register player when WS connected and not already registered
+  // Register player exactly once when WS connects
   useEffect(() => {
-    if (wsStatus === 'connected' && !isRegistered) {
-      console.log(`[Player] Registering Player ${playerId}`);
+    if (wsStatus === 'connected' && !registeredRef.current) {
       send('REGISTER_PLAYER', { id: playerId });
+      registeredRef.current = true;
     }
-  }, [wsStatus, isRegistered, playerId]);
+  }, [wsStatus, playerId]);
 
-  if (!gameState) return <div>Loading... (WS: {wsStatus})</div>;
+  if (!gameState)
+    return <div className={styles.loading}>Loading... (WS: {wsStatus})</div>;
 
   const me = gameState.players?.find((p) => p?.id === playerId);
-  if (!me) return <div>Registering Player {playerId}...</div>;
+  if (!me)
+    return (
+      <div className={styles.loading}>Registering Player {playerId}...</div>
+    );
 
-  const onKeypress = (key) => {
-    console.log(`[Player] Key pressed: ${key}`);
-    send('PLAYER_KEYPRESS', { id: playerId, key });
-  };
+  const roleColor = me.color || 'gray';
+  const onKeypress = (key) => send('PLAYER_KEYPRESS', { id: playerId, key });
+
+  const Wrapper = compact ? 'div' : 'div';
+  const wrapperClass = compact ? undefined : styles.pageWrapper;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.grid}>
-        <div style={styles.bigNumber}>{me.id}</div>
-        <div style={styles.name}>{me.name}</div>
-        <div style={styles.role}>{me.role}</div>
-        <div style={styles.bulb}>
-          <Bulb player={me} phase={gameState.phase} />
-        </div>
-        <div style={styles.keypad}>
-          <Keypad onKeypress={onKeypress} isLocked={false} />
+    <Wrapper className={wrapperClass}>
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.number}>{me.id}</div>
+          <div className={styles.name}>{me.name}</div>
+          <div className={styles.role} style={{ color: roleColor }}>
+            {me.role}
+          </div>
+          <div className={styles.bulb}>
+            <Bulb player={me} phase={gameState.phase} />
+          </div>
+          <div className={styles.keypadWrapper}>
+            <Keypad onKeypress={onKeypress} />
+          </div>
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    width: '100%',
-    padding: '1rem',
-    boxSizing: 'border-box',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 2fr 1fr',
-    gridTemplateRows: 'auto auto 1fr',
-    gap: '1rem',
-    maxWidth: '800px',
-    width: '100%',
-  },
-  bigNumber: {
-    gridArea: '1 / 1 / 3 / 2',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'clamp(3rem, 15vw, 10rem)',
-    fontWeight: 'bold',
-  },
-  name: {
-    gridArea: '1 / 2 / 2 / 3',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'clamp(1rem, 4vw, 2rem)',
-    fontWeight: '500',
-  },
-  role: {
-    gridArea: '2 / 2 / 3 / 3',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'clamp(2rem, 8vw, 5rem)',
-    fontWeight: 'bold',
-  },
-  bulb: {
-    gridArea: '1 / 3 / 3 / 4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'clamp(3rem, 15vw, 12rem)',
-    lineHeight: 1,
-  },
-  keypad: {
-    gridArea: '3 / 1 / 4 / 4',
-    display: 'flex',
-    justifyContent: 'center',
-  },
-};

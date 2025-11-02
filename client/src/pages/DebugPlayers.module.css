@@ -1,0 +1,19 @@
+/* src/pages/DebugPlayers.module.css */
+
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns */
+  grid-auto-rows: 1fr; /* equal row height */
+  gap: 1rem;
+  padding: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gridItem {
+  width: 100%;
+  min-height: 400px; /* adjust based on Player card size */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

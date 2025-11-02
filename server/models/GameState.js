@@ -6,6 +6,7 @@ import {
 } from '../../shared/constants.js';
 import { logger } from '../utils/Logger.js';
 import { Player } from './Player.js';
+import { BulbManager } from './BulbManager.js';
 
 export class GameState {
   constructor() {
@@ -63,6 +64,11 @@ export class GameState {
     if (player) player.isAlive = false;
   }
 
+  revivePlayer(playerId) {
+    const player = this.players.find((p) => p.id === playerId);
+    if (player) player.isAlive = true;
+  }
+
   // ------------------------
   // Game Lifecycle
   // ------------------------
@@ -78,34 +84,46 @@ export class GameState {
     if (!unassigned.length) return;
 
     const totalPlayers = this.players.length;
-    let minRoles = ROLE_MINIMUMS[totalPlayers];
-    if (!minRoles || !minRoles.length) {
-      console.warn(
-        `[GameState] No ROLE_MINIMUMS defined for ${totalPlayers} players. Defaulting to one MURDERER`
-      );
-      minRoles = ['MURDERER'];
-    }
+    let minRoles = ROLE_MINIMUMS[totalPlayers] || [ROLE_POOL[0]];
 
-    // Shuffle unassigned
-    const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
-
-    // Assign minimum roles
-    minRoles.forEach((roleName, i) => {
-      const player = shuffled[i];
-      if (!player) {
-        console.error(
-          `[GameState] Not enough unassigned players to satisfy ROLE_MINIMUMS`
-        );
-        return;
+    // Count how many of each minimum role is already assigned
+    const roleCounts = {};
+    this.players.forEach((p) => {
+      if (p.role !== 'UNKNOWN') {
+        roleCounts[p.role] = (roleCounts[p.role] || 0) + 1;
       }
-      this.setPlayerRole(player.id, roleName);
     });
 
-    // Assign remaining players from ROLE_POOL or default to NORMIE
-    shuffled.slice(minRoles.length).forEach((player) => {
-      const roleName =
-        ROLE_POOL[Math.floor(Math.random() * ROLE_POOL.length)] || 'NORMIE';
-      this.setPlayerRole(player.id, roleName);
+    // Shuffle unassigned players for random distribution
+    const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
+
+    // Assign minimum roles only if not already satisfied
+    minRoles.forEach((roleName) => {
+      const assignedCount = roleCounts[roleName] || 0;
+      const minCount = minRoles.filter((r) => r === roleName).length;
+
+      // How many more of this role we need
+      const needed = minCount - assignedCount;
+      if (needed <= 0) return;
+
+      const available = shuffled.filter((p) => !p.roleAssigned);
+      for (let i = 0; i < needed && available.length; i++) {
+        const idx = Math.floor(Math.random() * available.length);
+        const player = available.splice(idx, 1)[0];
+        this.setPlayerRole(player.id, roleName);
+        player.roleAssigned = true;
+        roleCounts[roleName] = (roleCounts[roleName] || 0) + 1;
+      }
+    });
+
+    // Assign fallback role to remaining unassigned players
+    const fallbackRole = ROLE_POOL[0];
+    shuffled.forEach((player) => {
+      if (!player.roleAssigned) {
+        this.setPlayerRole(player.id, fallbackRole);
+        player.roleAssigned = true;
+      }
+      delete player.roleAssigned;
     });
   }
 
@@ -144,10 +162,11 @@ export class GameState {
   // Serialization
   // ------------------------
   serialize() {
+    const bulbManager = new BulbManager(this);
     return {
       day: this.day,
       phase: this.phase,
-      players: this.players.map((p) => ({ ...p })),
+      players: bulbManager.applyBulbColors(this.players),
       history: logger.toHistoryStrings(),
     };
   }

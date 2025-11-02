@@ -1,45 +1,49 @@
 import { useState } from 'react';
 import { Button } from './Button';
 
-export const Keypad = ({ onKeypress, isLocked }) => {
-  const selection = useState(null);
-  const isConfirmed = useState(false);
+export const Keypad = ({ onKeypress, isLocked = false }) => {
+  const [selection, setSelection] = useState(null);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+
   const handleButtonClick = (value) => {
-    console.log(`Button ${value} clicked`);
-    onKeypress();
+    if (value === 'confirm') {
+      setIsConfirmed(true);
+    } else {
+      setSelection(value);
+      setIsConfirmed(false);
+    }
+    onKeypress?.(value);
   };
 
-  // Styles
-  const styles = {
-    keypad: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)', // 5 columns
-      gridTemplateRows: 'repeat(2, 1fr)', // 2 rows
-      gap: '1rem',
-    },
-  };
+  const buttons = [...Array(9)].map((_, i) => i + 1);
 
   return (
     <div style={styles.keypad}>
-      {[...Array(9)].map(
-        (
-          _,
-          index // only 8 numbers, leave last cell for confirm
-        ) => (
-          <Button
-            key={index + 1}
-            onClick={() => handleButtonClick(index + 1)}
-            label={index + 1}
-            disabled={isLocked}
-          />
-        )
-      )}
+      {buttons.map((value) => (
+        <Button
+          key={value}
+          label={value}
+          onClick={() => handleButtonClick(value)}
+          disabled={isLocked}
+          isActive={selection === value && !isConfirmed}
+        />
+      ))}
       <Button
+        label='Confirm'
         onClick={() => handleButtonClick('confirm')}
-        label='confirm'
-        style={styles.confirmButton}
-        disabled={isLocked}
+        disabled={isLocked || selection === null}
+        isActive={isConfirmed}
       />
     </div>
   );
+};
+
+const styles = {
+  keypad: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, 1fr)', // 5 buttons per row
+    gap: '0.5rem',
+    justifyItems: 'stretch',
+    width: '100%',
+  },
 };

@@ -17,7 +17,7 @@ const Landing = () => {
       >
         <button onClick={() => navigate('/host')}>Host</button>
         <button onClick={() => navigate('/player/1')}>Player 1</button>
-        <button onClick={() => navigate('/dashboard')}>Dashboard</button>
+        <button onClick={() => navigate('/debug/players')}>Dashboard</button>
       </div>
     </div>
   );

@@ -37,7 +37,15 @@ export function handleWSMessage(ws, data) {
       gameManager.killPlayer(playerId); // ✅ use GameManager method
       break;
     }
+    case 'REVIVE_PLAYER': {
+      const { playerId } = payload;
+      gameManager.revivePlayer(playerId);
+      break;
+    }
 
+    case 'END_GAME':
+      gameManager.endGame();
+      break;
     default:
       sendTo(ws, { type: 'ERROR', payload: { message: 'Unknown type' } });
   }

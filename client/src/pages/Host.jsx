@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { connect, subscribe, subscribeStatus, send } from '../ws';
 import { Button } from '../components/Button';
-import { PHASES, PHASE_DESCRIPTIONS, ROLES } from '@shared/constants';
+import { PHASES, PHASE_DESCRIPTIONS } from '@shared/constants';
 import { PlayerRow } from '../components/PlayerRow';
 import { PhaseManager } from '../models/PhaseManager';
+import styles from './Host.module.css';
+
 export default function Host() {
   const [wsStatus, setWsStatus] = useState('disconnected');
   const [players, setPlayers] = useState([]);
@@ -19,10 +21,11 @@ export default function Host() {
     const unsubMsg = subscribe((msg) => {
       if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
         const { players: pl = [], day, phase, history = [] } = msg.payload;
-        setPlayers(pl.filter(Boolean)); // remove nulls
+        setPlayers(pl.filter(Boolean));
         setGameInfo({ day, phase, history });
       }
     });
+
     const unsubStatus = subscribeStatus(setWsStatus);
 
     return () => {
@@ -30,30 +33,29 @@ export default function Host() {
       unsubStatus();
     };
   }, []);
-
   const gameStarted = !!(gameInfo.day && gameInfo.phase);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.leftColumn}>
-        <header style={styles.header}>
+    <div className={styles.container}>
+      <div className={styles.leftColumn}>
+        <header className={styles.header}>
           <h1>Host Dashboard</h1>
           <h2>
             {gameStarted
               ? `DAY ${gameInfo.day}, PHASE: ${gameInfo.phase}`
               : 'GAME NOT STARTED'}
           </h2>
-          <p style={styles.phaseDescription}>
+          <p className={styles.phaseDescription}>
             {gameStarted && PHASE_DESCRIPTIONS[gameInfo.phase]}
           </p>
         </header>
 
-        <section style={styles.controls}>
+        <section className={styles.controls}>
           {!gameStarted ? (
             <Button label='START GAME' onClick={() => send('START_GAME')} />
           ) : (
             <>
-              <div style={styles.phaseButtons}>
+              <div className={styles.phaseButtons}>
                 {PHASES.map((phase) => (
                   <Button
                     key={phase}
@@ -63,43 +65,55 @@ export default function Host() {
                   />
                 ))}
               </div>
-              <div style={styles.globalControls}>
+              <div className={styles.globalControls}>
                 <Button label='NEXT' onClick={() => send('SET_PHASE')} isNext />
+                <Button
+                  label='END GAME'
+                  onClick={() => send('END_GAME')}
+                  variant='danger'
+                />
               </div>
             </>
           )}
         </section>
 
-        <section style={styles.playersSection}>
+        <section className={styles.playersSection}>
           <h2>Players</h2>
-          <div style={styles.playerList}>
+          <div className={styles.playerList}>
             {players.map((p) => {
+              // Dynamic host options
               const hostOptions =
-                PhaseManager.getHostOptions(gameInfo.phase) || [];
+                PhaseManager.getHostOptions(gameInfo.phase, p) || [];
+
               const actions = hostOptions.map((opt) => ({
                 label: opt.label,
                 action: () => opt.action(p.id, send),
               }));
 
-              return <PlayerRow key={p.id} player={p} actions={actions} />;
+              return (
+                <PlayerRow
+                  key={p.id}
+                  player={p}
+                  actions={actions}
+                  variant='light'
+                />
+              );
             })}
           </div>
         </section>
       </div>
-      <div style={styles.rightColumn}>
-        <div style={styles.historyHeader}>
-          <h3 style={{ margin: 0 }}>History</h3>
+
+      <div className={styles.rightColumn}>
+        <div className={styles.historyHeader}>
+          <h3>History</h3>
           <Button
             label='Clear'
             onClick={() => setGameInfo((prev) => ({ ...prev, history: [] }))}
           />
         </div>
-
-        <ul style={styles.historyList}>
+        <ul className={styles.historyList}>
           {gameInfo.history.map((entry, i) => {
             const { message, type = 'system', timestamp } = entry;
-
-            // Define colors per type
             const typeColors = {
               system: '#999',
               vote: '#1976d2',
@@ -108,14 +122,13 @@ export default function Host() {
             };
             const color = typeColors[type] || typeColors.default;
 
-            // Format timestamp to hh:mm
             const ts = new Date(timestamp).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             });
 
             return (
-              <li key={i} style={{ color, marginBottom: '0.25rem' }}>
+              <li key={i} style={{ color }}>
                 [{ts}] {message}
               </li>
             );
@@ -125,85 +138,3 @@ export default function Host() {
     </div>
   );
 }
-const styles = {
-  container: {
-    display: 'flex',
-    height: '100vh',
-    width: '100vw',
-    fontFamily: 'sans-serif',
-    gap: '1rem',
-    padding: '1rem',
-    boxSizing: 'border-box',
-    backgroundColor: '#f5f5f5',
-  },
-  leftColumn: {
-    flex: 4,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    backgroundColor: '#fff',
-    padding: '1rem',
-    borderRadius: '8px',
-    boxShadow: '0 1px 5px rgba(0,0,0,0.1)',
-  },
-  rightColumn: {
-    flex: 1,
-    minWidth: '20%',
-    overflowY: 'auto',
-    backgroundColor: '#fff',
-    padding: '1rem',
-    borderRadius: '8px',
-    boxShadow: '0 1px 5px rgba(0,0,0,0.1)',
-    textAlign: 'left',
-  },
-
-  historyHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.5rem',
-  },
-
-  historyList: {
-    listStyle: 'none',
-    fontSize: '0.8rem',
-    padding: 0,
-    margin: 0,
-  },
-
-  header: {
-    textAlign: 'center',
-  },
-  phaseDescription: {
-    marginTop: '0.25rem',
-    fontStyle: 'italic',
-    color: '#555',
-  },
-  controls: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  phaseButtons: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '0.5rem',
-    justifyContent: 'center',
-  },
-  playersSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  playerList: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
-    gap: '0.5rem',
-  },
-  globalControls: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '1rem',
-  },
-};

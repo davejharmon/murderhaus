@@ -52,8 +52,37 @@ export class GameManager {
     this._broadcastState();
   }
 
+  revivePlayer(playerId) {
+    this.state.revivePlayer(playerId);
+    logger.log(`Player ${playerId} revived`, 'game');
+    this._broadcastState();
+  }
+
   setPlayerRole(playerId, roleName) {
     this.state.setPlayerRole(playerId, roleName);
+    this._broadcastState();
+  }
+
+  endGame() {
+    if (!this.state || !this.state.players) return;
+
+    this.state.players.forEach((p) => {
+      p.role = 'UNKNOWN';
+      p.team = null;
+      p.color = null;
+      p.actions = [];
+      p.isAlive = null;
+      p.isRevealed = false;
+      p.vote = null;
+      p.isConfirmed = false;
+    });
+
+    this.state.day = null;
+    this.state.phase = null;
+
+    // Clear log
+    logger.clear();
+
     this._broadcastState();
   }
 

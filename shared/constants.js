@@ -50,10 +50,10 @@ export const ROLE_MINIMUMS = {
 };
 
 // Optional role pool (extra roles you may add later)
-export const ROLE_POOL = ['MURDERER']; // currently just Murderer, can add others
+export const ROLE_POOL = ['NORMIE', 'MURDERER'];
 
-export const getPregameHostOptions = () =>
-  ROLES.map((role) => ({
-    label: `Assign ${role.name}`,
-    role: role.name,
-  }));
+// export const getPregameHostOptions = () =>
+//   ROLES.map((role) => ({
+//     label: `Assign ${role.name}`,
+//     role: role.name,
+//   }));

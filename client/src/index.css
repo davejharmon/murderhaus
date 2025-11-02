@@ -22,15 +22,17 @@ a:hover {
   color: #535bf2;
 }
 
-/* Body fills viewport and centers content */
+/* Reset body for neutral layout */
 body {
   margin: 0;
-  display: flex;
-  justify-content: center; /* horizontal centering */
-  align-items: center; /* vertical centering */
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
-  text-align: center;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  color: #fff;
+  background-color: #242424;
+  box-sizing: border-box;
 }
 
 /* Headings */
