@@ -1,41 +1,67 @@
+import { useState, useEffect } from 'react';
+import { send } from '../ws';
 import { Bulb } from './Bulb';
 import { NumberEmoji } from './NumberEmoji';
-import { PlayerName } from './PlayerName';
 import { Button } from './Button';
 
-export function PlayerRow({ player, gameState, setGameState, DEBUG = false }) {
-  // Defensive guard
-  if (!player) return null;
+export function PlayerRow({ player, DEBUG = false }) {
+  const [name, setName] = useState(player.name || '');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) setName(player.name || '');
+  }, [player, isEditing]);
+
+  const handleChange = (e) => setName(e.target.value);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    if (player.name !== name) {
+      send('UPDATE_PLAYER_NAME', { id: player.id, name });
+    }
+  };
 
   return (
-    <div style={styles.playerRow}>
-      <div style={styles.playerInfo}>
-        <Bulb player={player} phase={gameState.phase} />
-        <span style={styles.playerBulb}>
-          <NumberEmoji number={player.id} />
-        </span>
-        <PlayerName
-          player={player}
-          gameState={gameState}
-          setGameState={setGameState}
-        />
-        <span style={styles.playerRole}>{player.role}</span>
-        <Button label='🔪' />
-        <Button label='👁️' />
+    <div style={styles.card}>
+      <div style={styles.leftSection}>
+        <Bulb player={player} color={player.color} phase={player.phase} />
+        <NumberEmoji number={player.id} />
+        {isEditing ? (
+          <input
+            type='text'
+            value={name}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            autoFocus
+            onFocus={(e) => e.target.select()}
+            style={styles.input}
+          />
+        ) : (
+          <span onClick={() => setIsEditing(true)} style={styles.nameLabel}>
+            {name || 'Unnamed'}
+          </span>
+        )}
+      </div>
+
+      <div style={styles.rightSection}>
+        <span style={styles.role}>{player.role}</span>
+        <Button label='kill' size='small' />
+        <Button label='reveal' size='small' />
       </div>
 
       {DEBUG && (
-        <div style={styles.debugLine}>
+        <div style={styles.debug}>
           {Object.entries(player)
-            .map(([key, value]) => {
-              const displayValue =
-                value === null
-                  ? 'null'
-                  : typeof value === 'object'
-                  ? JSON.stringify(value)
-                  : String(value).toUpperCase();
-              return `${key}: ${displayValue}`;
-            })
+            .map(
+              ([k, v]) =>
+                `${k}: ${
+                  v === null
+                    ? 'null'
+                    : typeof v === 'object'
+                    ? JSON.stringify(v)
+                    : String(v)
+                }`
+            )
             .join(', ')}
         </div>
       )}
@@ -44,27 +70,43 @@ export function PlayerRow({ player, gameState, setGameState, DEBUG = false }) {
 }
 
 const styles = {
-  playerRow: {
+  card: {
     display: 'flex',
-    flexDirection: 'column',
-    padding: '0.75rem 1rem',
-    backgroundColor: '#f0f0f0',
-    borderRadius: '0.5rem',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.5rem',
+    backgroundColor: '#d3eaf2',
+    padding: '1rem',
+    borderRadius: '12px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
   },
-  playerInfo: {
+  leftSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
-    fontSize: '1.2rem',
-    fontWeight: '500',
+    gap: '0.5rem',
+    flexGrow: 1,
   },
-  playerRole: {
-    color: 'blue',
+  rightSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
-  debugLine: {
-    fontSize: '0.8em',
-    color: 'gray',
-    marginTop: '4px',
+  nameLabel: {
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '4px',
+    backgroundColor: '#f4f4f4',
+    minWidth: '5ch',
   },
-  playerBulb: {},
+  input: {
+    fontWeight: 'bold',
+    border: '1px solid #007bff',
+    borderRadius: '4px',
+    padding: '0.25rem 0.5rem',
+    minWidth: '5ch',
+    backgroundColor: '#fff',
+  },
+  role: { color: '#000', fontWeight: 500 },
+  debug: { fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' },
 };

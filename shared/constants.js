@@ -23,11 +23,15 @@ export const PHASE_DESCRIPTIONS = {
 export const TEAMS = ['CIRCLE', 'MURDERERS'];
 export const ROLES = [
   {
-    name: 'VILLAGER',
+    name: 'NORMIE',
     team: 0,
+    color: '#1976d2',
+    actions: ['vote'],
   },
   {
     name: 'MURDERER',
     team: 1,
+    color: '#d32f2f',
+    actions: ['vote', 'murder'],
   },
 ];
