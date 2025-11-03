@@ -68,11 +68,11 @@ export default function Player({ id: propId, compact = false }) {
             <Bulb player={me} phase={gameState.phase} />
           </div>
           <div className={styles.keypadWrapper}>
-            <Keypad
-              onKeypress={onKeypress}
-              player={me}
-              isLocked={!me.activeActions?.length}
-            />
+            {me.activeActions?.length ? (
+              <Keypad player={me} actionType={me.activeActions[0]} />
+            ) : (
+              <Keypad player={me} actionType={null} /> // all buttons disabled
+            )}
           </div>
         </div>
       </div>

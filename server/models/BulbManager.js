@@ -36,7 +36,7 @@ export class BulbManager {
         if (
           phase === 'midnight' &&
           player.actions.includes('murder') &&
-          player.vote !== null
+          player.selection !== null
         )
           return '#FF0000'; // bright red
         if (phase === 'midnight' && player.actions.includes('murder'))
@@ -49,10 +49,9 @@ export class BulbManager {
         return '#FFD700'; // warm yellow
 
       case 'afternoon':
-        if (player.actions.includes('vote') && !player.isConfirmed)
-          return '#FFD700'; // warm yellow
-        if (player.vote !== null) return '#FFB84D'; // bright warm tone
         if (player.isConfirmed) return '#FF0000'; // bright red
+        if (player.selection !== null) return '#FFFFFF'; // bright warm tone
+        if (player.actions.includes('vote')) return '#FFD700'; // warm yellow
         return '#FFD700'; // default warm yellow
 
       case 'evening':

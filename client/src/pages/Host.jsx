@@ -33,7 +33,21 @@ export default function Host() {
       unsubStatus();
     };
   }, []);
+
   const gameStarted = !!(gameInfo.day && gameInfo.phase);
+
+  // Compute vote selectors for each player
+  const voteSelectorsByPlayer = {};
+  players.forEach((target) => {
+    voteSelectorsByPlayer[target.id] = players
+      .filter(
+        (p) =>
+          !p.isConfirmed &&
+          p.selection === target.id &&
+          p.activeActions.includes('vote')
+      )
+      .map((p) => p.id);
+  });
 
   return (
     <div className={styles.container}>
@@ -61,7 +75,7 @@ export default function Host() {
                     key={phase}
                     label={phase}
                     onClick={() => send('SET_PHASE', { phase })}
-                    isActive={gameInfo.phase === phase}
+                    state={gameInfo.phase === phase ? 'selected' : 'unselected'}
                   />
                 ))}
               </div>
@@ -70,7 +84,7 @@ export default function Host() {
                 <Button
                   label='END GAME'
                   onClick={() => send('END_GAME')}
-                  variant='danger'
+                  state='selected'
                 />
               </div>
             </>
@@ -84,7 +98,6 @@ export default function Host() {
               // Dynamic host options
               const hostOptions =
                 PhaseManager.getHostOptions(gameInfo.phase, p) || [];
-
               const actions = hostOptions.map((opt) => ({
                 label: opt.label,
                 action: () => opt.action(p.id, send),
@@ -96,6 +109,7 @@ export default function Host() {
                   player={p}
                   actions={actions}
                   variant='light'
+                  voteSelectors={voteSelectorsByPlayer[p.id] || []}
                 />
               );
             })}

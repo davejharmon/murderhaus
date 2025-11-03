@@ -18,7 +18,6 @@ export const NumberEmoji = ({ number }) => {
   return (
     <span
       style={{
-        fontSize: 'clamp(2rem, 6vw, 6rem)',
         lineHeight: 1,
         display: 'flex',
         alignItems: 'center',

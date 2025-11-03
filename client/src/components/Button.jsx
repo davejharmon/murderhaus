@@ -1,34 +1,31 @@
-export function Button({ label, onClick, disabled, isActive, state, variant }) {
+// Button.jsx
+export function Button({ label, onClick, disabled, state }) {
   /**
-   * variant: existing (e.g., 'danger')
-   * state: 'selected' | 'unlocked' | undefined
+   * state: 'selected' | 'confirmed' | 'unlocked' | 'locked' | 'danger'
    */
+
   let bgColor = '#1a1a1a';
   let color = '#fff';
-  let border = '1px solid transparent';
+  let border = '2px solid #d32f2f'; // default unlocked style
 
-  // 1️⃣ Variant-based styles
-  if (variant === 'danger') {
+  if (state === 'selected' || state === 'confirmed' || state === 'danger') {
     bgColor = '#d32f2f';
     color = '#fff';
+    border = '2px solid #d32f2f';
+  } else if (disabled) {
+    bgColor = '#333';
+    color = '#888';
+    border = '2px solid #333';
   }
 
-  // 2️⃣ State-based overrides (take precedence)
-  if (state === 'selected') {
-    bgColor = '#d32f2f'; // red background
-    color = '#fff'; // white text
-    border = '1px solid transparent'; // override any unlocked border
-  } else if (state === 'unlocked') {
-    border = '2px solid #d32f2f'; // red border
-    if (!variant) bgColor = '#1a1a1a'; // keep default background if no variant
-  } else if (isActive) {
-    bgColor = '#646cff'; // existing active color
-    color = '#fff';
-  }
+  const handleClick = (e) => {
+    onClick?.(e);
+    e.currentTarget.blur(); // remove focus after click
+  };
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       style={{
         backgroundColor: bgColor,
@@ -39,6 +36,7 @@ export function Button({ label, onClick, disabled, isActive, state, variant }) {
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontWeight: 500,
         transition: '0.25s',
+        outline: 'none', // remove focus outline
       }}
     >
       {label}

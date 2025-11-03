@@ -1,55 +1,71 @@
-import { useState } from 'react';
+// Keypad.jsx
+import { useState, useEffect } from 'react';
 import { Button } from './Button';
+import { send } from '../ws';
+import { MAX_PLAYERS } from '@shared/constants.js';
 
-export const Keypad = ({ onKeypress, player, isLocked = false }) => {
-  if (!player) return <div>Loading player...</div>; // safeguard
+export const Keypad = ({ player, actionType }) => {
+  if (!player) return <div>Loading player...</div>;
 
-  const [selection, setSelection] = useState(player?.vote ?? null);
-  const [isConfirmed, setIsConfirmed] = useState(player?.isConfirmed ?? false);
+  const [selection, setSelection] = useState(player.selection ?? null);
+  const [isConfirmed, setIsConfirmed] = useState(player.isConfirmed ?? false);
 
-  const isUnlocked = (action) => player?.activeActions?.includes(action);
+  const validTargets = player.activeActionTargets?.[actionType] ?? [];
 
-  const handleButtonClick = (value) => {
-    if (!isUnlocked('vote')) return;
+  useEffect(() => {
+    setSelection(player.selection ?? null);
+    setIsConfirmed(player.isConfirmed ?? false);
+  }, [player.selection, player.isConfirmed]);
 
-    if (value === 'confirm') {
+  const handleClick = (targetId) => {
+    if (isConfirmed) return; // keypad locked after confirm
+
+    if (targetId === 'confirm') {
+      if (!selection) return;
       setIsConfirmed(true);
-      onKeypress('confirm', 'vote'); // send action type
+      send('PLAYER_CONFIRM_ACTION', {
+        playerId: player.id,
+        action: actionType,
+      });
     } else {
-      setSelection(value);
-      setIsConfirmed(false);
-      onKeypress(value, 'vote'); // send action type
+      const newSelection = selection === targetId ? null : targetId;
+      setSelection(newSelection);
+      send('PLAYER_ACTION', {
+        playerId: player.id,
+        action: actionType,
+        target: newSelection,
+      });
     }
   };
 
-  const buttons = [...Array(9)].map((_, i) => i + 1);
-
   return (
     <div style={styles.keypad}>
-      {buttons.map((value) => {
-        let state = null;
-        if (!isLocked) state = 'unlocked';
-        if (selection === value && !isConfirmed) state = 'selected';
+      {Array.from({ length: MAX_PLAYERS }, (_, i) => {
+        const id = i + 1;
+        const isValid = validTargets.includes(id);
+        const isSelected = selection === id;
 
         return (
           <Button
-            key={value}
-            label={value}
-            onClick={() => handleButtonClick(value)}
-            disabled={isLocked}
-            state={state}
+            key={id}
+            label={id}
+            onClick={() => handleClick(id)}
+            disabled={!isValid && selection !== id} // locked unless selected
+            state={selection === id ? 'selected' : 'unlocked'}
           />
         );
       })}
+
       <Button
         label='Confirm'
-        onClick={() => handleButtonClick('confirm')}
-        disabled={isLocked || selection === null}
-        state={isConfirmed ? 'selected' : !isLocked ? 'unlocked' : null}
+        onClick={() => handleClick('confirm')}
+        disabled={!selection || isConfirmed}
+        state={isConfirmed ? 'confirmed' : 'unlocked'}
       />
     </div>
   );
 };
+
 const styles = {
   keypad: {
     display: 'grid',

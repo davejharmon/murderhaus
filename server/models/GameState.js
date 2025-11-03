@@ -13,8 +13,8 @@ export class GameState {
     this.day = null;
     this.phase = null;
     this.players = []; // array of Player instances
-    this.recentlyKilled = new Set(); // players killed this phase
-    this.recentlyVoted = new Set(); // players who voted this phase
+    this.recentlyKilled = new Set();
+    this.recentlyVoted = new Set();
   }
 
   // ------------------------
@@ -53,18 +53,18 @@ export class GameState {
 
   killPlayer(playerId) {
     const player = this.players.find((p) => p.id === playerId);
-    if (player) {
-      player.isAlive = false;
-      this.recentlyKilled.add(playerId);
-    }
+    if (!player) return;
+    player.isAlive = false;
+    this.recentlyKilled.add(playerId);
+    logger.log(`${player.name ?? `Player ${player.id}`} was killed`, 'game');
   }
 
   revivePlayer(playerId) {
     const player = this.players.find((p) => p.id === playerId);
-    if (player) {
-      player.isAlive = true;
-      this.recentlyKilled.delete(playerId);
-    }
+    if (!player) return;
+    player.isAlive = true;
+    this.recentlyKilled.delete(playerId);
+    logger.log(`${player.name ?? `Player ${player.id}`} was revived`, 'game');
   }
 
   // ------------------------
@@ -75,22 +75,20 @@ export class GameState {
     this.day = 1;
     this.phase = PHASES[0];
     this.assignRoles();
+    logger.log(`Game started (Day ${this.day}, Phase: ${this.phase})`, 'game');
   }
 
   assignRoles() {
-    logger.log('Starting game...', 'game');
-
-    const unassigned = this.players.filter((p) => p.role === 'UNKNOWN');
+    logger.log('Assigning roles...', 'game');
+    const unassigned = this.players.filter((p) => p.role === null);
     if (!unassigned.length) return;
 
     const totalPlayers = this.players.length;
     const minRoles = ROLE_MINIMUMS[totalPlayers] || [ROLE_POOL[0]];
-
     const roleCounts = {};
+
     this.players.forEach((p) => {
-      if (p.role !== 'UNKNOWN') {
-        roleCounts[p.role] = (roleCounts[p.role] || 0) + 1;
-      }
+      if (p.role !== null) roleCounts[p.role] = (roleCounts[p.role] || 0) + 1;
     });
 
     const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
@@ -112,13 +110,10 @@ export class GameState {
       }
     });
 
-    // Fallback role
+    // Fallback roles
     const fallbackRole = ROLE_POOL[0];
     shuffled.forEach((player) => {
-      if (!player.roleAssigned) {
-        this.setPlayerRole(player.id, fallbackRole);
-        player.roleAssigned = true;
-      }
+      if (!player.roleAssigned) this.setPlayerRole(player.id, fallbackRole);
       delete player.roleAssigned;
     });
   }
@@ -128,87 +123,111 @@ export class GameState {
       const idx = PHASES.indexOf(this.phase);
       newPhase =
         idx === -1 || idx === PHASES.length - 1 ? PHASES[0] : PHASES[idx + 1];
-
-      if (idx === -1 || idx === PHASES.length - 1) {
+      if (idx === -1 || idx === PHASES.length - 1)
         this.day = (this.day ?? 0) + 1;
-      }
     }
 
     this.phase = newPhase;
     this.recentlyKilled.clear();
     this.recentlyVoted.clear();
 
-    // Clear activeActions
+    // Clear all active actions
     this.players.forEach((p) => (p.activeActions = []));
 
-    // Unlock phase-specific actions
-    switch (this.phase) {
-      case 'afternoon':
-        this.players.forEach((p) => {
-          if (p.isAlive && p.actions.includes('vote')) {
-            p.activeActions.push('vote');
-            p.vote = null;
-            p.isConfirmed = false;
-          }
-        });
-        logger.log('Voting started', 'game');
-        break;
+    // Phase-specific actions
+    if (newPhase === 'afternoon') this._startActionPhase('vote');
+    if (newPhase === 'midnight') this._startActionPhase('murder');
 
-      case 'midnight':
-        this.players.forEach((p) => {
-          if (p.isAlive && p.actions.includes('murder')) {
-            p.activeActions.push('murder');
-            p.vote = null;
-            p.isConfirmed = false;
-          }
-        });
-        logger.log('Murder phase started', 'game');
-        break;
-
-      default:
-        break;
-    }
+    logger.log(`Phase updated to: ${this.phase}`, 'game');
   }
 
   // ------------------------
-  // Handle actions (vote/murder)
+  // Generic Action Handling
   // ------------------------
-  handleAction(playerId, actionType, targetId) {
+  _startActionPhase(actionType) {
+    const alivePlayers = this.players.filter((p) => p.isAlive);
+
+    this.players.forEach((player) => {
+      if (player.isAlive && player.actions.includes(actionType)) {
+        player.activeActions.push(actionType);
+        player.selection = null;
+        player.isConfirmed = false;
+
+        // Include self in targets for vote
+        if (actionType === 'vote') {
+          player.activeActionTargets[actionType] = alivePlayers.map(
+            (p) => p.id
+          );
+        } else {
+          player.activeActionTargets[actionType] = alivePlayers
+            .filter((p) => p.id !== player.id)
+            .map((p) => p.id);
+        }
+      }
+    });
+
+    logger.log(`${actionType} phase started`, 'game');
+  }
+
+  doAction(playerId, actionType, targetId) {
     const player = this.players.find((p) => p.id === playerId);
-    const target = this.players.find((p) => p.id === targetId);
-    if (!player || !player.isAlive) return;
-    if (!player.activeActions.includes(actionType)) return;
-    if (!target) return;
+    if (
+      !player ||
+      !player.isAlive ||
+      !player.activeActions.includes(actionType)
+    )
+      return false;
 
-    player.vote = target.id;
+    // Allow deselection (targetId === null)
+    if (targetId !== null) {
+      if (
+        !player.activeActionTargets ||
+        !player.activeActionTargets[actionType] ||
+        !player.activeActionTargets[actionType].includes(targetId)
+      )
+        return false;
+    }
 
-    if (actionType === 'vote') this.recentlyVoted.add(playerId);
-    if (actionType === 'murder') this.recentlyKilled.add(playerId);
+    player.selection = targetId; // can be null
+    player.isConfirmed = false;
 
-    // Auto-confirm murder
-    if (actionType === 'murder') player.isConfirmed = true;
-
-    // Remove the completed action
-    const index = player.activeActions.indexOf(actionType);
-    if (index !== -1) player.activeActions.splice(index, 1);
+    if (targetId === null) {
+      logger.log(
+        `${player.name ?? `Player ${player.id}`} deselected ${actionType}`,
+        'game'
+      );
+    } else {
+      logger.log(
+        `${
+          player.name ?? `Player ${player.id}`
+        } selected ${targetId} for ${actionType}`,
+        'game'
+      );
+    }
+    return true;
   }
 
-  // ------------------------
-  // Helpers
-  // ------------------------
-  aliveByAction(action) {
-    return this.players.filter((p) => p.isAlive && p.actions.includes(action));
-  }
+  confirmAction(playerId, actionType) {
+    const player = this.players.find((p) => p.id === playerId);
+    if (
+      !player ||
+      !player.isAlive ||
+      !player.activeActions.includes(actionType)
+    )
+      return false;
 
-  checkMurdererWin() {
-    const aliveMurderers = this.aliveByAction('murder').length;
-    const aliveNormies = this.aliveByAction('vote').length - aliveMurderers;
-    return aliveMurderers >= aliveNormies;
-  }
+    player.isConfirmed = true;
 
-  checkNormieWin() {
-    const aliveMurderers = this.aliveByAction('murder').length;
-    return aliveMurderers === 0;
+    const idx = player.activeActions.indexOf(actionType);
+    if (idx !== -1) player.activeActions.splice(idx, 1);
+
+    logger.log(
+      `${player.name ?? `Player ${player.id}`} confirmed ${actionType} (${
+        player.selection
+      })`,
+      'game'
+    );
+    return true;
   }
 
   // ------------------------
