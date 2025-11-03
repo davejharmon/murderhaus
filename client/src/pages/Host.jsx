@@ -116,7 +116,7 @@ export default function Host() {
             const { message, type = 'system', timestamp } = entry;
             const typeColors = {
               system: '#999',
-              vote: '#1976d2',
+              player: '#999',
               murder: '#d32f2f',
               default: '#333',
             };

@@ -22,8 +22,8 @@
 /* Right Column: history panel */
 .rightColumn {
   flex: 1;
-  min-width: 200px;
-  max-width: 300px;
+  min-width: 24%;
+  max-width: 30%;
   overflow-y: auto;
   background-color: #fff;
   padding: 1rem;

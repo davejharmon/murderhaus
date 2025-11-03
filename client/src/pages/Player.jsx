@@ -68,7 +68,11 @@ export default function Player({ id: propId, compact = false }) {
             <Bulb player={me} phase={gameState.phase} />
           </div>
           <div className={styles.keypadWrapper}>
-            <Keypad onKeypress={onKeypress} />
+            <Keypad
+              onKeypress={onKeypress}
+              player={me}
+              isLocked={!me.activeActions?.length}
+            />
           </div>
         </div>
       </div>

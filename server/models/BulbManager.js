@@ -15,6 +15,11 @@ export class BulbManager {
     const phase = this.gameState.phase;
     const fallbackGray = '#777777';
 
+    // Highlight newly killed players
+    if (this.gameState.recentlyKilled.has(player.id)) {
+      return '#FF0000'; // bright red flash
+    }
+
     if (!player.isAlive) {
       // Dead players
       if (player.team === 0) return fallbackGray;
@@ -80,6 +85,7 @@ export class BulbManager {
       ...p,
       bulbColor: this.getBulbColor(p),
       bulbRGB: this.getBulbRGB(p),
+      transition: 'snap', // placeholder, can evolve later
     }));
   }
 }
