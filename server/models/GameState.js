@@ -1,8 +1,9 @@
 import {
-  PHASES,
+  PHASE_NAMES,
   ROLES,
   ROLE_MINIMUMS,
   ROLE_POOL,
+  PHASE_ACTIONS,
 } from '../../shared/constants.js';
 import { logger } from '../utils/Logger.js';
 import { Player } from './Player.js';
@@ -51,19 +52,96 @@ export class GameState {
     );
   }
 
+  // ------------------------
+  // Kill / Revive
+  // ------------------------
   killPlayer(playerId) {
     const player = this.players.find((p) => p.id === playerId);
     if (!player) return;
+
     player.isAlive = false;
     this.recentlyKilled.add(playerId);
+
+    // Clear the killed player's own selection and actions
+    player.selection = null;
+    player.isConfirmed = false;
+    player.activeActions = [];
+    player.activeActionTargets = {};
+
+    // Remove killed player from targets of others
+    this.players.forEach((p) => {
+      if (!p.isAlive) return;
+
+      Object.entries(p.activeActionTargets || {}).forEach(
+        ([actionType, targets]) => {
+          // Remove killed player from valid targets
+          p.activeActionTargets[actionType] = targets.filter(
+            (id) => id !== playerId
+          );
+
+          // If the killed player was selected, clear selection
+          if (p.selection === playerId) {
+            p.selection = null;
+            p.isConfirmed = false;
+            logger.log(
+              `${p.name ?? `Player ${p.id}`} deselected ${
+                player.name ?? `Player ${player.id}`
+              }`,
+              'game'
+            );
+          }
+        }
+      );
+    });
+
     logger.log(`${player.name ?? `Player ${player.id}`} was killed`, 'game');
   }
 
   revivePlayer(playerId) {
     const player = this.players.find((p) => p.id === playerId);
     if (!player) return;
+
     player.isAlive = true;
     this.recentlyKilled.delete(playerId);
+
+    // Reset selection and confirmation
+    player.selection = null;
+    player.isConfirmed = false;
+    player.activeActions = [];
+    player.activeActionTargets = {};
+
+    // Restore actions allowed in the current phase
+    const alivePlayers = this.players.filter((p) => p.isAlive);
+    player.actions?.forEach((actionType) => {
+      if (!PHASE_ACTIONS[this.phase]?.includes(actionType)) return;
+
+      player.activeActions.push(actionType);
+      player.activeActionTargets[actionType] =
+        actionType === 'vote'
+          ? alivePlayers.map((p) => p.id) // vote includes self
+          : alivePlayers.filter((p) => p.id !== player.id).map((p) => p.id);
+
+      logger.log(
+        `${
+          player.name ?? `Player ${player.id}`
+        } can perform ${actionType} again`,
+        'game'
+      );
+    });
+
+    // Also add revived player back as a valid target for all alive players
+    this.players.forEach((p) => {
+      if (!p.isAlive || !p.activeActionTargets) return;
+
+      Object.entries(p.activeActionTargets).forEach(([actionType, targets]) => {
+        if (!targets.includes(player.id)) {
+          // For vote, include self if applicable
+          if (actionType === 'vote' || actionType !== 'vote')
+            targets.push(player.id);
+        }
+      });
+    });
+
     logger.log(`${player.name ?? `Player ${player.id}`} was revived`, 'game');
   }
 
@@ -73,7 +151,7 @@ export class GameState {
   startGame() {
     if (!this.players.length) return;
     this.day = 1;
-    this.phase = PHASES[0];
+    this.phase = PHASE_NAMES[0];
     this.assignRoles();
     logger.log(`Game started (Day ${this.day}, Phase: ${this.phase})`, 'game');
   }
@@ -120,10 +198,12 @@ export class GameState {
 
   setPhase(newPhase) {
     if (!newPhase) {
-      const idx = PHASES.indexOf(this.phase);
+      const idx = PHASE_NAMES.indexOf(this.phase);
       newPhase =
-        idx === -1 || idx === PHASES.length - 1 ? PHASES[0] : PHASES[idx + 1];
-      if (idx === -1 || idx === PHASES.length - 1)
+        idx === -1 || idx === PHASE_NAMES.length - 1
+          ? PHASE_NAMES[0]
+          : PHASE_NAMES[idx + 1];
+      if (idx === -1 || idx === PHASE_NAMES.length - 1)
         this.day = (this.day ?? 0) + 1;
     }
 
@@ -134,9 +214,24 @@ export class GameState {
     // Clear all active actions
     this.players.forEach((p) => (p.activeActions = []));
 
-    // Phase-specific actions
-    if (newPhase === 'afternoon') this._startActionPhase('vote');
-    if (newPhase === 'midnight') this._startActionPhase('murder');
+    // Restore actions per PHASE_ACTIONS
+    Object.values(this.players).forEach((player) => {
+      if (!player.isAlive) return;
+      const alivePlayers = this.players.filter((p) => p.isAlive);
+
+      player.actions?.forEach((actionType) => {
+        if (!PHASE_ACTIONS[newPhase]?.includes(actionType)) return;
+
+        player.activeActions.push(actionType);
+        player.activeActionTargets[actionType] =
+          actionType === 'vote'
+            ? alivePlayers.map((p) => p.id)
+            : alivePlayers.filter((p) => p.id !== player.id).map((p) => p.id);
+
+        player.selection = null;
+        player.isConfirmed = false;
+      });
+    });
 
     logger.log(`Phase updated to: ${this.phase}`, 'game');
   }
@@ -153,16 +248,10 @@ export class GameState {
         player.selection = null;
         player.isConfirmed = false;
 
-        // Include self in targets for vote
-        if (actionType === 'vote') {
-          player.activeActionTargets[actionType] = alivePlayers.map(
-            (p) => p.id
-          );
-        } else {
-          player.activeActionTargets[actionType] = alivePlayers
-            .filter((p) => p.id !== player.id)
-            .map((p) => p.id);
-        }
+        player.activeActionTargets[actionType] =
+          actionType === 'vote'
+            ? alivePlayers.map((p) => p.id)
+            : alivePlayers.filter((p) => p.id !== player.id).map((p) => p.id);
       }
     });
 
@@ -191,19 +280,15 @@ export class GameState {
     player.selection = targetId; // can be null
     player.isConfirmed = false;
 
-    if (targetId === null) {
-      logger.log(
-        `${player.name ?? `Player ${player.id}`} deselected ${actionType}`,
-        'game'
-      );
-    } else {
-      logger.log(
-        `${
-          player.name ?? `Player ${player.id}`
-        } selected ${targetId} for ${actionType}`,
-        'game'
-      );
-    }
+    logger.log(
+      targetId === null
+        ? `${player.name ?? `Player ${player.id}`} deselected ${actionType}`
+        : `${
+            player.name ?? `Player ${player.id}`
+          } selected ${targetId} for ${actionType}`,
+      'game'
+    );
+
     return true;
   }
 

@@ -10,7 +10,7 @@ export function PlayerRow({
   actions = [],
   DEBUG = false,
   variant = 'dark',
-  voteSelectors = [], // IDs of players currently voting for this player
+  voteSelectors = [], // Array of { id, isConfirmed }
 }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -48,7 +48,6 @@ export function PlayerRow({
         <div className={styles.bulb}>
           <Bulb player={player} phase={player.phase} />
         </div>
-
         {isEditing ? (
           <input
             className={styles.nameInput}
@@ -65,15 +64,21 @@ export function PlayerRow({
             {name || 'Unnamed'}
           </span>
         )}
-
         <span className={styles.role} style={{ color: player.color || 'gray' }}>
           {player.role}
         </span>
-
-        {/* Only render NumberEmoji for players actively voting for this player */}
-        {voteSelectors.map((id) => (
-          <NumberEmoji key={`vote-${id}`} number={id} />
-        ))}
+        {/* Render NumberEmoji for all players currently selecting this player */}
+        {voteSelectors.length > 0 && (
+          <div className={styles.selections}>
+            {voteSelectors.map(({ id, isConfirmed }) => (
+              <NumberEmoji
+                key={`vote-${id}`}
+                number={id}
+                isConfirmed={isConfirmed}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={styles.rightSection}>

@@ -1,59 +1,63 @@
+// shared/constants.js
+
 export const MAX_PLAYERS = 9;
 
 export const PHASES = [
-  'daybreak', // All awake
-  'morning', // Reveal night actions
-  'noon', // Discuss
-  'afternoon', // Vote
-  'evening', // Reveal vote results
-  'nightfall', // All sleep
-  'midnight', // Night Actions
+  {
+    name: 'daybreak',
+    description: 'Everyone awakes. Morning spiel.',
+    actions: [],
+  },
+  { name: 'morning', description: 'Night actions are revealed.', actions: [] },
+  { name: 'noon', description: 'Players discuss who to kill.', actions: [] },
+  { name: 'afternoon', description: 'Voting begins.', actions: ['vote'] },
+  { name: 'evening', description: 'Votes are revealed.', actions: [] },
+  { name: 'nightfall', description: 'Everyone sleeps.', actions: [] },
+  {
+    name: 'midnight',
+    description: 'Night actions occur.',
+    actions: ['murder'],
+  },
 ];
 
-export const PHASE_DESCRIPTIONS = {
-  daybreak: 'Everyone awakes. Morning spiel.',
-  morning: 'Night actions are revealed.',
-  noon: 'Players discuss who to kill.',
-  afternoon: 'Voting begins.',
-  evening: 'Votes are revealed.',
-  nightfall: 'Everyone sleeps.',
-  midnight: 'Night actions occur.',
-};
+// Map phase names for convenience
+export const PHASE_NAMES = PHASES.map((p) => p.name);
+export const PHASE_DESCRIPTIONS = PHASES.reduce((acc, p) => {
+  acc[p.name] = p.description;
+  return acc;
+}, {});
+export const PHASE_ACTIONS = PHASES.reduce((acc, p) => {
+  acc[p.name] = p.actions;
+  return acc;
+}, {});
 
-export const TEAMS = ['CIRCLE', 'MURDERERS'];
+// Teams
+export const TEAMS = [
+  { name: 'CIRCLE', color: '#1976d2' },
+  { name: 'MURDERERS', color: '#d32f2f' },
+];
 
+// Roles
 export const ROLES = [
   {
     name: 'NORMIE',
-    team: 0,
+    team: 'CIRCLE',
     color: '#1976d2',
     actions: ['vote'],
   },
   {
     name: 'MURDERER',
-    team: 1,
+    team: 'MURDERERS',
     color: '#d32f2f',
     actions: ['vote', 'murder'],
   },
 ];
 
-export const ROLE_MINIMUMS = {
-  1: ['MURDERER'],
-  2: ['MURDERER'],
-  3: ['MURDERER'],
-  4: ['MURDERER'],
-  5: ['MURDERER'],
-  6: ['MURDERER'],
-  7: ['MURDERER', 'MURDERER'],
-  8: ['MURDERER', 'MURDERER'],
-  9: ['MURDERER', 'MURDERER'],
-};
+// Generate role pool automatically
+export const ROLE_POOL = ROLES.map((r) => r.name);
 
-// Optional role pool (extra roles you may add later)
-export const ROLE_POOL = ['NORMIE', 'MURDERER'];
-
-// export const getPregameHostOptions = () =>
-//   ROLES.map((role) => ({
-//     label: `Assign ${role.name}`,
-//     role: role.name,
-//   }));
+// Compute minimum roles dynamically
+export const ROLE_MINIMUMS = {};
+for (let n = 1; n <= MAX_PLAYERS; n++) {
+  ROLE_MINIMUMS[n] = ['MURDERER', ...(n > 6 ? ['MURDERER'] : [])]; // example: 2 murderers if players > 6
+}

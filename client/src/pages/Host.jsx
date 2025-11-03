@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { connect, subscribe, subscribeStatus, send } from '../ws';
 import { Button } from '../components/Button';
-import { PHASES, PHASE_DESCRIPTIONS } from '@shared/constants';
+import { PHASE_NAMES, PHASE_DESCRIPTIONS } from '@shared/constants';
 import { PlayerRow } from '../components/PlayerRow';
 import { PhaseManager } from '../models/PhaseManager';
 import styles from './Host.module.css';
@@ -36,17 +36,12 @@ export default function Host() {
 
   const gameStarted = !!(gameInfo.day && gameInfo.phase);
 
-  // Compute vote selectors for each player
+  // Compute vote selectors for each player with confirmation info
   const voteSelectorsByPlayer = {};
   players.forEach((target) => {
     voteSelectorsByPlayer[target.id] = players
-      .filter(
-        (p) =>
-          !p.isConfirmed &&
-          p.selection === target.id &&
-          p.activeActions.includes('vote')
-      )
-      .map((p) => p.id);
+      .filter((p) => p.selection === target.id)
+      .map((p) => ({ id: p.id, isConfirmed: p.isConfirmed }));
   });
 
   return (
@@ -70,7 +65,7 @@ export default function Host() {
           ) : (
             <>
               <div className={styles.phaseButtons}>
-                {PHASES.map((phase) => (
+                {PHASE_NAMES.map((phase) => (
                   <Button
                     key={phase}
                     label={phase}
@@ -95,7 +90,6 @@ export default function Host() {
           <h2>Players</h2>
           <div className={styles.playerList}>
             {players.map((p) => {
-              // Dynamic host options
               const hostOptions =
                 PhaseManager.getHostOptions(gameInfo.phase, p) || [];
               const actions = hostOptions.map((opt) => ({
