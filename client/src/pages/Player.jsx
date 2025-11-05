@@ -1,3 +1,4 @@
+// src/pages/Player.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { connect, send, subscribe, subscribeStatus } from '../ws';
@@ -12,7 +13,7 @@ export default function Player({ id: propId, compact = false }) {
 
   const [gameState, setGameState] = useState(null);
   const [wsStatus, setWsStatus] = useState('disconnected');
-  const registeredRef = useRef(false); // track registration
+  const registeredRef = useRef(false);
 
   // Connect WebSocket and subscribe to messages
   useEffect(() => {
@@ -32,11 +33,14 @@ export default function Player({ id: propId, compact = false }) {
     };
   }, []);
 
-  // Register player exactly once when WS connects
+  // Register player exactly once when WS connects, staggered by ID
   useEffect(() => {
     if (wsStatus === 'connected' && !registeredRef.current) {
-      send('REGISTER_PLAYER', { id: playerId });
-      registeredRef.current = true;
+      const timeout = setTimeout(() => {
+        send('REGISTER_PLAYER', { id: playerId });
+        registeredRef.current = true;
+      }, playerId * 50); // 50ms stagger per ID
+      return () => clearTimeout(timeout);
     }
   }, [wsStatus, playerId]);
 

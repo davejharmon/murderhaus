@@ -87,7 +87,6 @@ export default function Host() {
         </section>
 
         <section className={styles.playersSection}>
-          <h2>Players</h2>
           <div className={styles.playerList}>
             {players.map((p) => {
               const hostOptions =

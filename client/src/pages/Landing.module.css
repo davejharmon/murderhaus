@@ -1,0 +1,61 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100%;
+  margin: 0;
+  background: radial-gradient(circle at center, #222 0%, #000 100%);
+  color: white;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  overflow: hidden;
+}
+
+.title {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+.subtitle {
+  font-size: 1.2rem;
+  color: #ccc;
+  margin-bottom: 2rem;
+}
+
+.buttonRow {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.status {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.playerList {
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  color: #ddd;
+  list-style: none;
+  padding: 0;
+}
+
+.playerList li {
+  margin: 0.25rem 0;
+  color: #bbb;
+}
+
+.smallStatus {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
