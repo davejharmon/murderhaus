@@ -1,21 +1,33 @@
 // Button.jsx
 export function Button({ label, onClick, disabled, state }) {
   /**
-   * state: 'selected' | 'confirmed' | 'unlocked' | 'locked' | 'danger'
+   * state: 'selected' | 'confirmed' | 'unlocked' | 'locked' | 'danger' | 'warning'
    */
 
   let bgColor = '#1a1a1a';
   let color = '#fff';
   let border = '2px solid #d32f2f'; // default unlocked style
 
-  if (state === 'selected' || state === 'confirmed' || state === 'danger') {
-    bgColor = '#d32f2f';
-    color = '#fff';
-    border = '2px solid #d32f2f';
-  } else if (disabled) {
-    bgColor = '#333';
-    color = '#888';
-    border = '2px solid #333';
+  switch (state) {
+    case 'selected':
+    case 'confirmed':
+    case 'danger':
+      bgColor = '#d32f2f';
+      color = '#fff';
+      border = '2px solid #d32f2f';
+      break;
+    case 'warning':
+      bgColor = '#fbc02d'; // yellow
+      color = '#000'; // black text for contrast
+      border = '2px solid #fbc02d';
+      break;
+    default:
+      if (disabled) {
+        bgColor = '#333';
+        color = '#888';
+        border = '2px solid #333';
+      }
+      break;
   }
 
   const handleClick = (e) => {

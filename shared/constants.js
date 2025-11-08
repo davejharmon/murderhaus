@@ -1,63 +1,129 @@
 // shared/constants.js
 
+/** -------------------
+ * Game Settings
+ * ------------------- */
 export const MAX_PLAYERS = 9;
 
-export const PHASES = [
-  {
-    name: 'daybreak',
-    description: 'Everyone awakes. Morning spiel.',
-    actions: [],
+/** -------------------
+ * Teams
+ * ------------------- */
+export const TEAMS = {
+  CIRCLE: { name: 'CIRCLE', color: '#1976d2' },
+  MURDERERS: { name: 'MURDERERS', color: '#d32f2f' },
+};
+
+/** -------------------
+ * Actions
+ * ------------------- */
+export const ACTIONS = {
+  vote: {
+    name: 'vote',
+    label: 'Vote',
+    // default quantity: infinite (permanent action)
+    defaultQuantity: Infinity,
+    // default targeting rule
+    getValidTargets: (gameState, player) =>
+      gameState.players.filter((p) => p.isAlive).map((p) => p.id),
   },
-  { name: 'morning', description: 'Night actions are revealed.', actions: [] },
-  { name: 'noon', description: 'Players discuss who to kill.', actions: [] },
-  { name: 'afternoon', description: 'Voting begins.', actions: ['vote'] },
-  { name: 'evening', description: 'Votes are revealed.', actions: [] },
-  { name: 'nightfall', description: 'Everyone sleeps.', actions: [] },
-  {
-    name: 'midnight',
-    description: 'Night actions occur.',
-    actions: ['murder'],
+  murder: {
+    name: 'murder',
+    label: 'Murder',
+    defaultQuantity: 1,
+    getValidTargets: (gameState, player) =>
+      gameState.players
+        .filter((p) => p.isAlive && p.id !== player.id)
+        .map((p) => p.id),
   },
-];
+  save: {
+    name: 'save',
+    label: 'Save',
+    defaultQuantity: 1,
+    getValidTargets: (gameState, player) =>
+      gameState.players
+        .filter((p) => p.isAlive && p.id !== player.id)
+        .map((p) => p.id),
+  },
+  investigate: {
+    name: 'investigate',
+    label: 'Investigate',
+    defaultQuantity: Infinity,
+    getValidTargets: (gameState, player) =>
+      gameState.players
+        .filter((p) => p.isAlive && p.id !== player.id)
+        .map((p) => p.id),
+  },
+};
 
-// Map phase names for convenience
-export const PHASE_NAMES = PHASES.map((p) => p.name);
-export const PHASE_DESCRIPTIONS = PHASES.reduce((acc, p) => {
-  acc[p.name] = p.description;
-  return acc;
-}, {});
-export const PHASE_ACTIONS = PHASES.reduce((acc, p) => {
-  acc[p.name] = p.actions;
-  return acc;
-}, {});
-
-// Teams
-export const TEAMS = [
-  { name: 'CIRCLE', color: '#1976d2' },
-  { name: 'MURDERERS', color: '#d32f2f' },
-];
-
-// Roles
+/** -------------------
+ * Roles
+ * ------------------- */
 export const ROLES = [
   {
     name: 'NORMIE',
-    team: 'CIRCLE',
-    color: '#1976d2',
+    team: TEAMS.CIRCLE.name,
+    color: TEAMS.CIRCLE.color,
     actions: ['vote'],
   },
   {
     name: 'MURDERER',
-    team: 'MURDERERS',
-    color: '#d32f2f',
+    team: TEAMS.MURDERERS.name,
+    color: TEAMS.MURDERERS.color,
     actions: ['vote', 'murder'],
+  },
+  {
+    name: 'DETECTIVE',
+    team: TEAMS.CIRCLE.name,
+    color: '#4caf50',
+    actions: ['vote', 'investigate'],
+  },
+  {
+    name: 'DOCTOR',
+    team: TEAMS.CIRCLE.name,
+    color: '#ff9800',
+    actions: ['vote', 'save'],
   },
 ];
 
-// Generate role pool automatically
+/** -------------------
+ * Role Pool & Minimums
+ * ------------------- */
 export const ROLE_POOL = ROLES.map((r) => r.name);
 
-// Compute minimum roles dynamically
-export const ROLE_MINIMUMS = {};
-for (let n = 1; n <= MAX_PLAYERS; n++) {
-  ROLE_MINIMUMS[n] = ['MURDERER', ...(n > 6 ? ['MURDERER'] : [])]; // example: 2 murderers if players > 6
-}
+export const ROLE_MINIMUMS = {
+  1: ['MURDERER'],
+  2: ['MURDERER'],
+  3: ['MURDERER'],
+  4: ['MURDERER', 'DETECTIVE'],
+  5: ['MURDERER', 'DETECTIVE'],
+  6: ['MURDERER', 'DETECTIVE'],
+  7: ['MURDERER', 'MURDERER', 'DETECTIVE'],
+  8: ['MURDERER', 'MURDERER', 'DETECTIVE', 'DOCTOR'],
+  9: ['MURDERER', 'MURDERER', 'DETECTIVE', 'DOCTOR'],
+};
+
+/** -------------------
+ * Phases
+ * ------------------- */
+export const PHASES = [
+  {
+    name: 'day',
+    description: 'Players discuss, vote, and confirm selections.',
+    actions: ['vote'],
+  },
+  {
+    name: 'night',
+    description: 'Night actions occur (murders, investigations, etc.).',
+    actions: ['murder', 'save', 'investigate'],
+  },
+];
+
+/** -------------------
+ * Event Types (UI / triggers)
+ * ------------------- */
+export const EVENT_TYPES = [
+  { type: 'vote', label: 'Start Vote' },
+  { type: 'murder', label: 'Start Murder' },
+  { type: 'investigate', label: 'Start Investigation' },
+  { type: 'save', label: 'Start Save' },
+];

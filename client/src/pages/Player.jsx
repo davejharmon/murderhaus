@@ -1,4 +1,3 @@
-// src/pages/Player.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { connect, send, subscribe, subscribeStatus } from '../ws';
@@ -8,78 +7,53 @@ import styles from './Player.module.css';
 
 export default function Player({ id: propId, compact = false }) {
   const params = useParams();
-  const playerId = propId !== undefined ? Number(propId) : Number(params.id);
-  if (isNaN(playerId)) throw new Error('Invalid player ID');
-
+  const playerId = propId ?? Number(params.id);
   const [gameState, setGameState] = useState(null);
   const [wsStatus, setWsStatus] = useState('disconnected');
   const registeredRef = useRef(false);
 
-  // Connect WebSocket and subscribe to messages
   useEffect(() => {
     connect();
-
     const unsubMsg = subscribe((msg) => {
-      if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
-        setGameState(msg.payload);
-      }
+      if (msg.type === 'GAME_STATE_UPDATE') setGameState(msg.payload);
     });
-
     const unsubStatus = subscribeStatus(setWsStatus);
-
     return () => {
       unsubMsg();
       unsubStatus();
     };
   }, []);
 
-  // Register player exactly once when WS connects, staggered by ID
   useEffect(() => {
     if (wsStatus === 'connected' && !registeredRef.current) {
       const timeout = setTimeout(() => {
         send('REGISTER_PLAYER', { id: playerId });
         registeredRef.current = true;
-      }, playerId * 50); // 50ms stagger per ID
+      }, playerId * 50);
       return () => clearTimeout(timeout);
     }
   }, [wsStatus, playerId]);
 
-  if (!gameState)
-    return <div className={styles.loading}>Loading... (WS: {wsStatus})</div>;
+  if (!gameState) return <div>Loading... (WS: {wsStatus})</div>;
 
-  const me = gameState.players?.find((p) => p?.id === playerId);
-  if (!me)
-    return (
-      <div className={styles.loading}>Registering Player {playerId}...</div>
-    );
+  const me = gameState.players?.find((p) => p.id === playerId);
+  if (!me) return <div>Registering Player {playerId}...</div>;
 
-  const roleColor = me.color || 'gray';
-  const onKeypress = (key) => send('PLAYER_KEYPRESS', { id: playerId, key });
-
-  const Wrapper = compact ? 'div' : 'div';
-  const wrapperClass = compact ? undefined : styles.pageWrapper;
+  const actionType = Object.keys(me.actions || {}).find(
+    (a) => me.actions[a].isConfirmed === false
+  );
 
   return (
-    <Wrapper className={wrapperClass}>
-      <div className={styles.container}>
-        <div className={styles.card}>
-          <div className={styles.number}>{me.id}</div>
-          <div className={styles.name}>{me.name}</div>
-          <div className={styles.role} style={{ color: roleColor }}>
-            {me.role}
-          </div>
-          <div className={styles.bulb}>
-            <Bulb player={me} phase={gameState.phase} />
-          </div>
-          <div className={styles.keypadWrapper}>
-            {me.activeActions?.length ? (
-              <Keypad player={me} actionType={me.activeActions[0]} />
-            ) : (
-              <Keypad player={me} actionType={null} /> // all buttons disabled
-            )}
-          </div>
+    <div className={styles.container}>
+      <div className={styles.card}>
+        <div className={styles.number}>{me.id}</div>
+        <div className={styles.name}>{me.name}</div>
+        <div className={styles.role} style={{ color: me.color }}>
+          {me.role}
         </div>
+        <Bulb player={me} phase={gameState.phase} />
+        <Keypad player={me} actionType={actionType} />
       </div>
-    </Wrapper>
+    </div>
   );
 }

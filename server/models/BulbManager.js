@@ -6,59 +6,44 @@ export class BulbManager {
   }
 
   /**
-   * Get the bulb color as HEX string
+   * Get the bulb color as HEX string based on player state and phase
    * @param {Player} player
-   * @returns {string} HEX
+   * @returns {string} HEX color
    */
   getBulbColor(player) {
-    const phase = this.gameState.phase;
+    const { phase, recentlyKilled } = this.gameState;
     const fallbackGray = '#777777';
 
-    // Highlight newly killed players
-    if (this.gameState.recentlyKilled.has(player.id)) {
-      return '#FF0000'; // bright red flash
+    // Flash bright red if player was just killed
+    if (recentlyKilled?.has(player.id)) {
+      return '#FF0000';
     }
 
+    // Dead players
     if (!player.isAlive) {
-      // Dead players
-      if (player.team === 0) return fallbackGray;
-      if (player.team === 1) return '#330000'; // very dark red
-      return fallbackGray;
+      return player.team === 'MURDERERS' ? '#330000' : fallbackGray;
     }
 
-    // Alive players
-    if (player.isRevealed && player.team === 1) return '#FF0000'; // bright red
-
-    switch (phase) {
-      case 'nightfall':
-      case 'midnight':
-        if (
-          phase === 'midnight' &&
-          player.actions.includes('murder') &&
-          player.selection !== null
-        )
-          return '#FF0000'; // bright red
-        if (phase === 'midnight' && player.actions.includes('murder'))
-          return '#660000'; // dark red
-        return '#0000FF'; // cold night blue
-
-      case 'daybreak':
-      case 'morning':
-      case 'noon':
-        return '#FFD700'; // warm yellow
-
-      case 'afternoon':
-        if (player.isConfirmed) return '#FF0000'; // bright red
-        if (player.selection !== null) return '#FFFFFF'; // bright warm tone
-        if (player.actions.includes('vote')) return '#FFD700'; // warm yellow
-        return '#FFD700'; // default warm yellow
-
-      case 'evening':
-        return '#00FF00'; // green (vote results placeholder)
-
-      default:
-        return fallbackGray;
+    // Vote targets during day
+    if (phase === 'day') {
+      if (player.isTarget) return '#FF0000'; // top-voted player
+      if (player.isTargeting) return '#FFFFFF'; // voted for top target
+      if (player.actions.includes('vote')) return '#FFD700'; // warm yellow for voting
+      if (player.selection !== null) return '#FFFFAA'; // selected someone
+      return '#FFD700'; // default day color
     }
+
+    // Night phase
+    if (phase === 'night') {
+      if (player.actions.includes('murder')) {
+        if (player.selection !== null) return '#FF0000'; // confirmed murder target
+        return '#660000'; // armed for murder
+      }
+      return '#0000FF'; // night default color
+    }
+
+    // Fallback
+    return fallbackGray;
   }
 
   /**
@@ -83,7 +68,7 @@ export class BulbManager {
       ...p,
       bulbColor: this.getBulbColor(p),
       bulbRGB: this.getBulbRGB(p),
-      transition: 'snap', // placeholder, can evolve later
+      transition: 'snap', // placeholder for future smooth transitions
     }));
   }
 }

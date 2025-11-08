@@ -1,88 +1,76 @@
 import { GameState } from './models/GameState.js';
-import { broadcast, sendTo } from './utils/Broadcast.js';
-import { logger } from './utils/Logger.js';
+import { broadcast } from './utils/Broadcast.js';
 
 export class GameManager {
   constructor() {
     this.state = new GameState();
-    logger.log('GameManager initialized', 'system');
   }
 
   getState() {
     return this.state.serialize();
   }
 
-  registerPlayer(ws, { id }) {
-    const success = this.state.addPlayer(id);
-    if (!success) {
-      sendTo(ws, { type: 'ERROR', payload: { message: `Slot ${id} taken` } });
-      return;
-    }
-    this._broadcastState();
+  addPlayer(ws, id) {
+    if (this.state.addPlayer(id)) this.broadcast();
   }
 
   updatePlayerName({ id, name }) {
     this.state.updatePlayerName(id, name);
-    this._broadcastState();
+    this.broadcast();
+  }
+
+  setPlayerRole({ playerId, role }) {
+    this.state.setPlayerRole(playerId, role);
+    this.broadcast();
   }
 
   startGame() {
     this.state.startGame();
-    this._broadcastState();
+    this.broadcast();
   }
 
-  setPhase(phase) {
+  setPhase({ phase }) {
     this.state.setPhase(phase);
-    this._broadcastState();
+    this.broadcast();
   }
 
-  doAction(playerId, actionType, targetId) {
+  startEvent({ eventType, targets }) {
+    this.state.startEvent(eventType, targets);
+    this.broadcast();
+  }
+
+  doAction({ playerId, actionType, targetId }) {
     this.state.doAction(playerId, actionType, targetId);
-    this._broadcastState();
+    this.broadcast();
   }
 
-  confirmAction(playerId, actionType) {
+  confirmAction({ playerId, actionType }) {
     this.state.confirmAction(playerId, actionType);
-    this._broadcastState();
-  }
-
-  killPlayer(playerId) {
-    this.state.killPlayer(playerId);
-    this._broadcastState();
-  }
-
-  revivePlayer(playerId) {
-    this.state.revivePlayer(playerId);
-    this._broadcastState();
-  }
-
-  setPlayerRole(playerId, roleName) {
-    this.state.setPlayerRole(playerId, roleName);
-    this._broadcastState();
+    this.broadcast();
   }
 
   endGame() {
-    this.state.players.forEach((p) => {
-      p.role = null;
-      p.team = null;
-      p.color = null;
-      p.actions = [];
-      p.isAlive = null;
-      p.isRevealed = false;
-      p.selection = null; // was vote
-      p.isConfirmed = false;
-      p.activeActions = [];
-      p.activeActionTargets = {}; // reset targets
-    });
-    this.state.day = null;
-    this.state.phase = null;
-
-    logger.clear();
-    this._broadcastState();
+    this.state = new GameState();
+    this.broadcast();
   }
 
-  _broadcastState() {
-    broadcast({ type: 'GAME_STATE_UPDATE', payload: this.state.serialize() });
+  resolvePhase() {
+    this.state.resolvePhase();
+    this.broadcast();
+  }
+
+  killPlayer({ playerId }) {
+    this.state.killPlayer(playerId);
+    this.broadcast();
+  }
+
+  revivePlayer({ playerId }) {
+    this.state.revivePlayer(playerId);
+    this.broadcast();
+  }
+
+  broadcast() {
+    broadcast({ type: 'GAME_STATE_UPDATE', payload: this.getState() });
   }
 }
 

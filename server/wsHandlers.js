@@ -1,82 +1,70 @@
-// server/wsHandlers.js
 import { gameManager } from './GameManager.js';
 import { sendTo } from './utils/Broadcast.js';
 
-// Send initial game state to a new connection
 export function handleNewConnection(ws) {
-  sendTo(ws, {
-    type: 'GAME_STATE_UPDATE',
-    payload: gameManager.getState(),
-  });
+  sendTo(ws, { type: 'GAME_STATE_UPDATE', payload: gameManager.getState() });
 }
 
-// Handle incoming messages from clients
 export function handleWSMessage(ws, data) {
   let msg;
   try {
     msg = JSON.parse(data);
   } catch {
-    return sendTo(ws, {
-      type: 'ERROR',
-      payload: { message: 'Invalid JSON' },
-    });
+    return sendTo(ws, { type: 'ERROR', payload: { message: 'Invalid JSON' } });
   }
 
   const { type, payload } = msg;
+  const _callGM = (fn) => {
+    try {
+      fn();
+      return true;
+    } catch (err) {
+      sendTo(ws, { type: 'ERROR', payload: { message: err.message } });
+      return false;
+    }
+  };
 
   switch (type) {
     case 'REGISTER_PLAYER':
-      gameManager.registerPlayer(ws, payload);
+      gameManager.addPlayer(ws, payload.id);
       break;
-
     case 'UPDATE_PLAYER_NAME':
-      gameManager.updatePlayerName(payload);
+      _callGM(() => gameManager.updatePlayerName(payload));
       break;
-
     case 'START_GAME':
-      gameManager.startGame();
+      _callGM(() => gameManager.startGame());
       break;
-
     case 'SET_PHASE':
-      gameManager.setPhase(payload?.phase);
+      _callGM(() => gameManager.setPhase(payload.phase));
       break;
-
-    case 'ASSIGN_ROLE': {
-      const { playerId, role } = payload;
-      gameManager.setPlayerRole(playerId, role);
+    case 'ASSIGN_ROLE':
+      _callGM(() => gameManager.setPlayerRole(payload.playerId, payload.role));
       break;
-    }
-
-    case 'KILL_PLAYER': {
-      const { playerId } = payload;
-      gameManager.killPlayer(playerId);
+    case 'KILL_PLAYER':
+      _callGM(() => gameManager.killPlayer(payload.playerId));
       break;
-    }
-
-    case 'REVIVE_PLAYER': {
-      const { playerId } = payload;
-      gameManager.revivePlayer(playerId);
+    case 'REVIVE_PLAYER':
+      _callGM(() => gameManager.revivePlayer(payload.playerId));
       break;
-    }
-
-    // Generic player action handler
-    case 'PLAYER_ACTION': {
-      const { playerId, action, target } = payload;
-      // Generic pattern: GameState handles the rules
-      gameManager.doAction(playerId, action, target);
+    case 'START_EVENT':
+      _callGM(() => gameManager.startEvent(payload.eventType, payload.targets));
       break;
-    }
-
-    case 'PLAYER_CONFIRM_ACTION': {
-      const { playerId, action } = payload;
-      gameManager.confirmAction(playerId, action);
+    case 'REVEAL_EVENT':
+      _callGM(() => gameManager.revealEvent(payload.eventType));
       break;
-    }
-
+    case 'PLAYER_ACTION':
+      _callGM(() =>
+        gameManager.doAction(payload.playerId, payload.action, payload.target)
+      );
+      break;
+    case 'PLAYER_CONFIRM_ACTION':
+      _callGM(() =>
+        gameManager.confirmAction(payload.playerId, payload.action)
+      );
+      break;
     case 'END_GAME':
-      gameManager.endGame();
+      _callGM(() => gameManager.endGame());
       break;
-
     default:
       sendTo(ws, {
         type: 'ERROR',

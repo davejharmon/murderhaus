@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { connect, subscribe, subscribeStatus, send } from '../ws';
-import { Button } from '../components/Button';
-import { PHASE_NAMES, PHASE_DESCRIPTIONS } from '@shared/constants';
+import { PHASES } from '@shared/constants';
 import { PlayerRow } from '../components/PlayerRow';
-import { PhaseManager } from '../models/PhaseManager';
+import { Button } from '../components/Button';
 import styles from './Host.module.css';
 
 export default function Host() {
@@ -12,6 +11,7 @@ export default function Host() {
   const [gameInfo, setGameInfo] = useState({
     day: null,
     phase: null,
+    activeEvent: null,
     history: [],
   });
 
@@ -21,7 +21,42 @@ export default function Host() {
     const unsubMsg = subscribe((msg) => {
       if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
         const { players: pl = [], day, phase, history = [] } = msg.payload;
-        setPlayers(pl.filter(Boolean));
+
+        const gameStarted = !!(day && phase);
+
+        const playersWithHostActions = pl.map((p) => {
+          const hostActions = [];
+
+          // Kick always
+          hostActions.push({
+            label: 'Kick',
+            action: () => send('KILL_PLAYER', { playerId: p.id }),
+          });
+
+          // Before game start: Assign Role
+          if (!gameStarted) {
+            hostActions.push({
+              label: 'Assign Role',
+              action: () => {
+                const role = prompt(`Assign role to ${p.name} (${p.id}):`);
+                if (role) send('ASSIGN_ROLE', { playerId: p.id, role });
+              },
+            });
+          } else {
+            // After game start: Kill/Revive
+            hostActions.push({
+              label: p.isAlive ? 'Kill' : 'Revive',
+              action: () =>
+                send(p.isAlive ? 'KILL_PLAYER' : 'REVIVE_PLAYER', {
+                  playerId: p.id,
+                }),
+            });
+          }
+
+          return { ...p, hostActions };
+        });
+
+        setPlayers(playersWithHostActions);
         setGameInfo({ day, phase, history });
       }
     });
@@ -36,112 +71,56 @@ export default function Host() {
 
   const gameStarted = !!(gameInfo.day && gameInfo.phase);
 
-  // Compute vote selectors for each player with confirmation info
-  const voteSelectorsByPlayer = {};
-  players.forEach((target) => {
-    voteSelectorsByPlayer[target.id] = players
-      .filter((p) => p.selection === target.id)
-      .map((p) => ({ id: p.id, isConfirmed: p.isConfirmed }));
-  });
-
   return (
     <div className={styles.container}>
-      <div className={styles.leftColumn}>
-        <header className={styles.header}>
-          <h1>Host Dashboard</h1>
-          <h2>
-            {gameStarted
-              ? `DAY ${gameInfo.day}, PHASE: ${gameInfo.phase}`
-              : 'GAME NOT STARTED'}
-          </h2>
-          <p className={styles.phaseDescription}>
-            {gameStarted && PHASE_DESCRIPTIONS[gameInfo.phase]}
-          </p>
-        </header>
+      <header>
+        <h1>Host Dashboard</h1>
+        <h2>
+          {gameStarted
+            ? `Day ${gameInfo.day} | Phase: ${gameInfo.phase}`
+            : 'Game Not Started'}
+        </h2>
+      </header>
 
-        <section className={styles.controls}>
-          {!gameStarted ? (
-            <Button label='START GAME' onClick={() => send('START_GAME')} />
-          ) : (
-            <>
-              <div className={styles.phaseButtons}>
-                {PHASE_NAMES.map((phase) => (
-                  <Button
-                    key={phase}
-                    label={phase}
-                    onClick={() => send('SET_PHASE', { phase })}
-                    state={gameInfo.phase === phase ? 'selected' : 'unselected'}
-                  />
-                ))}
-              </div>
-              <div className={styles.globalControls}>
-                <Button label='NEXT' onClick={() => send('SET_PHASE')} isNext />
+      <section className={styles.controls}>
+        {!gameStarted ? (
+          <Button label='START GAME' onClick={() => send('START_GAME')} />
+        ) : (
+          <>
+            <div className={styles.phaseButtons}>
+              {PHASES.map((p) => (
                 <Button
-                  label='END GAME'
-                  onClick={() => send('END_GAME')}
-                  state='selected'
+                  key={p.name}
+                  label={p.name}
+                  state={gameInfo.phase === p.name ? 'selected' : 'unselected'}
+                  onClick={() => send('SET_PHASE', { phase: p.name })}
                 />
-              </div>
-            </>
-          )}
-        </section>
+              ))}
+            </div>
 
-        <section className={styles.playersSection}>
-          <div className={styles.playerList}>
-            {players.map((p) => {
-              const hostOptions =
-                PhaseManager.getHostOptions(gameInfo.phase, p) || [];
-              const actions = hostOptions.map((opt) => ({
-                label: opt.label,
-                action: () => opt.action(p.id, send),
-              }));
+            <Button label='END GAME' onClick={() => send('END_GAME')} />
+            <Button
+              label='RESOLVE PHASE'
+              onClick={() => send('RESOLVE_PHASE')}
+            />
+          </>
+        )}
+      </section>
 
-              return (
-                <PlayerRow
-                  key={p.id}
-                  player={p}
-                  actions={actions}
-                  variant='light'
-                  voteSelectors={voteSelectorsByPlayer[p.id] || []}
-                />
-              );
-            })}
-          </div>
-        </section>
-      </div>
+      <section className={styles.playersSection}>
+        {players.map((p) => (
+          <PlayerRow key={p.id} player={p} actions={p.hostActions} />
+        ))}
+      </section>
 
-      <div className={styles.rightColumn}>
-        <div className={styles.historyHeader}>
-          <h3>History</h3>
-          <Button
-            label='Clear'
-            onClick={() => setGameInfo((prev) => ({ ...prev, history: [] }))}
-          />
-        </div>
-        <ul className={styles.historyList}>
-          {gameInfo.history.map((entry, i) => {
-            const { message, type = 'system', timestamp } = entry;
-            const typeColors = {
-              system: '#999',
-              player: '#999',
-              murder: '#d32f2f',
-              default: '#333',
-            };
-            const color = typeColors[type] || typeColors.default;
-
-            const ts = new Date(timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-
-            return (
-              <li key={i} style={{ color }}>
-                [{ts}] {message}
-              </li>
-            );
-          })}
+      <section className={styles.history}>
+        <h3>History</h3>
+        <ul>
+          {gameInfo.history.map((h, i) => (
+            <li key={i}>{h.message}</li>
+          ))}
         </ul>
-      </div>
+      </section>
     </div>
   );
 }
