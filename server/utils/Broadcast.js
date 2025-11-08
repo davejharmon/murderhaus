@@ -1,5 +1,5 @@
 // server/utils/Broadcast.js
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 
 let wss; // singleton
 
@@ -11,13 +11,26 @@ export function getWSS(port = 8080) {
   return wss;
 }
 
-export function broadcast(message) {
+/**
+ * Broadcast a message to all connected clients
+ * @param {any} message
+ * @param {WebSocket} exclude - optional client to skip
+ */
+export function broadcast(message, exclude) {
   if (!wss) return;
+
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) client.send(JSON.stringify(message));
+    if (client.readyState === WebSocket.OPEN && client !== exclude) {
+      client.send(JSON.stringify(message));
+    }
   });
 }
 
+/**
+ * Send a message to a single client
+ * @param {WebSocket} ws
+ * @param {any} message
+ */
 export function sendTo(ws, message) {
-  if (ws.readyState === 1) ws.send(JSON.stringify(message));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
 }

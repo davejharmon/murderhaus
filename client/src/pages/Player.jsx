@@ -1,48 +1,26 @@
 // src/pages/Player.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { connect, send, subscribe, subscribeStatus } from '../ws';
+import { send } from '../ws';
 import { Bulb } from '../components/Bulb';
 import { Keypad } from '../components/Keypad';
 import styles from './Player.module.css';
 
-export default function Player({ id: propId, compact = false }) {
+export default function Player({
+  id: propId,
+  compact = false,
+  gameState = null,
+  wsStatus = 'disconnected',
+}) {
   const params = useParams();
   const playerId = propId !== undefined ? Number(propId) : Number(params.id);
   if (isNaN(playerId)) throw new Error('Invalid player ID');
 
-  const [gameState, setGameState] = useState(null);
-  const [wsStatus, setWsStatus] = useState('disconnected');
-  const registeredRef = useRef(false);
-
-  // Connect WebSocket and subscribe to messages
+  // Register player once when gameState is available
   useEffect(() => {
-    connect();
-
-    const unsubMsg = subscribe((msg) => {
-      if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
-        setGameState(msg.payload);
-      }
-    });
-
-    const unsubStatus = subscribeStatus(setWsStatus);
-
-    return () => {
-      unsubMsg();
-      unsubStatus();
-    };
-  }, []);
-
-  // Register player exactly once when WS connects, staggered by ID
-  useEffect(() => {
-    if (wsStatus === 'connected' && !registeredRef.current) {
-      const timeout = setTimeout(() => {
-        send('REGISTER_PLAYER', { id: playerId });
-        registeredRef.current = true;
-      }, playerId * 50); // 50ms stagger per ID
-      return () => clearTimeout(timeout);
-    }
-  }, [wsStatus, playerId]);
+    if (!gameState) return;
+    send('REGISTER_PLAYER', { id: playerId });
+  }, [playerId, gameState]);
 
   if (!gameState)
     return <div className={styles.loading}>Loading... (WS: {wsStatus})</div>;
@@ -54,13 +32,9 @@ export default function Player({ id: propId, compact = false }) {
     );
 
   const roleColor = me.color || 'gray';
-  const onKeypress = (key) => send('PLAYER_KEYPRESS', { id: playerId, key });
-
-  const Wrapper = compact ? 'div' : 'div';
-  const wrapperClass = compact ? undefined : styles.pageWrapper;
 
   return (
-    <Wrapper className={wrapperClass}>
+    <div className={compact ? undefined : styles.pageWrapper}>
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.number}>{me.id}</div>
@@ -72,14 +46,13 @@ export default function Player({ id: propId, compact = false }) {
             <Bulb player={me} phase={gameState.phase} />
           </div>
           <div className={styles.keypadWrapper}>
-            {me.activeActions?.length ? (
-              <Keypad player={me} actionType={me.activeActions[0]} />
-            ) : (
-              <Keypad player={me} actionType={null} /> // all buttons disabled
-            )}
+            <Keypad
+              player={me}
+              actionType={me.activeActions?.[0] ?? null} // null disables buttons
+            />
           </div>
         </div>
       </div>
-    </Wrapper>
+    </div>
   );
 }

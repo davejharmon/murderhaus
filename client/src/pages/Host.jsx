@@ -1,48 +1,81 @@
-import { useState, useEffect } from 'react';
-import { connect, subscribe, subscribeStatus, send } from '../ws';
+// src/pages/Host.jsx
+import React, { useMemo } from 'react';
+import { send } from '../ws';
 import { Button } from '../components/Button';
-import { PHASE_NAMES, PHASE_DESCRIPTIONS } from '@shared/constants';
 import { PlayerRow } from '../components/PlayerRow';
-import { PhaseManager } from '../models/PhaseManager';
 import styles from './Host.module.css';
 
-export default function Host() {
-  const [wsStatus, setWsStatus] = useState('disconnected');
-  const [players, setPlayers] = useState([]);
-  const [gameInfo, setGameInfo] = useState({
-    day: null,
-    phase: null,
-    history: [],
+// Memoized log entry
+const LogEntry = React.memo(({ entry }) => {
+  const { message, type = 'system', timestamp } = entry;
+  const typeColors = {
+    system: '#999',
+    player: '#999',
+    murder: '#d32f2f',
+    default: '#333',
+  };
+  const color = typeColors[type] || typeColors.default;
+  const ts = new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
-  useEffect(() => {
-    connect();
+  return (
+    <li style={{ color }}>
+      [{ts}] {message}
+    </li>
+  );
+});
 
-    const unsubMsg = subscribe((msg) => {
-      if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
-        const { players: pl = [], day, phase, history = [] } = msg.payload;
-        setPlayers(pl.filter(Boolean));
-        setGameInfo({ day, phase, history });
-      }
+export default function Host({ gameState, wsStatus }) {
+  const players = gameState?.players?.filter(Boolean) || [];
+  const gameStarted = gameState?.gameStarted ?? false;
+  const dayCount = gameState?.dayCount ?? null;
+  const phase = gameState?.phase ?? null;
+  const log = gameState?.log ?? [];
+
+  // Memoize vote selectors
+  const voteSelectorsByPlayer = useMemo(() => {
+    const map = {};
+    players.forEach((target) => {
+      map[target.id] = players
+        .filter((p) => p.selections?.[0] === target.id)
+        .map((p) => ({
+          id: p.id,
+          isConfirmed: p.confirmedSelections?.includes(target.id),
+        }));
     });
+    return map;
+  }, [players]);
 
-    const unsubStatus = subscribeStatus(setWsStatus);
-
-    return () => {
-      unsubMsg();
-      unsubStatus();
-    };
-  }, []);
-
-  const gameStarted = !!(gameInfo.day && gameInfo.phase);
-
-  // Compute vote selectors for each player with confirmation info
-  const voteSelectorsByPlayer = {};
-  players.forEach((target) => {
-    voteSelectorsByPlayer[target.id] = players
-      .filter((p) => p.selection === target.id)
-      .map((p) => ({ id: p.id, isConfirmed: p.isConfirmed }));
-  });
+  // Memoize host options per player
+  const hostOptionsByPlayer = useMemo(() => {
+    const map = {};
+    players.forEach((p) => {
+      map[p.id] = gameStarted
+        ? [
+            {
+              label: p.isAlive ? 'Kill' : 'Revive',
+              action: () =>
+                send('HOST_ACTION', {
+                  playerId: p.id,
+                  action: p.isAlive ? 'kill' : 'revive',
+                }),
+            },
+          ]
+        : [
+            {
+              label: 'Kick',
+              action: () =>
+                send('HOST_ACTION', {
+                  playerId: p.id,
+                  action: 'kick',
+                }),
+            },
+          ];
+    });
+    return map;
+  }, [players, gameStarted]);
 
   return (
     <div className={styles.container}>
@@ -51,95 +84,53 @@ export default function Host() {
           <h1>Host Dashboard</h1>
           <h2>
             {gameStarted
-              ? `DAY ${gameInfo.day}, PHASE: ${gameInfo.phase}`
+              ? `DAY ${dayCount}, PHASE: ${phase}`
               : 'GAME NOT STARTED'}
           </h2>
-          <p className={styles.phaseDescription}>
-            {gameStarted && PHASE_DESCRIPTIONS[gameInfo.phase]}
-          </p>
         </header>
 
         <section className={styles.controls}>
           {!gameStarted ? (
             <Button label='START GAME' onClick={() => send('START_GAME')} />
           ) : (
-            <>
-              <div className={styles.phaseButtons}>
-                {PHASE_NAMES.map((phase) => (
-                  <Button
-                    key={phase}
-                    label={phase}
-                    onClick={() => send('SET_PHASE', { phase })}
-                    state={gameInfo.phase === phase ? 'selected' : 'unselected'}
-                  />
-                ))}
-              </div>
-              <div className={styles.globalControls}>
-                <Button label='NEXT' onClick={() => send('SET_PHASE')} isNext />
-                <Button
-                  label='END GAME'
-                  onClick={() => send('END_GAME')}
-                  state='selected'
-                />
-              </div>
-            </>
+            <div className={styles.globalControls}>
+              <Button
+                label='NEXT PHASE'
+                onClick={() => send('NEXT_PHASE')}
+                isNext
+              />
+              <Button
+                label='END GAME'
+                onClick={() => alert('End Game not implemented yet')}
+                state='selected'
+              />
+            </div>
           )}
         </section>
 
         <section className={styles.playersSection}>
           <div className={styles.playerList}>
-            {players.map((p) => {
-              const hostOptions =
-                PhaseManager.getHostOptions(gameInfo.phase, p) || [];
-              const actions = hostOptions.map((opt) => ({
-                label: opt.label,
-                action: () => opt.action(p.id, send),
-              }));
-
-              return (
-                <PlayerRow
-                  key={p.id}
-                  player={p}
-                  actions={actions}
-                  variant='light'
-                  voteSelectors={voteSelectorsByPlayer[p.id] || []}
-                />
-              );
-            })}
+            {players.map((p) => (
+              <PlayerRow
+                key={p.id}
+                player={p}
+                actions={hostOptionsByPlayer[p.id]}
+                variant='light'
+                voteSelectors={voteSelectorsByPlayer[p.id] || []}
+              />
+            ))}
           </div>
         </section>
       </div>
-
       <div className={styles.rightColumn}>
         <div className={styles.historyHeader}>
           <h3>History</h3>
-          <Button
-            label='Clear'
-            onClick={() => setGameInfo((prev) => ({ ...prev, history: [] }))}
-          />
         </div>
+
         <ul className={styles.historyList}>
-          {gameInfo.history.map((entry, i) => {
-            const { message, type = 'system', timestamp } = entry;
-            const typeColors = {
-              system: '#999',
-              player: '#999',
-              murder: '#d32f2f',
-              default: '#333',
-            };
-            const color = typeColors[type] || typeColors.default;
-
-            const ts = new Date(timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-
-            return (
-              <li key={i} style={{ color }}>
-                [{ts}] {message}
-              </li>
-            );
-          })}
+          {log.map((entry, i) => (
+            <LogEntry key={i} entry={entry} />
+          ))}
         </ul>
       </div>
     </div>

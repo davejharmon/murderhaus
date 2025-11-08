@@ -1,18 +1,33 @@
 // src/pages/DebugPlayers.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import Player from './Player';
 import styles from './DebugPlayers.module.css';
-import { MAX_PLAYERS } from '@shared/constants'; // ensure this is defined
+import { MAX_PLAYERS } from '@shared/constants';
+import { send } from '../ws';
 
-export default function DebugPlayers() {
+export default function DebugPlayers({ gameState, wsStatus }) {
+  // Staggered registration
+  useEffect(() => {
+    const timeouts = [];
+    for (let i = 1; i <= MAX_PLAYERS; i++) {
+      const t = setTimeout(() => send('REGISTER_PLAYER', { id: i }), i * 50);
+      timeouts.push(t);
+    }
+    return () => timeouts.forEach((t) => clearTimeout(t));
+  }, []);
+
   const playerIds = Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1);
 
   return (
     <div className={styles.gridContainer}>
       {playerIds.map((id) => (
         <div key={id} className={styles.gridItem}>
-          {/* Each Player will connect and register automatically */}
-          <Player id={id} compact={true} />
+          <Player
+            id={id}
+            compact={true}
+            gameState={gameState}
+            wsStatus={wsStatus}
+          />
         </div>
       ))}
     </div>

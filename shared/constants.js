@@ -1,63 +1,77 @@
-// shared/constants.js
+// /shared/constants.js
 
-export const MAX_PLAYERS = 9;
+export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
 
+// Game phases
 export const PHASES = [
   {
-    name: 'daybreak',
-    description: 'Everyone awakes. Morning spiel.',
-    actions: [],
+    name: 'day',
+    description: 'Players discuss and vote on whom to lynch.',
+    validActions: ['vote', 'interrupt'], // actions players can take during the day
+    validHostActions: ['kill', 'revive'],
   },
-  { name: 'morning', description: 'Night actions are revealed.', actions: [] },
-  { name: 'noon', description: 'Players discuss who to kill.', actions: [] },
-  { name: 'afternoon', description: 'Voting begins.', actions: ['vote'] },
-  { name: 'evening', description: 'Votes are revealed.', actions: [] },
-  { name: 'nightfall', description: 'Everyone sleeps.', actions: [] },
   {
-    name: 'midnight',
-    description: 'Night actions occur.',
-    actions: ['murder'],
+    name: 'night',
+    description: 'Special roles perform their night abilities.',
+    validActions: ['kill', 'protect', 'investigate', 'interrupt'], // placeholder for night actions
+    validHostActions: ['kill', 'revive'],
+  },
+  {
+    name: null,
+    description: `Game hasn't started or is over.`,
+    validActions: [], // placeholder for night actions
+    validHostActions: ['kick', 'assign'],
   },
 ];
-
-// Map phase names for convenience
-export const PHASE_NAMES = PHASES.map((p) => p.name);
-export const PHASE_DESCRIPTIONS = PHASES.reduce((acc, p) => {
-  acc[p.name] = p.description;
-  return acc;
-}, {});
-export const PHASE_ACTIONS = PHASES.reduce((acc, p) => {
-  acc[p.name] = p.actions;
-  return acc;
-}, {});
 
 // Teams
-export const TEAMS = [
-  { name: 'CIRCLE', color: '#1976d2' },
-  { name: 'MURDERERS', color: '#d32f2f' },
-];
+export const TEAMS = {
+  villagers: {
+    name: 'Villagers',
+    color: '#00ff00', // fallback color
+  },
+  werewolves: {
+    name: 'Werewolves',
+    color: '#ff0000', // fallback color
+  },
+};
 
 // Roles
-export const ROLES = [
-  {
-    name: 'NORMIE',
-    team: 'CIRCLE',
-    color: '#1976d2',
-    actions: ['vote'],
+export const ROLES = {
+  villager: {
+    name: 'villager',
+    team: TEAMS.villagers,
+    color: TEAMS.villagers.color,
+    defaultActions: ['vote'],
   },
-  {
-    name: 'MURDERER',
-    team: 'MURDERERS',
-    color: '#d32f2f',
-    actions: ['vote', 'murder'],
+  werewolf: {
+    name: 'werewolf',
+    team: TEAMS.werewolves,
+    color: TEAMS.werewolves.color,
+    defaultActions: ['kill', 'vote'],
   },
-];
+  seer: {
+    name: 'seer',
+    team: TEAMS.villagers,
+    color: '#00ffff', // optional custom color
+    defaultActions: ['investigate', 'vote'],
+  },
+  doctor: {
+    name: 'doctor',
+    team: TEAMS.villagers,
+    color: '#ffff00', // optional custom color
+    defaultActions: ['protect', 'vote'],
+  },
+};
 
-// Generate role pool automatically
-export const ROLE_POOL = ROLES.map((r) => r.name);
+// Minimum roles for auto-start, based on total players. Will assign roles until roles in game are greater than equal to each minimum, starting with the first key/value pair and only if sufficient roles of each type have not been assigned by the Host. All remaining roles will be ROLES[0].
+export const MINIMUM_ROLES = {
+  4: { werewolf: 1, seer: 1 }, // example, 4-player game
+  5: { werewolf: 1, seer: 1 },
+  6: { werewolf: 1, seer: 1 },
+  7: { werewolf: 1, seer: 1 },
+  8: { werewolf: 2, seer: 1 },
+  9: { werewolf: 2, seer: 1, doctor: 1 },
+};
 
-// Compute minimum roles dynamically
-export const ROLE_MINIMUMS = {};
-for (let n = 1; n <= MAX_PLAYERS; n++) {
-  ROLE_MINIMUMS[n] = ['MURDERER', ...(n > 6 ? ['MURDERER'] : [])]; // example: 2 murderers if players > 6
-}
+export const DEFAULT_ROLE = 'villager';

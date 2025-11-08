@@ -1,40 +1,23 @@
-import { useState, useEffect } from 'react';
+// src/pages/Landing.jsx
 import { useNavigate } from 'react-router-dom';
-import { connect, subscribe, subscribeStatus, send } from '../ws';
+import { send } from '../ws';
 import { Button } from '../components/Button';
 import styles from './Landing.module.css';
 
-export default function Landing() {
+export default function Landing({
+  gameState = null,
+  wsStatus = 'disconnected',
+}) {
   const navigate = useNavigate();
-  const [players, setPlayers] = useState([]);
-  const [wsStatus, setWsStatus] = useState('disconnected');
 
-  useEffect(() => {
-    connect();
+  const players = gameState?.players || [];
 
-    const unsubMsg = subscribe((msg) => {
-      if (msg.type === 'GAME_STATE_UPDATE' && msg.payload) {
-        const { players: pl = [] } = msg.payload;
-        setPlayers(pl.filter(Boolean));
-      }
-    });
-
-    const unsubStatus = subscribeStatus(setWsStatus);
-
-    return () => {
-      unsubMsg();
-      unsubStatus();
-    };
-  }, []);
-
-  const claimSeat = async () => {
+  const claimSeat = () => {
     const existingIds = players.map((p) => p.id);
     let newSeat = 1;
     while (existingIds.includes(newSeat)) newSeat++;
 
-    await connect();
     send('REGISTER_PLAYER', { id: newSeat });
-
     window.open(`/player/${newSeat}`, '_blank', 'noopener,noreferrer');
   };
 

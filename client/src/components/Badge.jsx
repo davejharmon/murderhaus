@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { subscribeStatus } from '../ws'; // adjust path
+// src/components/Badge.jsx
+import React from 'react';
 
-const Badge = () => {
-  const [status, setStatus] = useState('connecting');
-
-  useEffect(() => {
-    const unsubscribe = subscribeStatus(setStatus);
-    return unsubscribe;
-  }, []);
-
-  const getStatusEmoji = () => {
+const Badge = ({ status = 'connecting' }) => {
+  const getColor = () => {
     switch (status) {
       case 'connected':
-        return '🟢';
+        return '#4CAF50'; // green
       case 'disconnected':
-        return '🔴';
+        return '#F44336'; // red
       case 'connecting':
-        return '🟡';
+        return '#FFC107'; // amber
       case 'error':
-        return '⚠️';
+        return '#FF9800'; // orange
       default:
-        return '⚪';
+        return '#9E9E9E'; // gray
     }
   };
 
-  return <div style={styles.badge}>{getStatusEmoji()}</div>;
+  return (
+    <div
+      style={{ ...styles.badge, backgroundColor: getColor() }}
+      title={`WebSocket status: ${status}`}
+      aria-label={`WebSocket status: ${status}`}
+    />
+  );
 };
 
 const styles = {
@@ -32,16 +31,11 @@ const styles = {
     position: 'fixed',
     top: '10px',
     right: '10px',
-    backgroundColor: '#fff',
+    width: '16px',
+    height: '16px',
     borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-    fontSize: '20px',
-    fontWeight: 'bold',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3)',
+    transition: 'background-color 0.2s ease',
   },
 };
 
