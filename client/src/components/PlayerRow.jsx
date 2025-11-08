@@ -8,7 +8,7 @@ export const PlayerRow = React.memo(
   function PlayerRow({
     player,
     actions = [],
-    DEBUG = false,
+    DEBUG = true,
     variant = 'dark',
     voteSelectors = [],
   }) {

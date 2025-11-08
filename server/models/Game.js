@@ -149,7 +149,6 @@ export class Game {
       phaseName: this.getCurrentPhase().name,
       gameStarted: this.gameStarted,
     });
-    this.broadcastState();
   }
 
   /** Broadcast the full game state */

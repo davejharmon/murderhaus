@@ -27,7 +27,7 @@ const LogEntry = React.memo(({ entry }) => {
   );
 });
 
-export default function Host({ gameState, wsStatus }) {
+export default function Host({ gameState }) {
   const players = gameState?.players?.filter(Boolean) || [];
   const gameStarted = gameState?.gameStarted ?? false;
   const dayCount = gameState?.dayCount ?? null;
@@ -47,35 +47,6 @@ export default function Host({ gameState, wsStatus }) {
     });
     return map;
   }, [players]);
-
-  // Memoize host options per player
-  const hostOptionsByPlayer = useMemo(() => {
-    const map = {};
-    players.forEach((p) => {
-      map[p.id] = gameStarted
-        ? [
-            {
-              label: p.isAlive ? 'Kill' : 'Revive',
-              action: () =>
-                send('HOST_ACTION', {
-                  playerId: p.id,
-                  action: p.isAlive ? 'kill' : 'revive',
-                }),
-            },
-          ]
-        : [
-            {
-              label: 'Kick',
-              action: () =>
-                send('HOST_ACTION', {
-                  playerId: p.id,
-                  action: 'kick',
-                }),
-            },
-          ];
-    });
-    return map;
-  }, [players, gameStarted]);
 
   return (
     <div className={styles.container}>
@@ -114,7 +85,11 @@ export default function Host({ gameState, wsStatus }) {
               <PlayerRow
                 key={p.id}
                 player={p}
-                actions={hostOptionsByPlayer[p.id]}
+                actions={p.hostActions.map((actionName) => ({
+                  label: actionName.toUpperCase(),
+                  action: () =>
+                    send('HOST_ACTION', { playerId: p.id, action: actionName }),
+                }))}
                 variant='light'
                 voteSelectors={voteSelectorsByPlayer[p.id] || []}
               />
@@ -122,6 +97,7 @@ export default function Host({ gameState, wsStatus }) {
           </div>
         </section>
       </div>
+
       <div className={styles.rightColumn}>
         <div className={styles.historyHeader}>
           <h3>History</h3>

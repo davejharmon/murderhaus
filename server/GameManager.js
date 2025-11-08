@@ -58,6 +58,16 @@ class GameManager {
     this.broadcastState();
   }
 
+  /** Handle per-player host actions */
+  hostAction(playerId, action) {
+    const player = this.getPlayer(playerId);
+    this.game.hostAction(playerId, action);
+
+    // No log; long handled inside Game.js
+    // Broadcast updated game state to all clients
+    this.broadcastState();
+  }
+
   /** Player selects a target */
   playerAction(playerId, actionType, targetId) {
     const player = this.game.getPlayer(playerId);

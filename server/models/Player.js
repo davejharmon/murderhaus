@@ -1,4 +1,4 @@
-import { ROLES, PHASES } from '../../shared/constants.js';
+import { ROLES, PHASES, PREGAME_HOST_ACTIONS } from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
@@ -68,8 +68,9 @@ export class Player {
    * @param {boolean} options.gameStarted - is the game running
    */
   update({ phaseName, gameStarted }) {
-    // Update player actions based on phase
     const phase = PHASES.find((p) => p.name === phaseName);
+
+    // Update available player actions
     if (!phase) {
       this.availableActions = [];
     } else {
@@ -79,7 +80,17 @@ export class Player {
     }
 
     // Update host actions
-    this.hostActions = [...phase.validHostActions];
+    if (!gameStarted) {
+      this.hostActions = [...PREGAME_HOST_ACTIONS]; // e.g. ['kick', 'assign']
+    } else if (phase) {
+      this.hostActions = phase.validHostActions.filter((a) => {
+        if (a === 'kill') return this.isAlive; // can only kill alive players
+        if (a === 'revive') return !this.isAlive; // can only revive dead players
+        return true;
+      });
+    } else {
+      this.hostActions = [];
+    }
   }
 
   /** Generic selection handler */

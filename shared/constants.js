@@ -3,6 +3,7 @@
 export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
 
 // Game phases
+export const PREGAME_HOST_ACTIONS = ['kick', 'assign'];
 export const PHASES = [
   {
     name: 'day',
@@ -15,12 +16,6 @@ export const PHASES = [
     description: 'Special roles perform their night abilities.',
     validActions: ['kill', 'protect', 'investigate', 'interrupt'], // placeholder for night actions
     validHostActions: ['kill', 'revive'],
-  },
-  {
-    name: null,
-    description: `Game hasn't started or is over.`,
-    validActions: [], // placeholder for night actions
-    validHostActions: ['kick', 'assign'],
   },
 ];
 
