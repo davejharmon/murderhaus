@@ -13,18 +13,10 @@ wss.on('connection', (ws) => {
     subscribe(ws, ch)
   );
 
-  // Send current game state immediately (optional, useful for Host refresh)
-  const state = gameManager.getState(); // <-- Use getState() instead of state
-  sendTo(ws, { type: 'PLAYERS_UPDATE', payload: state.players });
-  sendTo(ws, { type: 'LOG_UPDATE', payload: state.log });
-  sendTo(ws, {
-    type: 'GAME_META_UPDATE',
-    payload: {
-      phase: state.phase,
-      gameStarted: state.gameStarted,
-      dayCount: state.dayCount,
-    },
-  });
+  // Send current slices immediately (replace getState())
+  gameManager.publishPlayersSlice();
+  gameManager.publishGameMeta();
+  gameManager.publishLog();
 
   // Listen for messages from this client
   ws.on('message', (msg) => {

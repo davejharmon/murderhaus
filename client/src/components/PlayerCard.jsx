@@ -10,7 +10,7 @@ export const PlayerCard = React.memo(function PlayerCard({
   player,
   actions = [],
   voteSelectors = [],
-  DEBUG = false,
+  DEBUG = true,
   variant = 'dark',
 }) {
   const [name, setName] = useState(player.name || '');

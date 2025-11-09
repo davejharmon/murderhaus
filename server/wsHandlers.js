@@ -120,17 +120,7 @@ export function handleWSMessage(ws, data) {
 
     case 'UPDATE_PLAYER_NAME': {
       const { id, name } = payload;
-      const player = gameManager.getPlayer(id);
-      if (!player)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Player not found' },
-        });
-
-      player.name = name;
-      logger.log(`Player ${id} changed name to ${name}`, 'action');
-
-      gameManager.broadcastState();
+      gameManager.updatePlayerName(id, name);
       break;
     }
 

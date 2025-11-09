@@ -2,7 +2,7 @@
 import { Game } from './models/Game.js';
 import { publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
-import { PHASES } from '../shared/constants.js';
+import { PHASES, ACTIONS } from '../shared/constants.js';
 
 class GameManager {
   constructor() {
@@ -29,12 +29,14 @@ class GameManager {
   }
 
   /** --- Basic getters --- */
-  getState() {
-    return this.game.getState();
-  }
-
   getPlayer(id) {
     return this.game.getPlayer(id);
+  }
+
+  updatePlayerName(id, name) {
+    const result = this.game.updatePlayerName(id, name);
+    const player = this.getPlayer(id);
+    this.handleActionResult(result, { player, type: 'player' });
   }
 
   /** --- Game lifecycle --- */
@@ -66,6 +68,10 @@ class GameManager {
 
   nextPhase() {
     const result = this.game.nextPhase();
+    this.game.players.forEach((player) => {
+      player.actionUsage = {};
+      player.interruptUsedMap = {};
+    });
     this.handleActionResult(result, { type: 'system' });
   }
 
@@ -73,6 +79,12 @@ class GameManager {
     const phaseIndex = PHASES.findIndex((p) => p.name === phaseName);
     if (phaseIndex === -1) return;
     this.game.phaseIndex = phaseIndex;
+
+    this.game.players.forEach((player) => {
+      player.actionUsage = {};
+      player.interruptUsedMap = {};
+    });
+
     this.handleActionResult(
       { success: true, message: `Phase manually set to ${phaseName}` },
       { type: 'system' }
@@ -95,16 +107,45 @@ class GameManager {
         { type: 'warn', updateView: false }
       );
 
+    const actionDef = ACTIONS[actionType];
+    if (!actionDef)
+      return this.handleActionResult(
+        { success: false, message: `Unknown action type: ${actionType}` },
+        { type: 'warn', updateView: false }
+      );
+
     if (!player.availableActions.some((a) => a.name === actionType))
       return this.handleActionResult(
         {
           success: false,
-          message: `Invalid action: ${actionType} for player ${playerId}`,
+          message: `Action ${actionType} not available for player ${playerId}`,
+        },
+        { type: 'warn', updateView: false }
+      );
+
+    player.actionUsage = player.actionUsage || {};
+    const usedCount = player.actionUsage[actionType] || 0;
+    if (usedCount >= actionDef.maxPerPhase)
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Player ${playerId} already used ${actionType} this phase`,
+        },
+        { type: 'warn', updateView: false }
+      );
+
+    if (!actionDef.conditions(player, this.game, this.getPlayer(targetId)))
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Conditions not met for ${actionType} by player ${playerId}`,
         },
         { type: 'warn', updateView: false }
       );
 
     player.selections[actionType] = targetId;
+    player.actionUsage[actionType] = usedCount + 1;
+
     this.handleActionResult(
       {
         success: true,
@@ -113,7 +154,6 @@ class GameManager {
       { player, type: 'player', updateView: false }
     );
 
-    // Only publish slices, full view update not needed
     this.publishPlayersSlice();
   }
 
@@ -135,18 +175,39 @@ class GameManager {
     const player = this.getPlayer(playerId);
     if (!player) return;
 
-    player.interruptUsedMap = player.interruptUsedMap || {};
-    if (player.interruptUsedMap[actionName]) {
+    const actionDef = ACTIONS[actionName];
+    if (!actionDef || actionDef.type !== 'interrupt')
       return this.handleActionResult(
         {
           success: false,
-          message: `Player ${playerId} tried to use ${actionName} but it's already used`,
+          message: `Unknown or invalid interrupt: ${actionName}`,
         },
         { type: 'warn', updateView: false }
       );
-    }
+
+    player.interruptUsedMap = player.interruptUsedMap || {};
+    if (player.interruptUsedMap[actionName])
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Player ${playerId} already used ${actionName}`,
+        },
+        { type: 'warn', updateView: false }
+      );
+
+    if (!actionDef.conditions(player, this.game))
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Conditions not met for interrupt ${actionName}`,
+        },
+        { type: 'warn', updateView: false }
+      );
 
     player.interruptUsedMap[actionName] = true;
+    player.actionUsage = player.actionUsage || {};
+    player.actionUsage[actionName] = (player.actionUsage[actionName] || 0) + 1;
+
     this.handleActionResult(
       {
         success: true,
@@ -158,8 +219,18 @@ class GameManager {
 
   /** --- Player view state --- */
   updatePlayerViewState() {
-    const phaseName = this.game.getCurrentPhase().name;
-    const gameStarted = this.game.gameStarted;
+    if (!this.game || !Array.isArray(this.game.players)) {
+      logger.log(
+        `updatePlayerViewState() called but game or players is undefined`,
+        'error',
+        'GameManager.updatePlayerViewState'
+      );
+      return;
+    }
+
+    const phase = this.game.getCurrentPhase?.() ?? { name: null };
+    const phaseName = phase.name;
+    const gameStarted = this.game.gameStarted ?? false;
 
     this.game.players.forEach((player) => {
       player.update({ phaseName, gameStarted });
@@ -177,17 +248,37 @@ class GameManager {
   }
 
   publishPlayersSlice() {
-    const allPlayers = this.game.players.map((p) => p.getPublicState());
+    if (!this.game || !Array.isArray(this.game.players)) {
+      return publish('PLAYERS_UPDATE', []);
+    }
+
+    const allPlayers = this.game.players.map((p) =>
+      p.getPublicState ? p.getPublicState() : p
+    );
     publish('PLAYERS_UPDATE', allPlayers);
   }
 
   publishGameMeta() {
-    const meta = {
-      phase: this.game.getCurrentPhase().name,
-      gameStarted: this.game.gameStarted,
+    if (!this.game) {
+      logger.log(
+        `publishGameMeta() called but game is undefined`,
+        'error',
+        'GameManager.publishGameMeta'
+      );
+      return publish('GAME_META_UPDATE', {
+        phase: null,
+        gameStarted: false,
+        dayCount: 0,
+      });
+    }
+
+    const phase = this.game.getCurrentPhase?.() ?? { name: null };
+
+    publish('GAME_META_UPDATE', {
+      phase: phase.name ?? null,
+      gameStarted: this.game.gameStarted ?? false,
       dayCount: this.game.dayCount ?? 0,
-    };
-    publish('GAME_META_UPDATE', meta);
+    });
   }
 
   publishLog() {

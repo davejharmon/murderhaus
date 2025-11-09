@@ -1,5 +1,10 @@
-// server/models/Player.js
-import { ROLES, PHASES, PREGAME_HOST_ACTIONS } from '../../shared/constants.js';
+import {
+  ROLES,
+  PHASES,
+  PREGAME_HOST_ACTIONS,
+  ACTIONS,
+  TEAMS,
+} from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
@@ -15,47 +20,52 @@ export class Player {
     this.isAlive = true;
 
     // Action state
-    this.actions = []; // all actions (strings)
-    this.availableActions = []; // subset allowed in current phase
+    this.actions = []; // all actions from role
+    this.availableActions = []; // filtered per phase
     this.selections = {}; // { actionName: targetId }
     this.confirmedSelections = {}; // { actionName: boolean }
+    this.actionUsage = {}; // per-phase usage
+    this.interruptUsedMap = {};
 
     // Host controls
-    this.hostActions = []; // e.g. ['kick','kill','revive']
+    this.hostActions = [];
   }
 
-  /** Assign a role to the player */
+  /** Assign a role */
   assignRole(roleName) {
     const role = ROLES[roleName];
     if (!role) throw new Error(`Role ${roleName} does not exist`);
 
     this.role = role;
     this.team = role.team;
-    this.color = role.color;
-    this.actions = [...role.defaultActions];
+    this.color = role.color ?? TEAMS[role.team]?.color ?? '#999';
 
-    // Initialize selection state
+    // Set role actions
+    this.actions = [...role.defaultActions];
     this.selections = {};
     this.confirmedSelections = {};
-    this.actions.forEach((action) => {
-      this.selections[action] = null;
-      this.confirmedSelections[action] = false;
+    this.actions.forEach((a) => {
+      this.selections[a] = null;
+      this.confirmedSelections[a] = false;
     });
   }
 
-  /**
-   * Update per-phase UI logic
-   * Called centrally from GameManager.updatePlayerViewState()
-   */
-  update({ phaseName, gameStarted }) {
+  /** Update per-phase available actions */
+  update({ phaseName, gameStarted, game }) {
     const phase = PHASES.find((p) => p.name === phaseName);
 
-    // Update available actions for this phase
-    this.availableActions = phase
-      ? this.actions.filter((a) => phase.validActions.includes(a))
-      : [];
+    // Available actions dynamically determined by phase + alwaysAvailable + conditions
+    this.availableActions = this.actions.filter((a) => {
+      const actionDef = ACTIONS[a];
+      if (!actionDef) return false;
 
-    // Update host actions shown on dashboard
+      if (actionDef.alwaysAvailable) return actionDef.conditions(this, game);
+      return (
+        phase?.validActions.includes(a) && actionDef.conditions(this, game)
+      );
+    });
+
+    // Host actions
     if (!gameStarted) {
       this.hostActions = [...PREGAME_HOST_ACTIONS];
     } else if (phase) {
@@ -69,52 +79,11 @@ export class Player {
     }
   }
 
-  /** Select a target for a specific action */
-  handleSelection(value, actionName) {
-    if (!this.availableActions.includes(actionName)) return;
-    this.selections[actionName] = value;
-    this.confirmedSelections[actionName] = false;
-  }
-
-  /** Confirm a previously selected action */
-  handleConfirm(actionName) {
-    const selection = this.selections[actionName];
-
-    // Must check specifically for null/undefined — allow targetId = 0
-    if (selection == null) return;
-
-    this.confirmedSelections[actionName] = true;
-  }
-
-  /** Attempt to interrupt */
-  handleInterrupt(actionName) {
-    const interruptable = this.availableActions.filter(
-      (a) =>
-        a === 'interrupt' || (typeof a === 'object' && a.type === 'interrupt')
-    );
-
-    if (interruptable.length === 0) return false;
-
-    const action = actionName
-      ? interruptable.find((a) => a === actionName || a.name === actionName)
-      : interruptable[0];
-
-    if (!action) return false;
-
-    if (this.onInterrupt) this.onInterrupt(this, action);
-    return true;
-  }
-
-  registerInterruptCallback(callback) {
-    this.onInterrupt = callback;
-  }
-
-  /** Public state projection (used by Game.getState) */
   getPublicState() {
     return {
       id: this.id,
       name: this.name,
-      role: this.role?.name ?? null, // optionally hide client role later
+      role: this.role?.name ?? null,
       team: this.team?.name ?? null,
       color: this.color,
       isAlive: this.isAlive,

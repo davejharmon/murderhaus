@@ -23,42 +23,92 @@ export const PHASES = [
 export const TEAMS = {
   villagers: {
     name: 'Villagers',
-    color: '#00ff00', // fallback color
+    color: '#4db8ff', // cooler modern blue for villagers
   },
   werewolves: {
     name: 'Werewolves',
-    color: '#ff0000', // fallback color
+    color: '#ff6b6b', // warm red/orange for werewolves
   },
 };
 
-// Roles
+// --- Player Actions ---
+export const ACTIONS = {
+  vote: {
+    type: 'selection',
+    alwaysAvailable: false,
+    maxPerPhase: 1,
+    conditions: (player) => player.isAlive,
+  },
+
+  kill: {
+    type: 'selection',
+    alwaysAvailable: true,
+    maxPerPhase: 1,
+    conditions: (player) => player.isAlive,
+  },
+
+  protect: {
+    type: 'selection',
+    alwaysAvailable: true,
+    maxPerPhase: 1,
+    conditions: (player, game, target) =>
+      player.isAlive &&
+      target?.id !== player.id && // target safe
+      game?.getCurrentPhase()?.name === 'night', // phase safe
+  },
+
+  investigate: {
+    type: 'selection',
+    alwaysAvailable: true,
+    maxPerPhase: 1,
+    conditions: (player, game, target) =>
+      player.isAlive &&
+      target?.id !== player.id &&
+      game?.getCurrentPhase()?.name === 'night',
+  },
+
+  commute: {
+    type: 'interrupt',
+    alwaysAvailable: true,
+    maxPerPhase: 1,
+    conditions: (player, game) =>
+      player?.isAlive && game?.activeEvent?.type === 'vote',
+  },
+};
+
+// --- Roles ---
 export const ROLES = {
   villager: {
     name: 'villager',
-    team: TEAMS.villagers,
-    color: TEAMS.villagers.color,
+    team: 'villagers',
+    color: undefined, // fallback to team
     defaultActions: ['vote'],
   },
   werewolf: {
     name: 'werewolf',
-    team: TEAMS.werewolves,
-    color: TEAMS.werewolves.color,
+    team: 'werewolves',
+    color: undefined, // fallback to team
     defaultActions: ['kill', 'vote'],
   },
   seer: {
     name: 'seer',
-    team: TEAMS.villagers,
-    color: '#00ffff', // optional custom color
+    team: 'villagers',
+    color: '#a1ff9b', // pleasant mint green
     defaultActions: ['investigate', 'vote'],
   },
   doctor: {
     name: 'doctor',
-    team: TEAMS.villagers,
-    color: '#ffff00', // optional custom color
+    team: 'villagers',
+    color: '#9be2ff', // soft cyan
     defaultActions: ['protect', 'vote'],
   },
+  governor: {
+    name: 'governor',
+    team: 'villagers',
+    color: '#ffc27b', // warm but still friendly amber
+    defaultActions: ['commute'],
+  },
 };
-
 // Minimum roles for auto-start, based on total players. Will assign roles until roles in game are greater than equal to each minimum, starting with the first key/value pair and only if sufficient roles of each type have not been assigned by the Host. All remaining roles will be ROLES[0].
 export const MINIMUM_ROLES = {
   4: { werewolf: 1, seer: 1 }, // example, 4-player game

@@ -5,21 +5,23 @@ class Logger {
     this.maxEntries = maxEntries;
   }
 
-  log(message, type = 'system') {
+  log(message, type = 'system', context = null, errorObj = null) {
     const entry = {
       timestamp: new Date().toISOString(),
       type,
       message,
+      context,
+      stack: errorObj?.stack || null,
     };
 
     this.entries.push(entry);
-
-    // Trim entries if exceeding max
     if (this.entries.length > this.maxEntries) this.entries.shift();
 
-    console.log(
-      `[${entry.type.toUpperCase()}] ${entry.timestamp}: ${entry.message}`
-    );
+    let output = `[${type.toUpperCase()}] ${entry.timestamp}: ${message}`;
+    if (context) output += ` | context: ${context}`;
+    if (errorObj) output += `\n${errorObj.stack}`;
+
+    console.log(output);
   }
 
   getEntries(type) {
@@ -30,7 +32,6 @@ class Logger {
     this.entries = [];
   }
 
-  // Returns objects, not strings — rename for clarity
   toHistoryObjects() {
     return this.entries.map((e) => ({ ...e }));
   }
