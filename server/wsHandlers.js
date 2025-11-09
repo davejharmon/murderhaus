@@ -1,5 +1,5 @@
 import { gameManager } from './GameManager.js';
-import { sendTo, subscribe, publish } from './utils/Broadcast.js';
+import { sendTo, subscribe } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
 
 export function handleNewConnection(ws) {
@@ -51,59 +51,19 @@ export function handleWSMessage(ws, data) {
 
     case 'PLAYER_SELECT': {
       const { playerId, actionName, value } = payload;
-      const player = gameManager.getPlayer(playerId);
-      if (!player)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Player not found' },
-        });
-
-      player.handleSelection(value, actionName);
-      logger.log(
-        `Player ${playerId} selected ${value} for ${actionName}`,
-        'action'
-      );
-
-      gameManager.broadcastState();
+      gameManager.playerAction(playerId, actionName, value);
       break;
     }
 
     case 'PLAYER_CONFIRM': {
       const { playerId, actionName } = payload;
-      const player = gameManager.getPlayer(playerId);
-      if (!player)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Player not found' },
-        });
-
-      player.handleConfirm(actionName);
-      logger.log(`Player ${playerId} confirmed ${actionName}`, 'action');
-
-      gameManager.broadcastState();
+      gameManager.playerConfirm(playerId, actionName);
       break;
     }
 
     case 'PLAYER_INTERRUPT': {
-      const { playerId, actionName = null } = payload;
-      const player = gameManager.getPlayer(playerId);
-
-      if (!player || !actionName)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Invalid interrupt' },
-        });
-
-      const success = player.handleInterrupt(actionName);
-      sendTo(ws, { type: 'INTERRUPT_RESULT', payload: { success } });
-
-      if (success)
-        logger.log(
-          `Player ${playerId} used interrupt: ${actionName}`,
-          'action'
-        );
-
-      gameManager.broadcastState();
+      const { playerId, actionName } = payload;
+      gameManager.playerInterrupt(playerId, actionName);
       break;
     }
 
@@ -119,17 +79,15 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
-    // ✅ START SELECTION EVENT
     case 'START_SELECTION_EVENT': {
       const { actionName } = payload;
-      gameManager.startSelectionEvent(actionName);
+      gameManager.startSelection(actionName);
       break;
     }
 
-    // ✅ REVEAL SELECTION EVENT
     case 'REVEAL_SELECTION_EVENT': {
       const { actionName } = payload;
-      gameManager.revealSelectionEvent(actionName);
+      gameManager.revealSelection(actionName);
       break;
     }
 

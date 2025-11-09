@@ -1,3 +1,4 @@
+// server/index.js
 import { getWSS, sendTo, subscribe } from './utils/Broadcast.js';
 import { gameManager } from './GameManager.js';
 import { handleWSMessage } from './wsHandlers.js';
@@ -13,10 +14,10 @@ wss.on('connection', (ws) => {
     subscribe(ws, ch)
   );
 
-  // Send current slices immediately (replace getState())
-  gameManager.publishPlayersSlice();
-  gameManager.publishGameMeta();
-  gameManager.publishLog();
+  // Send current slices immediately (now via gameManager.view)
+  gameManager.view.publishAllPlayers();
+  gameManager.view.publishGameMeta();
+  gameManager.view.publishLog();
 
   // Listen for messages from this client
   ws.on('message', (msg) => {

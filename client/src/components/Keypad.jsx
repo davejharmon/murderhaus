@@ -12,7 +12,7 @@ export const Keypad = ({ player }) => {
       player.availableActions.map((a) => `${a.name}:${a.type}`)
     );
   }
-
+  console.log(player);
   // Grab currently active selection action
   const selectionAction =
     player.availableActions.find((a) => a.type === 'selection') ?? null;
@@ -32,7 +32,7 @@ export const Keypad = ({ player }) => {
     // Numeric selection
     if (typeof key === 'number' && selectionAction && !isConfirmed) {
       const target = selection === key ? null : key;
-      send('PLAYER_ACTION', {
+      send('PLAYER_SELECT', {
         playerId: player.id,
         action: selectionAction.name,
         target,
@@ -46,7 +46,7 @@ export const Keypad = ({ player }) => {
       selection != null &&
       !isConfirmed
     ) {
-      send('PLAYER_CONFIRM_ACTION', {
+      send('PLAYER_CONFIRM', {
         playerId: player.id,
         action: selectionAction.name,
       });
