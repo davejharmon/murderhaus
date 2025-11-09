@@ -6,16 +6,48 @@ export function Button({ label, onClick, disabled, state }) {
 
   let bgColor = '#1a1a1a';
   let color = '#fff';
-  let border = '2px solid #d32f2f'; // default unlocked style
+  let border = '2px solid #555'; // default border for unlocked
 
-  if (state === 'selected' || state === 'confirmed' || state === 'danger') {
-    bgColor = '#d32f2f';
-    color = '#fff';
-    border = '2px solid #d32f2f';
-  } else if (disabled) {
+  switch (state) {
+    case 'unlocked':
+      bgColor = '#222';
+      color = '#fff';
+      border = '2px solid #00bfa5'; // teal border for actionable
+      break;
+
+    case 'locked':
+      bgColor = '#333';
+      color = '#888';
+      border = '2px solid #555'; // grayed out
+      break;
+
+    case 'selected':
+      bgColor = '#ff9800'; // orange highlight
+      color = '#fff';
+      border = '2px solid #ff9800';
+      break;
+
+    case 'confirmed':
+      bgColor = '#4caf50'; // green
+      color = '#fff';
+      border = '2px solid #4caf50';
+      break;
+
+    case 'danger':
+      bgColor = '#d32f2f'; // red for interrupts
+      color = '#fff';
+      border = '2px solid #d32f2f';
+      break;
+
+    default:
+      break;
+  }
+
+  // Override if disabled to make it visually consistent
+  if (disabled) {
     bgColor = '#333';
     color = '#888';
-    border = '2px solid #333';
+    border = '2px solid #555';
   }
 
   const handleClick = (e) => {
@@ -36,7 +68,7 @@ export function Button({ label, onClick, disabled, state }) {
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontWeight: 500,
         transition: '0.25s',
-        outline: 'none', // remove focus outline
+        outline: 'none',
       }}
     >
       {label}

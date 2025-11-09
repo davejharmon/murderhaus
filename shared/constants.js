@@ -34,23 +34,29 @@ export const TEAMS = {
 // --- Player Actions ---
 export const ACTIONS = {
   vote: {
+    name: 'vote',
     type: 'selection',
-    alwaysAvailable: false,
     maxPerPhase: 1,
+    maxPerGame: Infinity,
+    phaseAvailability: ['day'],
     conditions: (player) => player.isAlive,
   },
 
   kill: {
+    name: 'kill',
     type: 'selection',
-    alwaysAvailable: true,
     maxPerPhase: 1,
+    maxPerGame: Infinity,
+    phaseAvailability: ['night'],
     conditions: (player) => player.isAlive,
   },
 
   protect: {
+    name: 'protect',
     type: 'selection',
-    alwaysAvailable: true,
     maxPerPhase: 1,
+    maxPerGame: Infinity,
+    phaseAvailability: ['night'],
     conditions: (player, game, target) =>
       player.isAlive &&
       target?.id !== player.id && // target safe
@@ -58,9 +64,11 @@ export const ACTIONS = {
   },
 
   investigate: {
+    name: 'investigate',
     type: 'selection',
-    alwaysAvailable: true,
     maxPerPhase: 1,
+    maxPerGame: Infinity,
+    phaseAvailability: ['night'],
     conditions: (player, game, target) =>
       player.isAlive &&
       target?.id !== player.id &&
@@ -68,9 +76,10 @@ export const ACTIONS = {
   },
 
   commute: {
+    name: 'commute',
     type: 'interrupt',
-    alwaysAvailable: true,
     maxPerPhase: 1,
+    phaseAvailability: ['day'],
     conditions: (player, game) =>
       player?.isAlive && game?.activeEvent?.type === 'vote',
   },

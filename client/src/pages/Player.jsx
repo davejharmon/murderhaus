@@ -49,7 +49,7 @@ export default function Player({ compact = false, id }) {
           <div className={styles.number}>{me.id}</div>
           <div className={styles.name}>{me.name}</div>
           <div className={styles.role} style={{ color: roleColor }}>
-            {me.role || 'Unknown'}
+            {me.role || 'Unassigned'}
           </div>
 
           <div className={styles.bulb}>

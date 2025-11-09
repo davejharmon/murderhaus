@@ -1,18 +1,26 @@
 // src/components/Keypad.jsx
+import React from 'react';
 import { Button } from './Button';
 import { send } from '../ws';
+import { ACTIONS, MAX_PLAYERS } from '@shared/constants';
 
 export const Keypad = ({ player }) => {
   if (!player) return <div>Loading player...</div>;
+  if (player?.availableActions?.length) {
+    console.log(
+      `[Keypad] Player ${player.id} availableActions:`,
+      player.availableActions.map((a) => `${a.name}:${a.type}`)
+    );
+  }
 
-  // Determine active actions
+  // Grab currently active selection action
   const selectionAction =
     player.availableActions.find((a) => a.type === 'selection') ?? null;
+
   const interruptActions = player.availableActions.filter(
     (a) => a.type === 'interrupt'
   );
 
-  // Current selection state
   const selection = selectionAction
     ? player.selections[selectionAction.name] ?? null
     : null;
@@ -21,8 +29,8 @@ export const Keypad = ({ player }) => {
     : false;
 
   const handleClick = (key) => {
-    // Numeric selection keys
-    if (typeof key === 'number' && selectionAction) {
+    // Numeric selection
+    if (typeof key === 'number' && selectionAction && !isConfirmed) {
       const target = selection === key ? null : key;
       send('PLAYER_ACTION', {
         playerId: player.id,
@@ -31,8 +39,13 @@ export const Keypad = ({ player }) => {
       });
     }
 
-    // Confirm button
-    else if (key === 'confirm' && selectionAction && selection != null) {
+    // Confirm selection
+    if (
+      key === 'confirm' &&
+      selectionAction &&
+      selection != null &&
+      !isConfirmed
+    ) {
       send('PLAYER_CONFIRM_ACTION', {
         playerId: player.id,
         action: selectionAction.name,
@@ -40,7 +53,7 @@ export const Keypad = ({ player }) => {
     }
 
     // Interrupts
-    else if (key === 'A' || key === 'B') {
+    if (key === 'A' || key === 'B') {
       const idx = key === 'A' ? 0 : 1;
       const interrupt = interruptActions[idx];
       if (interrupt) {
@@ -53,66 +66,54 @@ export const Keypad = ({ player }) => {
   };
 
   // Numeric buttons 1–9
-  const numericButtons = Array.from({ length: 9 }, (_, i) => {
+  const numericButtons = Array.from({ length: MAX_PLAYERS }, (_, i) => {
     const id = i + 1;
-    const disabled =
-      !selectionAction || !selectionAction.validTargets.includes(id);
     const selected = selection === id;
+    const disabled = !selectionAction || isConfirmed;
+
+    const state = selected ? 'selected' : 'unlocked';
     return (
       <Button
         key={id}
         label={id}
         onClick={() => handleClick(id)}
-        state={selected ? 'selected' : 'unlocked'}
+        state={state}
         disabled={disabled}
       />
     );
   });
 
-  // Last 3 buttons: A (Interrupt 1), B (Interrupt 2), C (Confirm)
-  const buttonA = (
-    <Button
-      key='A'
-      label='A'
-      onClick={() => handleClick('A')}
-      state={
-        interruptActions[0] &&
-        !player.interruptUsedMap?.[interruptActions[0].name]
-          ? 'unlocked'
-          : 'disabled'
-      }
-      disabled={
-        !interruptActions[0] ||
-        player.interruptUsedMap?.[interruptActions[0].name]
-      }
-    />
-  );
+  // Interrupt buttons A & B
+  const interruptButton = (idx, label) => {
+    const interrupt = interruptActions[idx];
+    const used = interrupt ? player.interruptUsedMap?.[interrupt.name] : true;
+    const disabled = !interrupt || used;
+    const state = !disabled ? 'unlocked' : 'disabled';
 
-  const buttonB = (
-    <Button
-      key='B'
-      label='B'
-      onClick={() => handleClick('B')}
-      state={
-        interruptActions[1] &&
-        !player.interruptUsedMap?.[interruptActions[1].name]
-          ? 'unlocked'
-          : 'disabled'
-      }
-      disabled={
-        !interruptActions[1] ||
-        player.interruptUsedMap?.[interruptActions[1].name]
-      }
-    />
-  );
+    return (
+      <Button
+        key={label}
+        label={label}
+        onClick={() => handleClick(label)}
+        state={state}
+        disabled={disabled}
+      />
+    );
+  };
 
+  const buttonA = interruptButton(0, 'A');
+  const buttonB = interruptButton(1, 'B');
+
+  // Confirm button
   const buttonC = (
     <Button
       key='C'
       label='C'
       onClick={() => handleClick('confirm')}
-      state={isConfirmed ? 'confirmed' : 'unlocked'}
-      disabled={!selectionAction || selection == null || isConfirmed}
+      state={
+        isConfirmed ? 'confirmed' : selection != null ? 'unlocked' : 'locked'
+      }
+      disabled={selection == null || isConfirmed}
     />
   );
 

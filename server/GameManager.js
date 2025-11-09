@@ -50,11 +50,19 @@ class GameManager {
   removePlayer(id) {
     const player = this.getPlayer(id);
     const result = this.game.removePlayer(id);
+
+    // Recalculate actions after removal
+    this.game.updatePlayerActions();
+
     this.handleActionResult(result, { player, type: 'player' });
   }
 
   startGame() {
     const result = this.game.start();
+
+    // Recalculate available actions for first phase
+    this.game.updatePlayerActions();
+
     this.handleActionResult(result, { type: 'system' });
   }
 
@@ -68,10 +76,14 @@ class GameManager {
 
   nextPhase() {
     const result = this.game.nextPhase();
+
     this.game.players.forEach((player) => {
       player.actionUsage = {};
       player.interruptUsedMap = {};
     });
+
+    this.game.updatePlayerActions();
+
     this.handleActionResult(result, { type: 'system' });
   }
 
@@ -85,6 +97,8 @@ class GameManager {
       player.interruptUsedMap = {};
     });
 
+    this.game.updatePlayerActions();
+
     this.handleActionResult(
       { success: true, message: `Phase manually set to ${phaseName}` },
       { type: 'system' }
@@ -94,8 +108,24 @@ class GameManager {
   /** --- Host actions --- */
   hostAction(playerId, action) {
     const result = this.game.hostAction(playerId, action);
+
+    // Update available actions after kill/revive
+    if (['kill', 'revive'].includes(action)) {
+      this.game.updatePlayerActions();
+    }
+
     const player = this.getPlayer(playerId);
     this.handleActionResult(result, { player, type: 'system' });
+  }
+
+  startSelectionEvent(actionName) {
+    const result = this.game.startSelectionEvent(actionName);
+    this.handleActionResult(result, { type: 'system' });
+  }
+
+  revealSelectionEvent(actionName) {
+    const result = this.game.revealSelectionEvent(actionName);
+    this.handleActionResult(result, { type: 'system' });
   }
 
   /** --- Player actions --- */
@@ -107,14 +137,10 @@ class GameManager {
         { type: 'warn', updateView: false }
       );
 
-    const actionDef = ACTIONS[actionType];
+    const actionDef = player.availableActions.find(
+      (a) => a.name === actionType
+    );
     if (!actionDef)
-      return this.handleActionResult(
-        { success: false, message: `Unknown action type: ${actionType}` },
-        { type: 'warn', updateView: false }
-      );
-
-    if (!player.availableActions.some((a) => a.name === actionType))
       return this.handleActionResult(
         {
           success: false,
@@ -175,8 +201,10 @@ class GameManager {
     const player = this.getPlayer(playerId);
     if (!player) return;
 
-    const actionDef = ACTIONS[actionName];
-    if (!actionDef || actionDef.type !== 'interrupt')
+    const actionDef = player.availableActions.find(
+      (a) => a.name === actionName && a.type === 'interrupt'
+    );
+    if (!actionDef)
       return this.handleActionResult(
         {
           success: false,
@@ -233,7 +261,7 @@ class GameManager {
     const gameStarted = this.game.gameStarted ?? false;
 
     this.game.players.forEach((player) => {
-      player.update({ phaseName, gameStarted });
+      player.update({ phaseName, gameStarted, game: this.game });
       this.publishPlayerSlice(player);
     });
 
@@ -269,6 +297,7 @@ class GameManager {
         phase: null,
         gameStarted: false,
         dayCount: 0,
+        currentEvents: [],
       });
     }
 
@@ -278,6 +307,7 @@ class GameManager {
       phase: phase.name ?? null,
       gameStarted: this.game.gameStarted ?? false,
       dayCount: this.game.dayCount ?? 0,
+      currentEvents: this.game.currentEvents ?? [],
     });
   }
 

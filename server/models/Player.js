@@ -42,6 +42,7 @@ export class Player {
 
     // Set role actions
     this.actions = [...role.defaultActions];
+    console.log(`Player ${this.id} assigned role ${roleName}`, this.actions);
     this.selections = {};
     this.confirmedSelections = {};
     this.actions.forEach((a) => {
@@ -54,16 +55,33 @@ export class Player {
   update({ phaseName, gameStarted, game }) {
     const phase = PHASES.find((p) => p.name === phaseName);
 
-    // Available actions dynamically determined by phase + alwaysAvailable + conditions
-    this.availableActions = this.actions.filter((a) => {
-      const actionDef = ACTIONS[a];
-      if (!actionDef) return false;
+    // Map + filter available actions in one step to keep track of action strings
+    this.availableActions = this.actions
+      .map((actionName) => {
+        const actionDef = ACTIONS[actionName];
+        if (!actionDef) {
+          console.log(`Missing action for player ${this.id}:`, actionName);
+          return null;
+        }
+        return { name: actionName, def: actionDef };
+      })
+      .filter((x) => {
+        if (!x) return false;
+        const { def } = x;
+        const cond = def.conditions(this, game);
+        const phaseOk = phase?.validActions.includes(def.name);
+        const result = def.alwaysAvailable ? cond : phaseOk && cond;
 
-      if (actionDef.alwaysAvailable) return actionDef.conditions(this, game);
-      return (
-        phase?.validActions.includes(a) && actionDef.conditions(this, game)
-      );
-    });
+        if (!result) {
+          console.log(`Player ${this.id} filtered out action:`, def.name, {
+            phaseOk,
+            cond,
+          });
+        }
+
+        return result;
+      })
+      .map((x) => x.def); // keep only the ACTIONS object
 
     // Host actions
     if (!gameStarted) {
@@ -84,7 +102,7 @@ export class Player {
       id: this.id,
       name: this.name,
       role: this.role?.name ?? null,
-      team: this.team?.name ?? null,
+      team: this.team ?? null,
       color: this.color,
       isAlive: this.isAlive,
       actions: this.actions,

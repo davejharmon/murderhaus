@@ -80,7 +80,7 @@ export const PlayerCard = React.memo(function PlayerCard({
         )}
 
         <span className={styles.role} style={{ color: player.color || 'gray' }}>
-          {player.role || 'Unknown'}
+          {player.role || 'Unassigned'}
         </span>
 
         {memoedVoteSelectors.length > 0 && (

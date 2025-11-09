@@ -1,11 +1,8 @@
-// server/wsHandlers.js
 import { gameManager } from './GameManager.js';
 import { sendTo, subscribe, publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
 
 export function handleNewConnection(ws) {
-  // Instead of pushing the *full* state immediately,
-  // let the client pick which channels it wants.
   sendTo(ws, { type: 'WELCOME', payload: { message: 'Connected' } });
 }
 
@@ -20,7 +17,6 @@ export function handleWSMessage(ws, data) {
   const { type, payload } = msg;
 
   switch (type) {
-    // ✅ NEW: Client asks to subscribe to a channel
     case 'SUBSCRIBE': {
       const { channel } = payload;
       if (!channel)
@@ -33,7 +29,6 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
-    // ✅ REGISTER PLAYER (host or client calling it)
     case 'REGISTER_PLAYER': {
       const { id } = payload;
       if (id == null)
@@ -44,17 +39,12 @@ export function handleWSMessage(ws, data) {
 
       const player = gameManager.registerPlayer(id);
 
-      // Auto-subscribe this client to its personal update channel
       subscribe(ws, `PLAYER_UPDATE:${id}`);
-
-      // Also subscribe all players to shared state slices
       subscribe(ws, 'GAME_META_UPDATE');
       subscribe(ws, 'PLAYERS_UPDATE');
       subscribe(ws, 'LOG_UPDATE');
 
-      // Immediate callback: send the current player object
       sendTo(ws, { type: `PLAYER_UPDATE:${id}`, payload: player });
-
       sendTo(ws, { type: 'REGISTERED', payload: { id } });
       break;
     }
@@ -74,7 +64,6 @@ export function handleWSMessage(ws, data) {
         'action'
       );
 
-      // Will soon replace with granular update — leave for now.
       gameManager.broadcastState();
       break;
     }
@@ -127,6 +116,20 @@ export function handleWSMessage(ws, data) {
     case 'HOST_ACTION': {
       const { playerId, action } = payload;
       gameManager.hostAction(playerId, action);
+      break;
+    }
+
+    // ✅ START SELECTION EVENT
+    case 'START_SELECTION_EVENT': {
+      const { actionName } = payload;
+      gameManager.startSelectionEvent(actionName);
+      break;
+    }
+
+    // ✅ REVEAL SELECTION EVENT
+    case 'REVEAL_SELECTION_EVENT': {
+      const { actionName } = payload;
+      gameManager.revealSelectionEvent(actionName);
       break;
     }
 

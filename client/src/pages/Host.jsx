@@ -6,6 +6,7 @@ import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import styles from './Host.module.css';
+import { ACTIONS } from '../../../shared/constants';
 
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
@@ -14,6 +15,20 @@ export default function Host() {
   ]);
 
   const { phase, gameStarted = false, dayCount = 0 } = gameMeta;
+  // Determine if any player has a selectable action in the current phase
+  const selectionActionsAvailable = useMemo(() => {
+    const actionsSet = new Set();
+
+    players.forEach((player) => {
+      (player.availableActions || []).forEach((actionDef) => {
+        if (actionDef.type === 'selection') {
+          actionsSet.add(actionDef.name); // actionDef is full object
+        }
+      });
+    });
+
+    return Array.from(actionsSet); // e.g., ['vote', 'kill']
+  }, [players]);
 
   // Compute vote selectors for each player
   const voteSelectorsByPlayer = useMemo(() => {
@@ -66,6 +81,38 @@ export default function Host() {
                 onClick={() => send('END_GAME')}
                 state='selected'
               />
+            </div>
+          )}
+
+          {gameStarted && selectionActionsAvailable.length > 0 && (
+            <div className={styles.selectionControls}>
+              {selectionActionsAvailable.map((actionName) => {
+                const activeEvent = gameMeta.currentEvents?.find(
+                  (e) =>
+                    e.type === 'selection' &&
+                    e.action === actionName &&
+                    !e.resolved
+                );
+                const isActive = !!activeEvent;
+
+                return (
+                  <Button
+                    key={actionName}
+                    label={`${
+                      isActive ? 'REVEAL' : 'START'
+                    } ${actionName.toUpperCase()}`}
+                    onClick={() =>
+                      send(
+                        isActive
+                          ? 'REVEAL_SELECTION_EVENT'
+                          : 'START_SELECTION_EVENT',
+                        { actionName }
+                      )
+                    }
+                    state={isActive ? 'selected' : 'unlocked'}
+                  />
+                );
+              })}
             </div>
           )}
         </section>

@@ -15,6 +15,7 @@ export class Game {
     this.phaseIndex = 0;
     this.gameStarted = false;
     this.dayCount = 0;
+    this.currentEvents = []; // stack of events
   }
 
   /** Add a new player */
@@ -124,7 +125,6 @@ export class Game {
       const role = rolesToAssign[index];
       player.assignRole(role.name);
       // Assign initial actions from role
-      player.actions = [...role.defaultActions];
       player.availableActions = []; // Will be calculated per phase
       player.actionUsage = {};
       player.interruptUsedMap = {};
@@ -176,21 +176,123 @@ export class Game {
     return { success: true, message: msg };
   }
 
+  /** Start a selection event for a given action */
+  startSelectionEvent(actionName) {
+    const phase = this.getCurrentPhase();
+
+    // Filter eligible players based on their availableActions
+    const eligiblePlayers = this.players.filter((player) =>
+      (player.availableActions || []).some((a) => a.name === actionName)
+    );
+
+    if (eligiblePlayers.length === 0) {
+      return {
+        success: false,
+        message: `No eligible players for selection action: ${actionName}`,
+      };
+    }
+
+    // Reset selections for this action
+    eligiblePlayers.forEach((player) => {
+      player.selections[actionName] = null;
+      player.confirmedSelections[actionName] = false;
+    });
+
+    const event = {
+      type: 'selection',
+      action: actionName,
+      phase: phase.name,
+      players: eligiblePlayers.map((p) => p.id),
+      resolved: false,
+    };
+
+    this.currentEvents.push(event);
+
+    return {
+      success: true,
+      message: `${actionName} started.`,
+    };
+  }
+
+  /** Reveal a selection event for a given action */
+  revealSelectionEvent(actionName) {
+    // Find the last unresolved selection event for this action
+    const event = [...this.currentEvents]
+      .reverse()
+      .find(
+        (e) => e.type === 'selection' && e.action === actionName && !e.resolved
+      );
+
+    if (!event) {
+      return {
+        success: false,
+        message: `No active selection event for ${actionName}`,
+      };
+    }
+
+    event.resolved = true;
+
+    // Optionally, you could snapshot the resolved selections here
+    // e.g., event.results = event.players.map(id => ({
+    //   id,
+    //   selection: this.getPlayer(id)?.confirmedSelections[actionName] ?? null
+    // }));
+
+    return {
+      success: true,
+      message: `${actionName} revealed.`,
+    };
+  }
+
+  /** Resolve (pop) last event — typically after an interrupt resolves */
+  resolveLastEvent() {
+    if (this.currentEvents.length === 0) return null;
+
+    const lastEvent = this.currentEvents.pop();
+
+    // Ensure any cleanup, if needed, happens here
+    // e.g., clearing selections for interrupted actions
+    if (lastEvent.type === 'selection') {
+      lastEvent.players.forEach((playerId) => {
+        const player = this.getPlayer(playerId);
+        if (!player) return;
+        player.selections[lastEvent.action] = null;
+        player.confirmedSelections[lastEvent.action] = false;
+      });
+    }
+
+    return lastEvent;
+  }
+
+  // Helper: get the current active selection event
+  getActiveSelectionEvent() {
+    for (let i = this.currentEvents.length - 1; i >= 0; i--) {
+      if (
+        this.currentEvents[i].type === 'selection' &&
+        !this.currentEvents[i].resolved
+      )
+        return this.currentEvents[i];
+    }
+    return null;
+  }
+
   /** Update per-phase available actions for all players */
   updatePlayerActions() {
     const phase = this.getCurrentPhase();
+
     this.players.forEach((player) => {
-      player.availableActions = player.actions.filter((a) => {
-        const actionDef = ACTIONS[a];
-        if (!actionDef) return false;
-        // Always available actions are allowed anytime their conditions are met
-        if (actionDef.alwaysAvailable)
-          return actionDef.conditions(player, this);
-        // Otherwise only available if valid for the phase
-        return (
-          phase.validActions.includes(a) && actionDef.conditions(player, this)
-        );
-      });
+      // Map player's action strings to objects
+      player.availableActions = (player.actions || [])
+        .map((actionName) => ACTIONS[actionName])
+        .filter((actionDef) => {
+          if (!actionDef) return false;
+
+          const { name, alwaysAvailable, conditions } = actionDef;
+          const validPhase = phase.validActions.includes(name);
+
+          // Keep action only if it's valid this phase and passes conditions
+          return (alwaysAvailable || validPhase) && conditions(player, this);
+        });
     });
   }
 }
