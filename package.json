@@ -5,7 +5,7 @@
   "scripts": {
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "concurrently \"npm run server\" \"wait-on tcp:8080 && npm run client\"",
     "devflow": "node devflow.js"
   },
   "devDependencies": {

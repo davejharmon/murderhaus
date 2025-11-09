@@ -3,20 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { send } from '../ws';
 import { Button } from '../components/Button';
 import styles from './Landing.module.css';
+import { useGameState } from '../hooks/useGameState';
 
-export default function Landing({
-  gameState = null,
-  wsStatus = 'disconnected',
-}) {
+export default function Landing() {
   const navigate = useNavigate();
-
-  const players = gameState?.players || [];
+  const { players = [], gameStarted } = useGameState([
+    'PLAYERS_UPDATE',
+    'GAME_META_UPDATE',
+  ]);
 
   const claimSeat = () => {
-    const existingIds = players.map((p) => p.id);
+    const existingIds = new Set(players.map((p) => p.id));
     let newSeat = 1;
-    while (existingIds.includes(newSeat)) newSeat++;
-
+    while (existingIds.has(newSeat)) newSeat++;
     send('REGISTER_PLAYER', { id: newSeat });
     window.open(`/player/${newSeat}`, '_blank', 'noopener,noreferrer');
   };
@@ -27,8 +26,10 @@ export default function Landing({
 
   const openHostAndDashboard = () => {
     window.open('/host', '_blank', 'noopener,noreferrer');
-    navigate('/debug/players');
+    navigate('/player/debug');
   };
+
+  const sortedPlayers = [...players].sort((a, b) => a.id - b.id);
 
   return (
     <div className={styles.container}>
@@ -41,17 +42,19 @@ export default function Landing({
         <Button label='Open Host + Dashboard' onClick={openHostAndDashboard} />
       </div>
 
-      <p className={styles.status}>WS Status: {wsStatus}</p>
-
       {players.length > 0 && (
         <ul className={styles.playerList}>
-          {players.map((p) => (
+          {sortedPlayers.map((p) => (
             <li key={p.id}>
               #{p.id} — {p.name || 'Unnamed'} {p.isAlive ? '' : '(dead)'}
             </li>
           ))}
         </ul>
       )}
+
+      <p className={styles.status}>
+        WS Status: {gameStarted ? 'Game Started' : 'Waiting'}
+      </p>
     </div>
   );
 }

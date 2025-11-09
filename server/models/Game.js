@@ -7,43 +7,33 @@ import {
   DEFAULT_ROLE,
 } from '../../shared/constants.js';
 import { Player } from './Player.js';
-import { broadcast } from '../utils/Broadcast.js';
-import { logger } from '../utils/Logger.js';
 
 export class Game {
   constructor() {
     this.players = [];
-    this.phaseIndex = 0; // 0 = day, 1 = night
+    this.phaseIndex = 0;
     this.gameStarted = false;
     this.dayCount = 0;
   }
 
   /** Add a new player */
   addPlayer(id) {
-    if (this.players.length >= MAX_PLAYERS) {
-      logger.log(`Failed to add player ${id}: max players reached`, 'system');
-      return null;
-    }
+    if (this.players.length > MAX_PLAYERS)
+      return { success: false, message: 'Max players reached' };
+
     const player = new Player(id);
     this.players.push(player);
-    player.update({
-      phaseName: this.getCurrentPhase().name,
-      gameStarted: this.gameStarted,
-    });
-
-    logger.log(`Player ${id} connected`, 'system');
-    this.broadcastState();
-    return player;
+    return { success: true, message: `Player ${id} registered`, player };
   }
 
-  /** Remove player (kick) */
+  /** Remove a player */
   removePlayer(id) {
     const index = this.players.findIndex((p) => p.id === id);
     if (index !== -1) {
       this.players.splice(index, 1);
-      logger.log(`Player ${id} was removed (kick)`, 'host');
-      this.broadcastState();
+      return { success: true, message: `Player ${id} removed` };
     }
+    return { success: false, message: `Player ${id} not found` };
   }
 
   getPlayer(id) {
@@ -54,38 +44,34 @@ export class Game {
     return PHASES[this.phaseIndex];
   }
 
+  /** Start the game */
   start() {
-    if (this.gameStarted) return;
+    if (this.gameStarted)
+      return { success: false, message: 'Game already started' };
     this.gameStarted = true;
     this.dayCount = 1;
-    logger.log(`Game started`, 'system');
     this.assignPlayers();
-    this.updateAllPlayers();
+    return { success: true, message: 'Game started' };
   }
 
   assignPlayers() {
     const total = this.players.length;
     if (total < 1) return;
 
-    // Determine the minimum roles required for this player count
     const minimum = MINIMUM_ROLES[total] || {};
-
-    // Build a list of roles to assign
     const rolesToAssign = [];
 
-    // Add required roles first
-    Object.entries(minimum).forEach(([roleName, count]) => {
+    for (const [roleName, count] of Object.entries(minimum)) {
       for (let i = 0; i < count; i++) {
         rolesToAssign.push(ROLES[roleName]);
       }
-    });
+    }
 
-    // Fill all remaining slots with Villagers
     while (rolesToAssign.length < total) {
       rolesToAssign.push(ROLES[DEFAULT_ROLE]);
     }
 
-    // Shuffle roles
+    // shuffle
     for (let i = rolesToAssign.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [rolesToAssign[i], rolesToAssign[j]] = [
@@ -94,91 +80,121 @@ export class Game {
       ];
     }
 
-    // Assign roles to players
     this.players.forEach((player, index) => {
       const role = rolesToAssign[index];
-      logger.log(`Assigning ${role.name} to ${player.name}`);
       player.assignRole(role.name);
     });
   }
 
+  /** Advance to next phase */
   nextPhase() {
     this.phaseIndex = (this.phaseIndex + 1) % PHASES.length;
-    if (this.getCurrentPhase().name === 'day') this.dayCount++;
-    logger.log(`Phase changed to ${this.getCurrentPhase().name}`, 'system');
-    this.updateAllPlayers();
-    this.broadcastState();
-  }
 
-  /** Update all players' states */
-  updateAllPlayers() {
-    const phaseName = this.getCurrentPhase().name;
-    this.players.forEach((player) =>
-      player.update({ phaseName, gameStarted: this.gameStarted })
-    );
-  }
-
-  /** Host action (kick/kill/revive) */
-  hostAction(playerId, action) {
-    const player = this.getPlayer(playerId);
-    if (!player) return;
-
-    switch (action) {
-      case 'kick':
-        this.removePlayer(playerId);
-        break;
-      case 'kill':
-        if (player.isAlive) {
-          player.isAlive = false;
-          logger.log(`Host killed player ${playerId}`, 'host');
-        }
-        break;
-      case 'revive':
-        if (!player.isAlive) {
-          player.isAlive = true;
-          logger.log(`Host revived player ${playerId}`, 'host');
-        }
-        break;
-      default:
-        logger.log(`Unknown host action: ${action}`, 'error');
-        return;
+    let message = `Phase advanced to ${this.getCurrentPhase().name}`;
+    if (this.getCurrentPhase().name === 'day') {
+      this.dayCount++;
+      message = `Phase advanced to day. It is now day ${this.dayCount}`;
     }
 
-    // Update hostActions after state change
-    player.update({
-      phaseName: this.getCurrentPhase().name,
-      gameStarted: this.gameStarted,
-    });
+    return {
+      success: true,
+      message,
+    };
   }
 
-  /** Broadcast the full game state */
-  broadcastState() {
-    broadcast({
-      type: 'GAME_STATE_UPDATE',
-      payload: this.getState(),
-    });
+  /** Host actions (kick/kill/revive) */
+  hostAction(playerId, action) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return {
+        success: false,
+        message: `Host action failed: player ${playerId} not found`,
+      };
+
+    let msg = '';
+    if (action === 'kick') {
+      this.removePlayer(playerId);
+      msg = `Player ${playerId} kicked`;
+    } else if (action === 'kill') {
+      player.isAlive = false;
+      msg = `Player ${playerId} killed`;
+    } else if (action === 'revive') {
+      player.isAlive = true;
+      msg = `Player ${playerId} revived`;
+    } else {
+      return { success: false, message: `Unknown host action: ${action}` };
+    }
+
+    return { success: true, message: msg };
   }
 
-  /** Return a serializable game state */
+  /** Player selects a target */
+  playerAction(playerId, actionType, targetId) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
+
+    if (!player.availableActions.some((a) => a.name === actionType)) {
+      return {
+        success: false,
+        message: `Invalid action ${actionType} for player ${playerId}`,
+      };
+    }
+
+    player.selections[actionType] = targetId;
+    return {
+      success: true,
+      message: `Player ${playerId} selected ${targetId} for ${actionType}`,
+    };
+  }
+
+  /** Player confirms an action */
+  playerConfirm(playerId, actionType) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
+
+    const selection = player.selections[actionType];
+    if (selection == null)
+      return {
+        success: false,
+        message: `No selection to confirm for ${actionType}`,
+      };
+
+    player.confirmedSelections[actionType] = selection;
+    return {
+      success: true,
+      message: `Player ${playerId} confirmed ${actionType}`,
+    };
+  }
+
+  /** Player uses interrupt */
+  playerInterrupt(playerId, actionName) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
+
+    player.interruptUsedMap = player.interruptUsedMap || {};
+    if (player.interruptUsedMap[actionName]) {
+      return {
+        success: false,
+        message: `Player ${playerId} tried to use ${actionName} but it's already used`,
+      };
+    }
+
+    player.interruptUsedMap[actionName] = true;
+    return {
+      success: true,
+      message: `Player ${playerId} used interrupt ${actionName}`,
+    };
+  }
+
   getState() {
     return {
       dayCount: this.dayCount,
       phase: this.getCurrentPhase().name,
       gameStarted: this.gameStarted,
-      players: this.players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        role: p.role?.name || null, // optional: hide role from clients if needed
-        team: p.team?.name || null,
-        color: p.color,
-        isAlive: p.isAlive,
-        actions: p.actions,
-        availableActions: p.availableActions,
-        hostActions: p.hostActions,
-        selections: p.selections,
-        confirmedSelections: p.confirmedSelections,
-      })),
-      log: logger.getEntries(), // optional: send log to clients if desired
+      players: this.players.map((p) => p.getPublicState()),
     };
   }
 }

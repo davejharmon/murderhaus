@@ -1,47 +1,27 @@
+// server/models/Player.js
 import { ROLES, PHASES, PREGAME_HOST_ACTIONS } from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
     this.id = id;
     this.name = `Player ${id}`;
+
+    // Role & team identity
     this.role = null;
     this.team = null;
     this.color = '#666';
 
-    // UI state
-    this.uiState = {
-      color: '#00cc00',
-      animation: null,
-      queuedAnimations: [],
-    };
-
     // Game state
     this.isAlive = true;
 
-    // Actions
-    this.actions = []; // all actions for this player
-    this.availableActions = []; // filtered per current phase
-    this.selections = {}; // track selection per action
-    this.confirmedSelections = {}; // track confirmation per action
+    // Action state
+    this.actions = []; // all actions (strings)
+    this.availableActions = []; // subset allowed in current phase
+    this.selections = {}; // { actionName: targetId }
+    this.confirmedSelections = {}; // { actionName: boolean }
 
-    // Host actions (for dashboard control)
-    this.hostActions = []; // dynamically set based on game state
-
-    // Button map
-    this.buttons = {
-      0: () => this.handleSelection(0),
-      1: () => this.handleSelection(1),
-      2: () => this.handleSelection(2),
-      3: () => this.handleSelection(3),
-      4: () => this.handleSelection(4),
-      5: () => this.handleSelection(5),
-      6: () => this.handleSelection(6),
-      7: () => this.handleSelection(7),
-      8: () => this.handleSelection(8),
-      9: () => this.handleSelection(9),
-      confirm: () => this.handleConfirm(),
-      interrupt: () => this.handleInterrupt(),
-    };
+    // Host controls
+    this.hostActions = []; // e.g. ['kick','kill','revive']
   }
 
   /** Assign a role to the player */
@@ -54,38 +34,34 @@ export class Player {
     this.color = role.color;
     this.actions = [...role.defaultActions];
 
-    // Initialize selections & confirmed state for each action
-    role.defaultActions.forEach((action) => {
+    // Initialize selection state
+    this.selections = {};
+    this.confirmedSelections = {};
+    this.actions.forEach((action) => {
       this.selections[action] = null;
       this.confirmedSelections[action] = false;
     });
   }
 
   /**
-   * Unified state update
-   * @param {Object} options
-   * @param {string} options.phaseName - current phase of the game
-   * @param {boolean} options.gameStarted - is the game running
+   * Update per-phase UI logic
+   * Called centrally from GameManager.updatePlayerViewState()
    */
   update({ phaseName, gameStarted }) {
     const phase = PHASES.find((p) => p.name === phaseName);
 
-    // Update available player actions
-    if (!phase) {
-      this.availableActions = [];
-    } else {
-      this.availableActions = this.actions.filter((a) =>
-        phase.validActions.includes(a)
-      );
-    }
+    // Update available actions for this phase
+    this.availableActions = phase
+      ? this.actions.filter((a) => phase.validActions.includes(a))
+      : [];
 
-    // Update host actions
+    // Update host actions shown on dashboard
     if (!gameStarted) {
-      this.hostActions = [...PREGAME_HOST_ACTIONS]; // e.g. ['kick', 'assign']
+      this.hostActions = [...PREGAME_HOST_ACTIONS];
     } else if (phase) {
       this.hostActions = phase.validHostActions.filter((a) => {
-        if (a === 'kill') return this.isAlive; // can only kill alive players
-        if (a === 'revive') return !this.isAlive; // can only revive dead players
+        if (a === 'kill') return this.isAlive;
+        if (a === 'revive') return !this.isAlive;
         return true;
       });
     } else {
@@ -93,29 +69,35 @@ export class Player {
     }
   }
 
-  /** Generic selection handler */
-  handleSelection(value, actionName = 'vote') {
+  /** Select a target for a specific action */
+  handleSelection(value, actionName) {
     if (!this.availableActions.includes(actionName)) return;
     this.selections[actionName] = value;
     this.confirmedSelections[actionName] = false;
   }
 
-  /** Confirm selection */
-  handleConfirm(actionName = 'vote') {
-    if (!this.selections[actionName]) return;
+  /** Confirm a previously selected action */
+  handleConfirm(actionName) {
+    const selection = this.selections[actionName];
+
+    // Must check specifically for null/undefined — allow targetId = 0
+    if (selection == null) return;
+
     this.confirmedSelections[actionName] = true;
   }
 
-  /** Generic interrupt handler */
-  handleInterrupt(interruptActionName = null) {
-    const interruptableActions = this.availableActions.filter(
-      (a) => a === 'interrupt' || a.type === 'interrupt'
+  /** Attempt to interrupt */
+  handleInterrupt(actionName) {
+    const interruptable = this.availableActions.filter(
+      (a) =>
+        a === 'interrupt' || (typeof a === 'object' && a.type === 'interrupt')
     );
-    if (interruptableActions.length === 0) return false;
 
-    let action = interruptActionName
-      ? interruptableActions.find((a) => a === interruptActionName)
-      : interruptableActions[0];
+    if (interruptable.length === 0) return false;
+
+    const action = actionName
+      ? interruptable.find((a) => a === actionName || a.name === actionName)
+      : interruptable[0];
 
     if (!action) return false;
 
@@ -123,8 +105,24 @@ export class Player {
     return true;
   }
 
-  /** Register a callback to handle interrupts */
   registerInterruptCallback(callback) {
     this.onInterrupt = callback;
+  }
+
+  /** Public state projection (used by Game.getState) */
+  getPublicState() {
+    return {
+      id: this.id,
+      name: this.name,
+      role: this.role?.name ?? null, // optionally hide client role later
+      team: this.team?.name ?? null,
+      color: this.color,
+      isAlive: this.isAlive,
+      actions: this.actions,
+      availableActions: this.availableActions,
+      hostActions: this.hostActions,
+      selections: this.selections,
+      confirmedSelections: this.confirmedSelections,
+    };
   }
 }

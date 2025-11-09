@@ -1,15 +1,34 @@
 // /server/GameManager.js
 import { Game } from './models/Game.js';
-import { broadcast, sendTo } from './utils/Broadcast.js';
+import { publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
-import { ROLES, PHASES } from '../shared/constants.js';
+import { PHASES } from '../shared/constants.js';
 
 class GameManager {
   constructor() {
     this.game = new Game();
   }
 
-  /** Get a plain object snapshot of the game state */
+  /** --- Helper to handle logging & publishing --- */
+  handleActionResult(
+    result,
+    { player = null, type = 'system', updateView = true } = {}
+  ) {
+    if (result.message) {
+      logger.log(result.message, result.success === false ? 'warn' : type);
+    }
+
+    if (player) this.publishPlayerSlice(player);
+
+    if (updateView) {
+      this.updatePlayerViewState();
+      this.publishPlayersSlice();
+      this.publishGameMeta();
+      this.publishLog();
+    }
+  }
+
+  /** --- Basic getters --- */
   getState() {
     return this.game.getState();
   }
@@ -18,103 +37,162 @@ class GameManager {
     return this.game.getPlayer(id);
   }
 
-  /** Register a new player by ID */
+  /** --- Game lifecycle --- */
   registerPlayer(id) {
-    const existing = this.game.players.find((p) => p.id === id);
-    if (existing) return existing;
-
-    const player = this.game.addPlayer(id);
-    logger.log(`Player ${id} registered`, 'player');
-    this.broadcastState();
+    const result = this.game.addPlayer(id);
+    const player = result.player ?? null;
+    this.handleActionResult(result, { player, type: 'player' });
     return player;
   }
 
-  /** Remove a player */
   removePlayer(id) {
-    this.game.removePlayer(id);
-    logger.log(`Player ${id} removed`, 'player');
-    this.broadcastState();
+    const player = this.getPlayer(id);
+    const result = this.game.removePlayer(id);
+    this.handleActionResult(result, { player, type: 'player' });
   }
 
-  /** Start the game */
   startGame() {
-    this.game.start();
-    logger.log('Game started', 'system');
-    this.broadcastState();
+    const result = this.game.start();
+    this.handleActionResult(result, { type: 'system' });
   }
 
-  /** End the game */
   endGame() {
-    this.game.reset();
+    this.game = new Game();
     logger.log('Game ended', 'system');
-    this.broadcastState();
+    this.publishPlayersSlice();
+    this.publishGameMeta();
+    this.publishLog();
   }
 
-  /** Advance to a phase (host-triggered) */
+  nextPhase() {
+    const result = this.game.nextPhase();
+    this.handleActionResult(result, { type: 'system' });
+  }
+
   setPhase(phaseName) {
-    if (!PHASES.find((p) => p.name === phaseName)) return;
-    this.game.phase = phaseName;
-    logger.log(`Phase set to ${phaseName}`, 'system');
-    this.broadcastState();
-  }
-
-  /** Handle per-player host actions */
-  hostAction(playerId, action) {
-    const player = this.getPlayer(playerId);
-    this.game.hostAction(playerId, action);
-
-    // No log; long handled inside Game.js
-    // Broadcast updated game state to all clients
-    this.broadcastState();
-  }
-
-  /** Player selects a target */
-  playerAction(playerId, actionType, targetId) {
-    const player = this.game.getPlayer(playerId);
-    if (!player || !player.availableActions.includes(actionType)) return;
-
-    player.selection = targetId;
-    logger.log(
-      `Player ${playerId} selected ${targetId} for action ${actionType}`,
-      'player'
+    const phaseIndex = PHASES.findIndex((p) => p.name === phaseName);
+    if (phaseIndex === -1) return;
+    this.game.phaseIndex = phaseIndex;
+    this.handleActionResult(
+      { success: true, message: `Phase manually set to ${phaseName}` },
+      { type: 'system' }
     );
-    this.broadcastState();
   }
 
-  /** Player confirms their selection */
+  /** --- Host actions --- */
+  hostAction(playerId, action) {
+    const result = this.game.hostAction(playerId, action);
+    const player = this.getPlayer(playerId);
+    this.handleActionResult(result, { player, type: 'system' });
+  }
+
+  /** --- Player actions --- */
+  playerAction(playerId, actionType, targetId) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return this.handleActionResult(
+        { success: false, message: `Player ${playerId} not found` },
+        { type: 'warn', updateView: false }
+      );
+
+    if (!player.availableActions.some((a) => a.name === actionType))
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Invalid action: ${actionType} for player ${playerId}`,
+        },
+        { type: 'warn', updateView: false }
+      );
+
+    player.selections[actionType] = targetId;
+    this.handleActionResult(
+      {
+        success: true,
+        message: `Player ${playerId} selected ${targetId} for ${actionType}`,
+      },
+      { player, type: 'player', updateView: false }
+    );
+
+    // Only publish slices, full view update not needed
+    this.publishPlayersSlice();
+  }
+
   playerConfirm(playerId, actionType) {
-    const player = this.game.getPlayer(playerId);
-    if (!player || player.selection === null) return;
+    const player = this.getPlayer(playerId);
+    if (!player) return;
 
-    player.isConfirmed = true;
-    logger.log(`Player ${playerId} confirmed action ${actionType}`, 'player');
+    const selection = player.selections[actionType];
+    if (selection == null) return;
 
-    // Optionally resolve immediately if action is instant
-    // this.resolveAction(player, actionType);
-
-    this.broadcastState();
+    player.confirmedSelections[actionType] = selection;
+    this.handleActionResult(
+      { success: true, message: `Player ${playerId} confirmed ${actionType}` },
+      { player, type: 'player' }
+    );
   }
 
-  /** Player uses interrupt */
-  playerInterrupt(playerId) {
-    const player = this.game.getPlayer(playerId);
-    if (!player || player.interruptUsed) return;
+  playerInterrupt(playerId, actionName) {
+    const player = this.getPlayer(playerId);
+    if (!player) return;
 
-    player.interruptUsed = true;
-    logger.log(`Player ${playerId} used INTERRUPT`, 'player');
+    player.interruptUsedMap = player.interruptUsedMap || {};
+    if (player.interruptUsedMap[actionName]) {
+      return this.handleActionResult(
+        {
+          success: false,
+          message: `Player ${playerId} tried to use ${actionName} but it's already used`,
+        },
+        { type: 'warn', updateView: false }
+      );
+    }
 
-    // Handle any instant interrupt effect here
-    this.broadcastState();
+    player.interruptUsedMap[actionName] = true;
+    this.handleActionResult(
+      {
+        success: true,
+        message: `Player ${playerId} used interrupt ${actionName}`,
+      },
+      { player, type: 'player' }
+    );
   }
 
-  /** Broadcast current game state to all clients */
-  broadcastState() {
-    broadcast({
-      type: 'GAME_STATE_UPDATE',
-      payload: this.getState(),
+  /** --- Player view state --- */
+  updatePlayerViewState() {
+    const phaseName = this.game.getCurrentPhase().name;
+    const gameStarted = this.game.gameStarted;
+
+    this.game.players.forEach((player) => {
+      player.update({ phaseName, gameStarted });
+      this.publishPlayerSlice(player);
     });
+
+    this.publishPlayersSlice();
+    this.publishGameMeta();
+  }
+
+  /** --- Publishers --- */
+  publishPlayerSlice(player) {
+    if (!player) return;
+    publish(`PLAYER_UPDATE:${player.id}`, player.getPublicState());
+  }
+
+  publishPlayersSlice() {
+    const allPlayers = this.game.players.map((p) => p.getPublicState());
+    publish('PLAYERS_UPDATE', allPlayers);
+  }
+
+  publishGameMeta() {
+    const meta = {
+      phase: this.game.getCurrentPhase().name,
+      gameStarted: this.game.gameStarted,
+      dayCount: this.game.dayCount ?? 0,
+    };
+    publish('GAME_META_UPDATE', meta);
+  }
+
+  publishLog() {
+    publish('LOG_UPDATE', logger.getEntries());
   }
 }
 
-// Export singleton
 export const gameManager = new GameManager();

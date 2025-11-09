@@ -2,23 +2,20 @@
 
 let socket = null;
 let messageQueue = [];
-let listeners = [];
+let listeners = {}; // keyed by type
 let statusListeners = [];
 let isConnecting = false;
 const reconnectInterval = 2000;
 
-// Determine WebSocket URL
 const WS_URL = import.meta.env.DEV
   ? 'ws://localhost:8080'
   : `${window.location.origin.replace(/^http/, 'ws')}`;
 
-// Notify all status listeners
 function notifyStatus(status) {
   statusListeners.forEach((fn) => fn(status));
   console.log('[WS STATUS]', status);
 }
 
-// Initialize WebSocket connection
 function initSocket() {
   if (
     socket &&
@@ -41,7 +38,6 @@ function initSocket() {
     notifyStatus('connected');
     console.log('[WS] Connected');
 
-    // Flush queued messages
     while (messageQueue.length) {
       const { type, payload } = messageQueue.shift();
       socket.send(JSON.stringify({ type, payload }));
@@ -56,7 +52,10 @@ function initSocket() {
       console.error('[WS] Failed to parse message:', event.data, err);
       return;
     }
-    listeners.forEach((fn) => fn(msg));
+
+    const { type, payload } = msg;
+    const typeListeners = listeners[type] || [];
+    typeListeners.forEach((fn) => fn(payload));
   };
 
   socket.onclose = () => {
@@ -73,34 +72,23 @@ function initSocket() {
   };
 }
 
-// Automatically start connecting
 initSocket();
 
-/**
- * Ensure the socket is connected.
- * Returns a Promise that resolves once the connection is open.
- */
 export function ensureConnected() {
   return new Promise((resolve) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      resolve();
-    } else {
+    if (socket && socket.readyState === WebSocket.OPEN) resolve();
+    else {
       const unsub = subscribeStatus((status) => {
         if (status === 'connected') {
           resolve();
           unsub();
         }
       });
-
-      // Trigger init if socket is closed
       if (!socket && !isConnecting) initSocket();
     }
   });
 }
 
-/**
- * Send a message; queue if socket not ready.
- */
 export function send(type, payload = {}) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type, payload }));
@@ -111,30 +99,28 @@ export function send(type, payload = {}) {
 }
 
 /**
- * Subscribe to incoming messages
+ * Subscribe to a specific message type
+ * @param {string} type
+ * @param {function} fn
  */
-export function subscribe(fn) {
-  listeners.push(fn);
+export function subscribe(type, fn) {
+  if (!listeners[type]) listeners[type] = [];
+  listeners[type].push(fn);
+
   return () => {
-    listeners = listeners.filter((l) => l !== fn);
+    listeners[type] = listeners[type].filter((l) => l !== fn);
   };
 }
 
-/**
- * Subscribe to WebSocket status changes
- */
 export function subscribeStatus(fn) {
   statusListeners.push(fn);
 
-  // Immediately call with current status
   let currentStatus = 'disconnected';
   if (socket) {
     if (socket.readyState === WebSocket.OPEN) currentStatus = 'connected';
     else if (socket.readyState === WebSocket.CONNECTING)
       currentStatus = 'connecting';
-  } else if (isConnecting) {
-    currentStatus = 'connecting';
-  }
+  } else if (isConnecting) currentStatus = 'connecting';
   fn(currentStatus);
 
   return () => {
@@ -142,9 +128,6 @@ export function subscribeStatus(fn) {
   };
 }
 
-/**
- * Get current socket readyState
- */
 export function getSocketReadyState() {
   return socket ? socket.readyState : WebSocket.CLOSED;
 }

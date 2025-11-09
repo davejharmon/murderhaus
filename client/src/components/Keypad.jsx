@@ -1,81 +1,124 @@
 // src/components/Keypad.jsx
-import { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { send } from '../ws';
-import { MAX_PLAYERS } from '@shared/constants.js';
 
-export const Keypad = ({ player, activeActions = [], onKeypress }) => {
+export const Keypad = ({ player }) => {
   if (!player) return <div>Loading player...</div>;
 
-  const [selection, setSelection] = useState(player.selection ?? null);
-  const [isConfirmed, setIsConfirmed] = useState(player.isConfirmed ?? false);
+  // Determine active actions
+  const selectionAction =
+    player.availableActions.find((a) => a.type === 'selection') ?? null;
+  const interruptActions = player.availableActions.filter(
+    (a) => a.type === 'interrupt'
+  );
 
-  const actionType = activeActions[0] || null;
-  const validTargets = player.activeActionTargets?.[actionType] ?? [];
-
-  useEffect(() => {
-    setSelection(player.selection ?? null);
-    setIsConfirmed(player.isConfirmed ?? false);
-  }, [player.selection, player.isConfirmed]);
+  // Current selection state
+  const selection = selectionAction
+    ? player.selections[selectionAction.name] ?? null
+    : null;
+  const isConfirmed = selectionAction
+    ? player.confirmedSelections[selectionAction.name] ?? false
+    : false;
 
   const handleClick = (key) => {
-    if (isConfirmed && key !== 'interrupt') return; // keypad locked after confirm, except interrupt
-
-    if (key === 'confirm') {
-      if (!selection) return;
-      setIsConfirmed(true);
-      send('PLAYER_CONFIRM_ACTION', {
-        playerId: player.id,
-        action: actionType,
-      });
-    } else if (key === 'interrupt') {
-      send('PLAYER_INTERRUPT', { playerId: player.id });
-    } else {
+    // Numeric selection keys
+    if (typeof key === 'number' && selectionAction) {
       const target = selection === key ? null : key;
-      setSelection(target);
       send('PLAYER_ACTION', {
         playerId: player.id,
-        action: actionType,
+        action: selectionAction.name,
         target,
       });
     }
 
-    // Optional callback
-    if (onKeypress) onKeypress(key);
+    // Confirm button
+    else if (key === 'confirm' && selectionAction && selection != null) {
+      send('PLAYER_CONFIRM_ACTION', {
+        playerId: player.id,
+        action: selectionAction.name,
+      });
+    }
+
+    // Interrupts
+    else if (key === 'A' || key === 'B') {
+      const idx = key === 'A' ? 0 : 1;
+      const interrupt = interruptActions[idx];
+      if (interrupt) {
+        send('PLAYER_INTERRUPT', {
+          playerId: player.id,
+          action: interrupt.name,
+        });
+      }
+    }
   };
 
-  // Buttons 1–MAX_PLAYERS
-  const numberButtons = Array.from({ length: MAX_PLAYERS }, (_, i) => {
+  // Numeric buttons 1–9
+  const numericButtons = Array.from({ length: 9 }, (_, i) => {
     const id = i + 1;
-    const isValid = validTargets.includes(id);
-    const isSelected = selection === id;
-
+    const disabled =
+      !selectionAction || !selectionAction.validTargets.includes(id);
+    const selected = selection === id;
     return (
       <Button
         key={id}
         label={id}
         onClick={() => handleClick(id)}
-        disabled={!isValid && !isSelected}
-        state={isSelected ? 'selected' : 'unlocked'}
+        state={selected ? 'selected' : 'unlocked'}
+        disabled={disabled}
       />
     );
   });
 
+  // Last 3 buttons: A (Interrupt 1), B (Interrupt 2), C (Confirm)
+  const buttonA = (
+    <Button
+      key='A'
+      label='A'
+      onClick={() => handleClick('A')}
+      state={
+        interruptActions[0] &&
+        !player.interruptUsedMap?.[interruptActions[0].name]
+          ? 'unlocked'
+          : 'disabled'
+      }
+      disabled={
+        !interruptActions[0] ||
+        player.interruptUsedMap?.[interruptActions[0].name]
+      }
+    />
+  );
+
+  const buttonB = (
+    <Button
+      key='B'
+      label='B'
+      onClick={() => handleClick('B')}
+      state={
+        interruptActions[1] &&
+        !player.interruptUsedMap?.[interruptActions[1].name]
+          ? 'unlocked'
+          : 'disabled'
+      }
+      disabled={
+        !interruptActions[1] ||
+        player.interruptUsedMap?.[interruptActions[1].name]
+      }
+    />
+  );
+
+  const buttonC = (
+    <Button
+      key='C'
+      label='C'
+      onClick={() => handleClick('confirm')}
+      state={isConfirmed ? 'confirmed' : 'unlocked'}
+      disabled={!selectionAction || selection == null || isConfirmed}
+    />
+  );
+
   return (
     <div style={styles.keypad}>
-      {numberButtons}
-      <Button
-        label='Confirm'
-        onClick={() => handleClick('confirm')}
-        disabled={!selection || isConfirmed}
-        state={isConfirmed ? 'confirmed' : 'unlocked'}
-      />
-      <Button
-        label='Interrupt'
-        onClick={() => handleClick('interrupt')}
-        disabled={player.interruptUsed} // optional flag to prevent multiple
-        state={player.interruptUsed ? 'disabled' : 'unlocked'}
-      />
+      {[...numericButtons, buttonA, buttonB, buttonC]}
     </div>
   );
 };
@@ -83,7 +126,7 @@ export const Keypad = ({ player, activeActions = [], onKeypress }) => {
 const styles = {
   keypad: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)', // 3 rows × 4 cols
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '0.5rem',
     justifyItems: 'stretch',
     width: '100%',

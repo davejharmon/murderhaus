@@ -1,9 +1,12 @@
+// server/wsHandlers.js
 import { gameManager } from './GameManager.js';
-import { sendTo, broadcast } from './utils/Broadcast.js';
+import { sendTo, subscribe, publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
 
 export function handleNewConnection(ws) {
-  sendTo(ws, { type: 'GAME_STATE_UPDATE', payload: gameManager.getState() });
+  // Instead of pushing the *full* state immediately,
+  // let the client pick which channels it wants.
+  sendTo(ws, { type: 'WELCOME', payload: { message: 'Connected' } });
 }
 
 export function handleWSMessage(ws, data) {
@@ -17,6 +20,45 @@ export function handleWSMessage(ws, data) {
   const { type, payload } = msg;
 
   switch (type) {
+    // ✅ NEW: Client asks to subscribe to a channel
+    case 'SUBSCRIBE': {
+      const { channel } = payload;
+      if (!channel)
+        return sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: 'Missing channel' },
+        });
+      subscribe(ws, channel);
+      sendTo(ws, { type: 'SUBSCRIBED', payload: { channel } });
+      break;
+    }
+
+    // ✅ REGISTER PLAYER (host or client calling it)
+    case 'REGISTER_PLAYER': {
+      const { id } = payload;
+      if (id == null)
+        return sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: 'Missing player id' },
+        });
+
+      const player = gameManager.registerPlayer(id);
+
+      // Auto-subscribe this client to its personal update channel
+      subscribe(ws, `PLAYER_UPDATE:${id}`);
+
+      // Also subscribe all players to shared state slices
+      subscribe(ws, 'GAME_META_UPDATE');
+      subscribe(ws, 'PLAYERS_UPDATE');
+      subscribe(ws, 'LOG_UPDATE');
+
+      // Immediate callback: send the current player object
+      sendTo(ws, { type: `PLAYER_UPDATE:${id}`, payload: player });
+
+      sendTo(ws, { type: 'REGISTERED', payload: { id } });
+      break;
+    }
+
     case 'PLAYER_SELECT': {
       const { playerId, actionName, value } = payload;
       const player = gameManager.getPlayer(playerId);
@@ -31,6 +73,8 @@ export function handleWSMessage(ws, data) {
         `Player ${playerId} selected ${value} for ${actionName}`,
         'action'
       );
+
+      // Will soon replace with granular update — leave for now.
       gameManager.broadcastState();
       break;
     }
@@ -46,25 +90,30 @@ export function handleWSMessage(ws, data) {
 
       player.handleConfirm(actionName);
       logger.log(`Player ${playerId} confirmed ${actionName}`, 'action');
+
       gameManager.broadcastState();
       break;
     }
 
     case 'PLAYER_INTERRUPT': {
       const { playerId, actionName = null } = payload;
-      if (actionName == null)
+      const player = gameManager.getPlayer(playerId);
+
+      if (!player || !actionName)
         return sendTo(ws, {
           type: 'ERROR',
-          payload: { message: 'No action keyed to interrupt' },
+          payload: { message: 'Invalid interrupt' },
         });
 
       const success = player.handleInterrupt(actionName);
       sendTo(ws, { type: 'INTERRUPT_RESULT', payload: { success } });
+
       if (success)
         logger.log(
           `Player ${playerId} used interrupt: ${actionName}`,
           'action'
         );
+
       gameManager.broadcastState();
       break;
     }
@@ -72,17 +121,15 @@ export function handleWSMessage(ws, data) {
     case 'UPDATE_PLAYER_NAME': {
       const { id, name } = payload;
       const player = gameManager.getPlayer(id);
-      if (!player) {
+      if (!player)
         return sendTo(ws, {
           type: 'ERROR',
           payload: { message: 'Player not found' },
         });
-      }
 
       player.name = name;
       logger.log(`Player ${id} changed name to ${name}`, 'action');
 
-      // Broadcast the updated state to everyone
       gameManager.broadcastState();
       break;
     }
@@ -101,29 +148,8 @@ export function handleWSMessage(ws, data) {
       gameManager.nextPhase();
       break;
 
-    case 'REGISTER_PLAYER': {
-      const { id } = payload;
-      if (id == null) {
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Missing player id' },
-        });
-      }
-
-      const player = gameManager.registerPlayer(id);
-
-      // Send updated state to all clients
-      gameManager.broadcastState();
-      break;
-    }
-
     default:
-      logger.log(
-        `Received unknown message type: ${type} with payload: ${JSON.stringify(
-          payload
-        )}`,
-        'error'
-      );
+      logger.log(`Unknown message type: ${type}`, 'error');
       sendTo(ws, {
         type: 'ERROR',
         payload: { message: `Unknown message type: ${type}` },

@@ -1,34 +1,43 @@
 // src/pages/Player.jsx
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { send } from '../ws';
+import { send, subscribe } from '../ws';
 import { Bulb } from '../components/Bulb';
 import { Keypad } from '../components/Keypad';
+import { useGameState } from '../hooks/useGameState';
 import styles from './Player.module.css';
 
-export default function Player({
-  id: propId,
-  compact = false,
-  gameState = null,
-  wsStatus = 'disconnected',
-}) {
+export default function Player({ compact = false, id }) {
   const params = useParams();
-  const playerId = propId !== undefined ? Number(propId) : Number(params.id);
+  const playerId = Number(id ?? params.id); // prop first, then route param
   if (isNaN(playerId)) throw new Error('Invalid player ID');
 
-  // Register player once when gameState is available
+  const { wsStatus, gameMeta, me, setMe } = useGameState(
+    ['PLAYER_UPDATE', 'GAME_META_UPDATE'],
+    playerId
+  );
+
+  const registeredRef = useRef(false);
+
+  // Subscribe to this player's updates
   useEffect(() => {
-    if (!gameState) return;
-    send('REGISTER_PLAYER', { id: playerId });
-  }, [playerId, gameState]);
+    const unsub = subscribe(`PLAYER_UPDATE:${playerId}`, setMe);
+    return () => unsub();
+  }, [playerId, setMe]);
 
-  if (!gameState)
-    return <div className={styles.loading}>Loading... (WS: {wsStatus})</div>;
+  // Register player once per mount
+  useEffect(() => {
+    if (!registeredRef.current) {
+      send('REGISTER_PLAYER', { id: playerId });
+      registeredRef.current = true;
+    }
+  }, [playerId]);
 
-  const me = gameState.players?.find((p) => p?.id === playerId);
   if (!me)
     return (
-      <div className={styles.loading}>Registering Player {playerId}...</div>
+      <div className={styles.loading}>
+        Registering Player {playerId}... (WS: {wsStatus})
+      </div>
     );
 
   const roleColor = me.color || 'gray';
@@ -40,16 +49,15 @@ export default function Player({
           <div className={styles.number}>{me.id}</div>
           <div className={styles.name}>{me.name}</div>
           <div className={styles.role} style={{ color: roleColor }}>
-            {me.role}
+            {me.role || 'Unknown'}
           </div>
+
           <div className={styles.bulb}>
-            <Bulb player={me} phase={gameState.phase} />
+            <Bulb player={me} size={40} showConfirmed />
           </div>
+
           <div className={styles.keypadWrapper}>
-            <Keypad
-              player={me}
-              actionType={me.activeActions?.[0] ?? null} // null disables buttons
-            />
+            <Keypad player={me} activeActions={me.availableActions || []} />
           </div>
         </div>
       </div>

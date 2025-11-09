@@ -1,0 +1,21 @@
+/* src/components/History.module.css */
+
+.historyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* Make the latest (last) log entry bold */
+.historyList li:last-child {
+  font-weight: bold;
+}

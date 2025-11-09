@@ -2,48 +2,39 @@
 import React, { useMemo } from 'react';
 import { send } from '../ws';
 import { Button } from '../components/Button';
-import { PlayerRow } from '../components/PlayerRow';
+import { PlayerCard } from '../components/PlayerCard';
+import { useGameState } from '../hooks/useGameState';
+import History from '../components/History';
 import styles from './Host.module.css';
 
-// Memoized log entry
-const LogEntry = React.memo(({ entry }) => {
-  const { message, type = 'system', timestamp } = entry;
-  const typeColors = {
-    system: '#999',
-    player: '#999',
-    murder: '#d32f2f',
-    default: '#333',
-  };
-  const color = typeColors[type] || typeColors.default;
-  const ts = new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+export default function Host() {
+  const { players = [], gameMeta } = useGameState([
+    'PLAYERS_UPDATE',
+    'GAME_META_UPDATE',
+  ]);
 
-  return (
-    <li style={{ color }}>
-      [{ts}] {message}
-    </li>
-  );
-});
+  const { phase, gameStarted = false, dayCount = 0 } = gameMeta;
 
-export default function Host({ gameState }) {
-  const players = gameState?.players?.filter(Boolean) || [];
-  const gameStarted = gameState?.gameStarted ?? false;
-  const dayCount = gameState?.dayCount ?? null;
-  const phase = gameState?.phase ?? null;
-  const log = gameState?.log ?? [];
-
-  // Memoize vote selectors
+  // Compute vote selectors for each player
   const voteSelectorsByPlayer = useMemo(() => {
     const map = {};
     players.forEach((target) => {
-      map[target.id] = players
-        .filter((p) => p.selections?.[0] === target.id)
-        .map((p) => ({
-          id: p.id,
-          isConfirmed: p.confirmedSelections?.includes(target.id),
-        }));
+      const selectors = players
+        .map((p) => {
+          if (!p.selections || !p.confirmedSelections) return null;
+
+          const confirmed = Object.entries(p.confirmedSelections).some(
+            ([action, val]) => val === target.id
+          );
+          const selected = Object.entries(p.selections).some(
+            ([action, val]) => val === target.id
+          );
+
+          return selected ? { id: p.id, isConfirmed: confirmed } : null;
+        })
+        .filter(Boolean);
+
+      map[target.id] = selectors;
     });
     return map;
   }, [players]);
@@ -55,7 +46,7 @@ export default function Host({ gameState }) {
           <h1>Host Dashboard</h1>
           <h2>
             {gameStarted
-              ? `DAY ${dayCount}, PHASE: ${phase}`
+              ? `DAY ${dayCount}, PHASE: ${phase || 'Unknown'}`
               : 'GAME NOT STARTED'}
           </h2>
         </header>
@@ -72,7 +63,7 @@ export default function Host({ gameState }) {
               />
               <Button
                 label='END GAME'
-                onClick={() => alert('End Game not implemented yet')}
+                onClick={() => send('END_GAME')}
                 state='selected'
               />
             </div>
@@ -82,10 +73,10 @@ export default function Host({ gameState }) {
         <section className={styles.playersSection}>
           <div className={styles.playerList}>
             {players.map((p) => (
-              <PlayerRow
+              <PlayerCard
                 key={p.id}
                 player={p}
-                actions={p.hostActions.map((actionName) => ({
+                actions={(p.hostActions || []).map((actionName) => ({
                   label: actionName.toUpperCase(),
                   action: () =>
                     send('HOST_ACTION', { playerId: p.id, action: actionName }),
@@ -99,15 +90,7 @@ export default function Host({ gameState }) {
       </div>
 
       <div className={styles.rightColumn}>
-        <div className={styles.historyHeader}>
-          <h3>History</h3>
-        </div>
-
-        <ul className={styles.historyList}>
-          {log.map((entry, i) => (
-            <LogEntry key={i} entry={entry} />
-          ))}
-        </ul>
+        <History />
       </div>
     </div>
   );
