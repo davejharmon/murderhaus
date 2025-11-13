@@ -15,7 +15,6 @@ export const PlayerCard = React.memo(function PlayerCard({
 }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
-
   // Sync name with game state unless editing
   useEffect(() => {
     if (!isEditing) setName(player.name || '');
@@ -47,7 +46,6 @@ export const PlayerCard = React.memo(function PlayerCard({
       <NumberEmoji key={`vote-${id}`} number={id} isConfirmed={isConfirmed} />
     ));
   }, [voteSelectors]);
-
   return (
     <div
       className={`${styles.row} ${!player.isAlive ? styles.dead : ''} ${

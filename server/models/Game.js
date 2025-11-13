@@ -13,15 +13,16 @@ export class Game {
   constructor() {
     this.players = [];
     this.phaseIndex = 0;
-    this.gameStarted = false;
     this.dayCount = 0;
-    this.currentEvents = []; // stack of events
+    this.gameStarted = false;
+    this.currentEvents = [];
   }
 
   /** --- Player management --- */
   addPlayer(id) {
-    if (this.players.length >= MAX_PLAYERS)
+    if (this.players.length >= MAX_PLAYERS) {
       return { success: false, message: 'Max players reached' };
+    }
 
     const player = new Player(id);
     this.players.push(player);
@@ -32,6 +33,7 @@ export class Game {
     const index = this.players.findIndex((p) => p.id === id);
     if (index === -1)
       return { success: false, message: `Player ${id} not found` };
+
     this.players.splice(index, 1);
     return { success: true, message: `Player ${id} removed` };
   }
@@ -44,31 +46,41 @@ export class Game {
   }
 
   getPlayer(id) {
-    return this.players.find((p) => p.id === id);
+    return this.players.find((p) => p.id === id) || null;
   }
 
   /** --- Phase management --- */
   getCurrentPhase() {
-    const index = this.phaseIndex;
-    if (typeof index !== 'number' || index < 0 || index >= PHASES.length) {
+    const phase = PHASES[this.phaseIndex];
+    if (!phase) {
       logger.log(
-        `Invalid phaseIndex: ${index}, resetting`,
+        `Invalid phaseIndex: ${this.phaseIndex}, resetting`,
         'error',
         'Game.getCurrentPhase'
       );
-      return { name: null, validActions: [], validHostActions: [] };
+      return { name: null, playerActions: [], hostActions: [], events: [] };
     }
-    return PHASES[index];
+    return phase;
   }
 
   nextPhase() {
     this.phaseIndex = (this.phaseIndex + 1) % PHASES.length;
     if (this.getCurrentPhase().name === 'day') this.dayCount++;
+
     // Reset per-phase usage
     this.players.forEach((p) => {
       p.actionUsage = {};
       p.interruptUsedMap = {};
     });
+
+    // Update available actions for all players
+    this.players.forEach((p) =>
+      p.update({
+        phaseName: this.getCurrentPhase().name,
+        gameStarted: this.gameStarted,
+        game: this,
+      })
+    );
 
     return {
       success: true,
@@ -76,6 +88,8 @@ export class Game {
     };
   }
 
+  /** --- Game lifecycle --- */
+  // In Game.js
   start() {
     if (this.gameStarted)
       return { success: false, message: 'Game already started' };
@@ -84,26 +98,22 @@ export class Game {
 
     this.gameStarted = true;
     this.dayCount = 1;
-    this.phaseIndex = 0; // start at day
-    this.assignPlayers();
+    this.phaseIndex = 0;
 
-    return {
-      success: true,
-      message: `Game started. It is now ${this.getCurrentPhase().name} ${
-        this.dayCount
-      }.`,
-    };
+    this.assignRoles(); // roles are assigned but player updates are minimal
+
+    return { success: true, message: 'Game started.' };
   }
 
-  assignPlayers() {
+  assignRoles() {
     const total = this.players.length;
     const minimum = MINIMUM_ROLES[total] || {};
     const rolesToAssign = [];
 
-    // Fill minimum roles
-    for (const [roleName, count] of Object.entries(minimum)) {
+    // Minimum roles
+    Object.entries(minimum).forEach(([roleName, count]) => {
       for (let i = 0; i < count; i++) rolesToAssign.push(ROLES[roleName]);
-    }
+    });
 
     // Fill remaining with default role
     while (rolesToAssign.length < total)
@@ -118,11 +128,30 @@ export class Game {
       ];
     }
 
+    // Assign to players
     this.players.forEach((player, idx) => {
-      player.assignRole(rolesToAssign[idx].name);
-      player.availableActions = [];
-      player.actionUsage = {};
-      player.interruptUsedMap = {};
+      const role = rolesToAssign[idx];
+      player.assignRole(role.name);
     });
+  }
+
+  /** --- Convenience helpers --- */
+  getAlivePlayers() {
+    return this.players.filter((p) => p.isAlive);
+  }
+
+  getPlayersByRole(roleName) {
+    return this.players.filter((p) => p.role?.name === roleName);
+  }
+
+  isGameOver() {
+    // Example: check if all werewolves dead or villagers lost
+    const werewolvesAlive = this.getPlayersByRole('werewolf').some(
+      (p) => p.isAlive
+    );
+    const villagersAlive = this.getPlayersByRole('villager').some(
+      (p) => p.isAlive
+    );
+    return !werewolvesAlive || !villagersAlive;
   }
 }

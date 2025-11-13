@@ -79,15 +79,16 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
-    case 'START_SELECTION_EVENT': {
-      const { actionName } = payload;
-      gameManager.startSelection(actionName);
+    // --- Refactored event messages ---
+    case 'START_EVENT': {
+      const { actionName, initiatedBy } = payload;
+      gameManager.startEvent(actionName, initiatedBy || 'host');
       break;
     }
 
-    case 'REVEAL_SELECTION_EVENT': {
+    case 'RESOLVE_EVENT': {
       const { actionName } = payload;
-      gameManager.revealSelection(actionName);
+      gameManager.resolveEvent(actionName);
       break;
     }
 

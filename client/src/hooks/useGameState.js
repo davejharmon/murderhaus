@@ -1,94 +1,39 @@
 // src/hooks/useGameState.js
-import { useEffect, useState, useCallback } from 'react';
-import { subscribe, subscribeStatus } from '../ws';
+import { useState, useEffect } from 'react';
+import { initGameBus, listenToSlice, getGameData } from '../state/GameBus';
+import { subscribeStatus } from '../ws';
 
-/**
- * Hook to manage global game state and per-player state slices
- * @param {string[]} channels - optional list of slices to subscribe to
- * @param {number|null} playerId - optional player ID for personal slice
- */
 export function useGameState(channels = [], playerId = null) {
   const [wsStatus, setWsStatus] = useState('disconnected');
-  const [players, setPlayers] = useState([]);
-  const [gameMeta, setGameMeta] = useState({
-    phase: null,
-    gameStarted: false,
-    dayCount: 0,
-  });
-  const [log, setLog] = useState([]);
-  const [me, setMe] = useState(null); // per-player slice
+  const baseData = getGameData();
 
-  // Generic handler for messages
-  const handleMessage = useCallback(
-    (type, payload) => {
-      switch (type) {
-        case 'PLAYERS_UPDATE':
-          setPlayers(payload);
-          break;
-
-        case 'GAME_META_UPDATE':
-          setGameMeta(payload);
-          break;
-
-        case 'LOG_UPDATE':
-          setLog(payload);
-          break;
-
-        default:
-          if (type.startsWith('PLAYER_UPDATE:')) {
-            const id = Number(type.split(':')[1]);
-            if (playerId === id) setMe(payload);
-            setPlayers((prev) => prev.map((p) => (p.id === id ? payload : p)));
-          }
-          break;
-      }
-    },
-    [playerId]
+  const [players, setPlayers] = useState(baseData.players);
+  const [gameMeta, setGameMeta] = useState(baseData.gameMeta);
+  const [log, setLog] = useState(baseData.log);
+  const [me, setMe] = useState(
+    playerId ? baseData.playerSlices.get(playerId) : null
   );
 
   useEffect(() => {
-    // Subscribe to WebSocket status
+    initGameBus();
     const unsubStatus = subscribeStatus(setWsStatus);
-
     const unsubs = [];
 
-    if (channels.includes('PLAYERS_UPDATE')) {
-      unsubs.push(
-        subscribe('PLAYERS_UPDATE', (payload) =>
-          handleMessage('PLAYERS_UPDATE', payload)
-        )
-      );
-    }
+    if (channels.includes('PLAYERS_UPDATE'))
+      unsubs.push(listenToSlice('PLAYERS_UPDATE', setPlayers));
+    if (channels.includes('GAME_META_UPDATE'))
+      unsubs.push(listenToSlice('GAME_META_UPDATE', setGameMeta));
+    if (channels.includes('LOG_UPDATE'))
+      unsubs.push(listenToSlice('LOG_UPDATE', setLog));
 
-    if (channels.includes('GAME_META_UPDATE')) {
-      unsubs.push(
-        subscribe('GAME_META_UPDATE', (payload) =>
-          handleMessage('GAME_META_UPDATE', payload)
-        )
-      );
-    }
-
-    if (channels.includes('LOG_UPDATE')) {
-      unsubs.push(
-        subscribe('LOG_UPDATE', (payload) =>
-          handleMessage('LOG_UPDATE', payload)
-        )
-      );
-    }
-
-    if (playerId != null) {
-      unsubs.push(
-        subscribe(`PLAYER_UPDATE:${playerId}`, (payload) =>
-          handleMessage(`PLAYER_UPDATE:${playerId}`, payload)
-        )
-      );
-    }
+    if (playerId != null)
+      unsubs.push(listenToSlice('PLAYER_UPDATE', setMe, playerId));
 
     return () => {
       unsubStatus();
-      unsubs.forEach((unsub) => unsub());
+      unsubs.forEach((u) => u());
     };
-  }, [channels, playerId, handleMessage]);
+  }, [channels, playerId]);
 
   return { wsStatus, players, gameMeta, log, me, setMe };
 }

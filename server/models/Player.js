@@ -1,10 +1,5 @@
-import {
-  ROLES,
-  PHASES,
-  PREGAME_HOST_ACTIONS,
-  ACTIONS,
-  TEAMS,
-} from '../../shared/constants.js';
+// /server/models/Player.js
+import { ROLES, PHASES, ACTIONS, TEAMS } from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
@@ -26,9 +21,6 @@ export class Player {
     this.confirmedSelections = {}; // { actionName: boolean }
     this.actionUsage = {}; // per-phase usage
     this.interruptUsedMap = {};
-
-    // Host controls
-    this.hostActions = [];
   }
 
   /** Assign a role */
@@ -40,9 +32,8 @@ export class Player {
     this.team = role.team;
     this.color = role.color ?? TEAMS[role.team]?.color ?? '#999';
 
-    // Set role actions
+    // Initialize actions & selections
     this.actions = [...role.defaultActions];
-    console.log(`Player ${this.id} assigned role ${roleName}`, this.actions);
     this.selections = {};
     this.confirmedSelections = {};
     this.actions.forEach((a) => {
@@ -51,52 +42,99 @@ export class Player {
     });
   }
 
-  /** Update per-phase available actions */
+  /** Update available actions for the current phase */
   update({ phaseName, gameStarted, game }) {
     const phase = PHASES.find((p) => p.name === phaseName);
 
-    // Map + filter available actions in one step to keep track of action strings
+    // Find currently active events for this player
+    const activeEventNames = game.currentEvents
+      .filter((e) => !e.resolved && e.eligible.includes(this.id))
+      .map((e) => e.action);
+
     this.availableActions = this.actions
       .map((actionName) => {
-        const actionDef = ACTIONS[actionName];
-        if (!actionDef) {
-          console.log(`Missing action for player ${this.id}:`, actionName);
-          return null;
-        }
-        return { name: actionName, def: actionDef };
+        const def = ACTIONS[actionName];
+        if (!def) return null;
+
+        // Always available if flagged, or if currently active event
+        const eventActive = activeEventNames.includes(actionName);
+        const conditionMet = def.conditions(
+          { actor: this, target: null },
+          game
+        );
+        const phaseAllowed = phase?.playerActions?.includes(def.name);
+        const available = def.alwaysAvailable
+          ? conditionMet
+          : (phaseAllowed && conditionMet) || eventActive;
+
+        return available ? def : null;
       })
-      .filter((x) => {
-        if (!x) return false;
-        const { def } = x;
-        const cond = def.conditions(this, game);
-        const phaseOk = phase?.validActions.includes(def.name);
-        const result = def.alwaysAvailable ? cond : phaseOk && cond;
-
-        if (!result) {
-          console.log(`Player ${this.id} filtered out action:`, def.name, {
-            phaseOk,
-            cond,
-          });
-        }
-
-        return result;
-      })
-      .map((x) => x.def); // keep only the ACTIONS object
-
-    // Host actions
-    if (!gameStarted) {
-      this.hostActions = [...PREGAME_HOST_ACTIONS];
-    } else if (phase) {
-      this.hostActions = phase.validHostActions.filter((a) => {
-        if (a === 'kill') return this.isAlive;
-        if (a === 'revive') return !this.isAlive;
-        return true;
-      });
-    } else {
-      this.hostActions = [];
-    }
+      .filter(Boolean);
   }
 
+  /** Helper: can perform action this phase */
+  canPerform(actionName) {
+    return this.availableActions.some((a) => a.name === actionName);
+  }
+
+  /** Perform a regular action on a target */
+  performAction(actionName, game, targetId) {
+    const actionDef = this.availableActions.find((a) => a.name === actionName);
+    if (!actionDef) return { success: false, message: 'Action unavailable' };
+
+    const usedCount = this.actionUsage[actionName] || 0;
+    if (usedCount >= actionDef.maxPerPhase)
+      return { success: false, message: 'Action already used this phase' };
+
+    const target = game.getPlayer(targetId);
+    if (!actionDef.conditions(this, game, target))
+      return { success: false, message: 'Conditions not met' };
+
+    this.selections[actionName] = targetId;
+    this.actionUsage[actionName] = usedCount + 1;
+
+    return {
+      success: true,
+      message: `Action ${actionName} performed by Player ${this.id}`,
+    };
+  }
+
+  /** Confirm a previously made selection */
+  confirmAction(actionName) {
+    const selection = this.selections[actionName];
+    if (selection == null)
+      return { success: false, message: 'No selection to confirm' };
+
+    this.confirmedSelections[actionName] = selection;
+    return {
+      success: true,
+      message: `Player ${this.id} confirmed ${actionName}`,
+    };
+  }
+
+  /** Perform an interrupt-type action */
+  performInterrupt(actionName, game) {
+    const actionDef = this.availableActions.find(
+      (a) => a.name === actionName && a.type === 'interrupt'
+    );
+    if (!actionDef) return { success: false, message: 'Interrupt unavailable' };
+
+    if (this.interruptUsedMap[actionName])
+      return { success: false, message: 'Interrupt already used' };
+
+    if (!actionDef.conditions(this, game))
+      return { success: false, message: 'Conditions not met for interrupt' };
+
+    this.interruptUsedMap[actionName] = true;
+    this.actionUsage[actionName] = (this.actionUsage[actionName] || 0) + 1;
+
+    return {
+      success: true,
+      message: `Player ${this.id} used interrupt ${actionName}`,
+    };
+  }
+
+  /** Public state for clients */
   getPublicState() {
     return {
       id: this.id,
@@ -107,7 +145,6 @@ export class Player {
       isAlive: this.isAlive,
       actions: this.actions,
       availableActions: this.availableActions,
-      hostActions: this.hostActions,
       selections: this.selections,
       confirmedSelections: this.confirmedSelections,
     };

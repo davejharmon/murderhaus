@@ -5,23 +5,70 @@ class Logger {
     this.maxEntries = maxEntries;
   }
 
-  log(message, type = 'system', context = null, errorObj = null) {
+  /**
+   * Generic log method
+   * @param {string} message - Message to log
+   * @param {string} type - info | warn | error | system
+   * @param {object} options - Additional options
+   *   options.context - string or object
+   *   options.player - player object to auto-include info
+   *   options.error - Error object
+   */
+  log(
+    message,
+    type = 'system',
+    { context = null, player = null, error = null } = {}
+  ) {
+    const timestamp = new Date().toISOString();
+
+    // Auto-build context from player if provided
+    let contextStr = '';
+    if (player) {
+      const parts = [`id:${player.id}`];
+      if (player.role) parts.push(`role:${player.role}`);
+      if (player.team) parts.push(`team:${player.team}`);
+      contextStr = parts.join(', ');
+      if (context)
+        contextStr += ` | ${
+          typeof context === 'string' ? context : JSON.stringify(context)
+        }`;
+    } else if (context) {
+      contextStr =
+        typeof context === 'string' ? context : JSON.stringify(context);
+    }
+
     const entry = {
-      timestamp: new Date().toISOString(),
+      timestamp,
       type,
       message,
-      context,
-      stack: errorObj?.stack || null,
+      context: contextStr || null,
+      stack: error?.stack ?? null,
     };
 
     this.entries.push(entry);
     if (this.entries.length > this.maxEntries) this.entries.shift();
 
-    let output = `[${type.toUpperCase()}] ${entry.timestamp}: ${message}`;
-    if (context) output += ` | context: ${context}`;
-    if (errorObj) output += `\n${errorObj.stack}`;
+    // Console output
+    const stackStr = error?.stack ? `\n${error.stack}` : '';
+    console.log(
+      `[${type.toUpperCase()}] ${timestamp}: ${message}${
+        contextStr ? ' | ' + contextStr : ''
+      }${stackStr}`
+    );
+  }
 
-    console.log(output);
+  // Helper shortcuts
+  info(msg, opts = {}) {
+    this.log(msg, 'info', opts);
+  }
+  warn(msg, opts = {}) {
+    this.log(msg, 'warn', opts);
+  }
+  error(msg, opts = {}) {
+    this.log(msg, 'error', opts);
+  }
+  system(msg, opts = {}) {
+    this.log(msg, 'system', opts);
   }
 
   getEntries(type) {

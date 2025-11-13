@@ -7,9 +7,14 @@ export class ViewManager {
     this.game = game;
   }
 
+  setEvents(events) {
+    this.events = events;
+  }
+
   publishPlayer(player) {
     if (!player) return;
     publish(`PLAYER_UPDATE:${player.id}`, player.getPublicState());
+    this.publishAllPlayers();
   }
 
   publishAllPlayers() {
@@ -19,11 +24,17 @@ export class ViewManager {
 
   publishGameMeta() {
     const phase = this.game.getCurrentPhase?.() ?? { name: null };
+    const pendingEvents = this.events?.getPendingEvents?.() ?? [];
+    console.log(
+      '[DEBUG] Publishing GAME_META_UPDATE, pendingEvents:',
+      pendingEvents
+    );
     publish('GAME_META_UPDATE', {
       phase: phase.name,
       gameStarted: this.game.gameStarted,
       dayCount: this.game.dayCount,
       currentEvents: this.game.currentEvents,
+      pendingEvents,
     });
   }
 

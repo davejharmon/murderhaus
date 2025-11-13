@@ -24,7 +24,8 @@ wss.on('connection', (ws) => {
     try {
       handleWSMessage(ws, msg);
     } catch (err) {
-      logger.log(`⚠️: ${err.message}`, 'error');
+      logger.log(`⚠️ Error handling WS message: ${err.message}`, 'error');
+      logger.log(`Stack: ${err.stack}`, 'error');
       sendTo(ws, {
         type: 'ERROR',
         payload: { message: 'Internal server error' },

@@ -6,7 +6,6 @@ import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import styles from './Host.module.css';
-import { ACTIONS } from '../../../shared/constants';
 
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
@@ -14,23 +13,35 @@ export default function Host() {
     'GAME_META_UPDATE',
   ]);
 
-  const { phase, gameStarted = false, dayCount = 0 } = gameMeta;
-  // Determine if any player has a selectable action in the current phase
-  const selectionActionsAvailable = useMemo(() => {
-    const actionsSet = new Set();
+  const {
+    phase,
+    gameStarted = false,
+    dayCount = 0,
+    pendingEvents = [],
+    currentEvents = [],
+  } = gameMeta;
 
-    players.forEach((player) => {
-      (player.availableActions || []).forEach((actionDef) => {
-        if (actionDef.type === 'selection') {
-          actionsSet.add(actionDef.name); // actionDef is full object
-        }
-      });
+  // --- Host Event Buttons ---
+  const hostEventButtons = useMemo(() => {
+    if (!gameStarted || !pendingEvents?.length) return [];
+
+    return pendingEvents.map((actionName) => {
+      const activeEvent = currentEvents?.find(
+        (e) => e.action === actionName && !e.resolved
+      );
+
+      return {
+        actionName,
+        isActive: !!activeEvent,
+        label: `${
+          activeEvent ? 'RESOLVE' : 'START'
+        } ${actionName.toUpperCase()}`,
+        sendType: activeEvent ? 'RESOLVE_EVENT' : 'START_EVENT',
+      };
     });
+  }, [gameStarted, pendingEvents, currentEvents]);
 
-    return Array.from(actionsSet); // e.g., ['vote', 'kill']
-  }, [players]);
-
-  // Compute vote selectors for each player
+  // --- Vote Selectors by Player ---
   const voteSelectorsByPlayer = useMemo(() => {
     const map = {};
     players.forEach((target) => {
@@ -38,14 +49,14 @@ export default function Host() {
         .map((p) => {
           if (!p.selections || !p.confirmedSelections) return null;
 
-          const confirmed = Object.entries(p.confirmedSelections).some(
-            ([action, val]) => val === target.id
+          const isConfirmed = Object.entries(p.confirmedSelections).some(
+            ([_, val]) => val === target.id
           );
-          const selected = Object.entries(p.selections).some(
-            ([action, val]) => val === target.id
+          const isSelected = Object.entries(p.selections).some(
+            ([_, val]) => val === target.id
           );
 
-          return selected ? { id: p.id, isConfirmed: confirmed } : null;
+          return isSelected ? { id: p.id, isConfirmed } : null;
         })
         .filter(Boolean);
 
@@ -58,7 +69,7 @@ export default function Host() {
     <div className={styles.container}>
       <div className={styles.leftColumn}>
         <header className={styles.header}>
-          <h1>Host Dashboard</h1>
+          <h1>{pendingEvents}</h1>
           <h2>
             {gameStarted
               ? `DAY ${dayCount}, PHASE: ${phase || 'Unknown'}`
@@ -84,35 +95,18 @@ export default function Host() {
             </div>
           )}
 
-          {gameStarted && selectionActionsAvailable.length > 0 && (
+          {hostEventButtons.length > 0 && (
             <div className={styles.selectionControls}>
-              {selectionActionsAvailable.map((actionName) => {
-                const activeEvent = gameMeta.currentEvents?.find(
-                  (e) =>
-                    e.type === 'selection' &&
-                    e.action === actionName &&
-                    !e.resolved
-                );
-                const isActive = !!activeEvent;
-
-                return (
+              {hostEventButtons.map(
+                ({ actionName, label, sendType, isActive }) => (
                   <Button
                     key={actionName}
-                    label={`${
-                      isActive ? 'REVEAL' : 'START'
-                    } ${actionName.toUpperCase()}`}
-                    onClick={() =>
-                      send(
-                        isActive
-                          ? 'REVEAL_SELECTION_EVENT'
-                          : 'START_SELECTION_EVENT',
-                        { actionName }
-                      )
-                    }
+                    label={label}
+                    onClick={() => send(sendType, { actionName })}
                     state={isActive ? 'selected' : 'unlocked'}
                   />
-                );
-              })}
+                )
+              )}
             </div>
           )}
         </section>

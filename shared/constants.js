@@ -2,86 +2,76 @@
 
 export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
 
-// Game phases
+// --- Game Phases ---
 export const PREGAME_HOST_ACTIONS = ['kick', 'assign'];
+
 export const PHASES = [
   {
     name: 'day',
     description: 'Players discuss and vote on whom to lynch.',
-    validActions: ['vote', 'interrupt'], // actions players can take during the day
-    validHostActions: ['kill', 'revive'],
+    playerActions: ['vote'], // Player-usable actions
+    hostActions: ['kill', 'revive'], // Host actions available anytime
+    events: ['vote'], // Host can start these selection events
   },
   {
     name: 'night',
     description: 'Special roles perform their night abilities.',
-    validActions: ['kill', 'protect', 'investigate', 'interrupt'], // placeholder for night actions
-    validHostActions: ['kill', 'revive'],
+    playerActions: ['kill', 'protect', 'investigate', 'commute'],
+    hostActions: ['kill', 'revive'],
+    events: ['kill', 'protect', 'investigate'],
   },
 ];
 
-// Teams
+// --- Teams ---
 export const TEAMS = {
-  villagers: {
-    name: 'Villagers',
-    color: '#4db8ff', // cooler modern blue for villagers
-  },
-  werewolves: {
-    name: 'Werewolves',
-    color: '#ff6b6b', // warm red/orange for werewolves
-  },
+  villagers: { name: 'Villagers', color: '#4db8ff' },
+  werewolves: { name: 'Werewolves', color: '#ff6b6b' },
 };
 
 // --- Player Actions ---
 export const ACTIONS = {
   vote: {
     name: 'vote',
-    type: 'selection',
+    trigger: 'event', // event | interrupt
+    returns: {
+      type: 'player', // selectable target
+      allowNone: false,
+    },
     maxPerPhase: 1,
     maxPerGame: Infinity,
-    phaseAvailability: ['day'],
-    conditions: (player) => player.isAlive,
+    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
   },
 
   kill: {
     name: 'kill',
-    type: 'selection',
+    trigger: 'event',
+    returns: { type: 'player' },
     maxPerPhase: 1,
-    maxPerGame: Infinity,
-    phaseAvailability: ['night'],
-    conditions: (player) => player.isAlive,
+    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
   },
 
   protect: {
     name: 'protect',
-    type: 'selection',
+    trigger: 'event',
+    returns: { type: 'player' },
     maxPerPhase: 1,
-    maxPerGame: Infinity,
-    phaseAvailability: ['night'],
-    conditions: (player, game, target) =>
-      player.isAlive &&
-      target?.id !== player.id && // target safe
-      game?.getCurrentPhase()?.name === 'night', // phase safe
+    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
   },
 
   investigate: {
     name: 'investigate',
-    type: 'selection',
+    trigger: 'event',
+    returns: { type: 'player' },
     maxPerPhase: 1,
-    maxPerGame: Infinity,
-    phaseAvailability: ['night'],
-    conditions: (player, game, target) =>
-      player.isAlive &&
-      target?.id !== player.id &&
-      game?.getCurrentPhase()?.name === 'night',
+    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
   },
 
   commute: {
     name: 'commute',
-    type: 'interrupt',
+    trigger: 'interrupt',
+    returns: { type: 'boolean' },
     maxPerPhase: 1,
-    phaseAvailability: ['day'],
-    conditions: (player, game) =>
-      player?.isAlive && game?.activeEvent?.type === 'vote',
+    conditions: ({ actor }) => actor?.isAlive,
   },
 };
 
@@ -90,37 +80,38 @@ export const ROLES = {
   villager: {
     name: 'villager',
     team: 'villagers',
-    color: undefined, // fallback to team
+    color: undefined,
     defaultActions: ['vote'],
   },
   werewolf: {
     name: 'werewolf',
     team: 'werewolves',
-    color: undefined, // fallback to team
+    color: '#ff6b6b',
     defaultActions: ['kill', 'vote'],
   },
   seer: {
     name: 'seer',
     team: 'villagers',
-    color: '#a1ff9b', // pleasant mint green
+    color: '#a1ff9b',
     defaultActions: ['investigate', 'vote'],
   },
   doctor: {
     name: 'doctor',
     team: 'villagers',
-    color: '#9be2ff', // soft cyan
+    color: '#9be2ff',
     defaultActions: ['protect', 'vote'],
   },
   governor: {
     name: 'governor',
     team: 'villagers',
-    color: '#ffc27b', // warm but still friendly amber
-    defaultActions: ['commute'],
+    color: '#ffc27b',
+    defaultActions: ['commute', 'vote'],
   },
 };
-// Minimum roles for auto-start, based on total players. Will assign roles until roles in game are greater than equal to each minimum, starting with the first key/value pair and only if sufficient roles of each type have not been assigned by the Host. All remaining roles will be ROLES[0].
+
+// --- Minimum roles for auto-start ---
 export const MINIMUM_ROLES = {
-  4: { werewolf: 1, seer: 1 }, // example, 4-player game
+  4: { werewolf: 1, seer: 1 },
   5: { werewolf: 1, seer: 1 },
   6: { werewolf: 1, seer: 1 },
   7: { werewolf: 1, seer: 1 },
