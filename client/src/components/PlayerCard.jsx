@@ -25,7 +25,7 @@ export const PlayerCard = React.memo(function PlayerCard({
   const handleBlur = useCallback(() => {
     setIsEditing(false);
     if (player.name !== name) {
-      send('UPDATE_PLAYER_NAME', { id: player.id, name });
+      send('HOST_UPDATE_PLAYER_NAME', { id: player.id, name });
     }
   }, [name, player.id, player.name]);
 
@@ -48,7 +48,7 @@ export const PlayerCard = React.memo(function PlayerCard({
   }, [voteSelectors]);
   return (
     <div
-      className={`${styles.row} ${!player.isAlive ? styles.dead : ''} ${
+      className={`${styles.row} ${!player.state.isAlive ? styles.dead : ''} ${
         variant === 'light' ? styles.light : ''
       }`}
       style={{ transition: '0.25s' }}

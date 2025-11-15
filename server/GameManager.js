@@ -5,6 +5,7 @@ import { HostManager } from './managers/HostManager.js';
 import { EventManager } from './managers/EventManager.js';
 import { ViewManager } from './managers/ViewManager.js';
 import { logger } from './utils/Logger.js';
+import { ACTIONS } from '../shared/constants.js';
 
 class GameManager {
   constructor() {
@@ -13,6 +14,8 @@ class GameManager {
     this.host = new HostManager(this.game);
     this.events = new EventManager(this.game);
     this.view = new ViewManager(this.game);
+
+    this.view.setEvents(this.events);
   }
 
   handleActionResult(
@@ -24,8 +27,8 @@ class GameManager {
 
     if (updateView) {
       this.view.publishLog();
-      this.view.updatePlayerViews();
-      this.view.publishGameMeta();
+      this.view.updatePlayerViews(); // includes publishGameMeta and publishAllPlayers
+      this.view.publishGameMeta(); // ensure meta is always fresh
     }
 
     if (player) this.view.publishPlayer(player);
@@ -47,68 +50,48 @@ class GameManager {
   /** --- Player management --- */
   updatePlayerName(pid, name) {
     const player = this.game.getPlayer(pid);
-    const result = this.game.updatePlayerName(pid, name);
+    if (!player) {
+      return { success: false, message: `Player ${pid} not found` };
+    }
+
+    // Use new Player.set()
+    const result = player.set('name', name);
+
+    // Send to logger + view updates
     this.handleActionResult(result, { player });
+
     return result;
   }
 
+  /** --- Game lifecycle --- */
   startGame() {
     const result = this.game.start();
 
-    // Update players now that roles are assigned
-    this.game.players.forEach((p) =>
-      p.update({
-        phaseName: this.game.getCurrentPhase().name,
-        gameStarted: true,
-        game: this.game,
-      })
-    );
-
-    // Initialize events after players have actions
+    // Initialize pending host events for the first phase
     this.events.initPendingHostEvents();
-    this.view.setEvents(this.events);
 
-    // Publish player state + game meta to clients
-    this.view.updatePlayerViews();
-
-    // Log the result without triggering another update
-    this.handleActionResult(result, { updateView: false });
+    this.handleActionResult(result);
   }
 
   nextPhase() {
     const result = this.game.nextPhase();
+
+    // Re-initialize pending host events for the new phase
     this.events.initPendingHostEvents();
-    this.game.players.forEach((p) =>
-      p.update({
-        phaseName: this.game.getCurrentPhase().name,
-        gameStarted: true,
-        game: this.game,
-      })
-    );
+
     this.handleActionResult(result);
   }
 
   endGame() {
-    this.game = new Game();
-    this.view.publishAllPlayers();
-    this.view.publishGameMeta();
-    this.view.publishLog();
+    ///
   }
 
   /** --- Player actions --- */
-  playerAction(pid, type, targetId) {
-    const result = this.actions.performAction(pid, type, targetId);
-    this.handleActionResult(result, { player: this.game.getPlayer(pid) });
-  }
+  playerInput(actorId, key) {
+    const actor = this.game.getPlayer(actorId);
 
-  playerConfirm(pid, type) {
-    const result = this.actions.confirmAction(pid, type);
-    this.handleActionResult(result, { player: this.game.getPlayer(pid) });
-  }
-
-  playerInterrupt(pid, name) {
-    const result = this.actions.performInterrupt(pid, name);
-    this.handleActionResult(result, { player: this.game.getPlayer(pid) });
+    const result = actor.handleInput(key);
+    this.handleActionResult(result, { player: actor });
   }
 
   /** --- Host actions --- */
@@ -119,12 +102,22 @@ class GameManager {
 
   /** --- Events --- */
   startEvent(actionName, initiatedBy = 'host') {
-    const result = this.events.startAction(actionName, initiatedBy);
+    // Create a new event object and get its unique ID
+    const result = this.events.startEvent(actionName, initiatedBy);
+
+    // Return or broadcast the eventId so frontend can reference it
     this.handleActionResult(result);
   }
 
-  resolveEvent(actionName) {
-    const result = this.events.resolveEvent(actionName);
+  resolveEvent(eventId) {
+    const result = this.events.resolveEvent(eventId);
+    if (!result.success) return console.warn(result.message);
+    this.handleActionResult(result);
+  }
+
+  clearEvent(eventId) {
+    const result = this.events.clearEvent(eventId);
+    if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);
   }
 }

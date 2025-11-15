@@ -1,6 +1,4 @@
-// /server/managers/EventManager.js
 import { ACTIONS } from '../../shared/constants.js';
-import { logger } from '../utils/Logger.js';
 
 export class EventManager {
   constructor(game) {
@@ -8,69 +6,42 @@ export class EventManager {
     this.pendingEvents = new Set();
   }
 
-  /** Initialize host-startable actions for this phase */
-  /** Initialize host-startable actions for this phase */
+  /** --- Initialize host-startable events for current phase --- */
   initPendingHostEvents() {
     const phase = this.game.getCurrentPhase();
-    if (!phase) {
-      console.log('[DEBUG] No current phase found.');
-      return;
-    }
+    if (!phase) return;
 
-    console.log(`[DEBUG] Initializing host actions for phase: ${phase.name}`);
-    console.log('[DEBUG] Phase events:', phase.events);
+    this.pendingEvents = new Set(
+      (phase.events || []).filter((eventName) => {
+        // Look for at least one alive player who has the action, trigger='event', and uses left
+        return this.game.players.some((player) => {
+          if (!player.state.isAlive) return false;
 
-    const startable = new Set();
-
-    phase.events?.forEach((actionName) => {
-      const actionDef = ACTIONS[actionName];
-
-      if (!actionDef) {
-        console.log(`[DEBUG] Action "${actionName}" not found in ACTIONS.`);
-        return;
-      }
-
-      if (actionDef.trigger !== 'event') {
-        console.log(
-          `[DEBUG] Action "${actionName}" skipped: trigger="${actionDef.trigger}"`
-        );
-        return;
-      }
-
-      // Only include if at least one alive player has this action
-      const playerHasAction = this.game.players.some(
-        (p) => p.isAlive && p.actions.includes(actionName)
-      );
-
-      if (playerHasAction) {
-        console.log(`[DEBUG] Action "${actionName}" added to startable.`);
-        startable.add(actionName);
-      } else {
-        console.log(
-          `[DEBUG] Action "${actionName}" skipped: no alive player has this action.`
-        );
-      }
-    });
-
-    this.pendingEvents = startable;
-    console.log('[DEBUG] Final pendingEvents:', Array.from(this.pendingEvents));
+          return player.state.actions.some(
+            (action) =>
+              action.name === eventName &&
+              action.trigger === 'event' &&
+              action.remainingUsesThisPhase > 0
+          );
+        });
+      })
+    );
   }
 
-  /** Return which host actions are available this phase */
+  /** --- Return array of pending host events --- */
   getPendingEvents() {
     return Array.from(this.pendingEvents);
   }
 
-  /** Start a new action event (vote, protect, investigate, etc.) */
-  startAction(actionName, initiatedBy = 'host') {
+  /** --- Start an event --- */
+  startEvent(actionName, initiatedBy = 'host') {
     const phase = this.game.getCurrentPhase();
-    const action = ACTIONS[actionName];
+    const actionDef = ACTIONS[actionName];
 
-    if (!phase || !action) {
-      logger.log(`Invalid action or phase: ${actionName}`, 'warn');
-      return { success: false, message: `Invalid action or phase.` };
-    }
+    if (!phase || !actionDef)
+      return { success: false, message: 'Invalid action or phase.' };
 
+    // Host can only start pending events
     if (initiatedBy === 'host' && !this.pendingEvents.has(actionName)) {
       return {
         success: false,
@@ -78,77 +49,96 @@ export class EventManager {
       };
     }
 
-    // Find eligible players via Player.canPerform
-    const eligible = this.game.players.filter(
-      (p) => p.isAlive && p.actions.includes(actionName)
+    // Find eligible players BEFORE activation
+    const eligiblePlayers = this.game.players.filter(
+      (p) =>
+        p.state.isAlive &&
+        p.state.actions.some(
+          (a) =>
+            a.name === actionName &&
+            a.trigger === 'event' &&
+            a.remainingUsesThisPhase > 0
+        )
     );
 
-    if (!eligible.length) {
+    if (!eligiblePlayers.length)
       return { success: false, message: 'No eligible players.' };
-    }
 
-    // Create the event record
+    // Build event object
     const event = {
       id: `${actionName}-${Date.now()}`,
       action: actionName,
       phase: phase.name,
-      type: action.returns.type,
+      type: actionDef?.returns?.type ?? null,
       initiatedBy,
-      eligible: eligible.map((p) => p.id),
+      eligible: eligiblePlayers.map((p) => p.id),
       resolved: false,
-      results: {}, // playerId -> target / response
+      results: {},
     };
 
-    this.game.currentEvents.push(event);
-    this.pendingEvents.delete(actionName);
+    // --- Activate the action for eligible players ---
+    eligiblePlayers.forEach((p) => {
+      const action = p.state.actions.find((a) => a.name === actionName);
+      if (action) action.active = true;
 
-    // Prep player input state
-    eligible.forEach((p) => {
-      p.selections ??= {};
-      p.confirmedSelections ??= {};
-      p.selections[actionName] = null;
-      p.confirmedSelections[actionName] = false;
+      // Ensure selection maps exist
+      if (!p.state.selections) p.state.selections = {};
+      if (!p.state.confirmedSelections) p.state.confirmedSelections = {};
+
+      // Reset selection state for this action
+      p.state.selections[actionName] = null;
+      p.state.confirmedSelections[actionName] = false;
     });
+
+    // Add event to game
+    this.game.currentEvents.push(event);
+
+    // Remove from pending list
+    this.pendingEvents.delete(actionName);
 
     return { success: true, message: `${actionName} started.`, event };
   }
 
-  /** Record a player’s input during an event */
-  registerResponse(playerId, actionName, response) {
-    const event = this.getActiveEvent(actionName);
-    if (!event) {
-      return { success: false, message: `No active ${actionName} event.` };
-    }
+  /** --- Mark event as resolved --- */
+  resolveEvent(eventId) {
+    const event = this.getEventById(eventId);
+    if (!event) return { success: false, message: 'Event not found.' };
+    event.resolved = true;
+    return { success: true, message: `${event.action} resolved.`, event };
+  }
 
-    if (!event.eligible.includes(playerId)) {
-      return {
-        success: false,
-        message: `Player not eligible for this action.`,
-      };
-    }
+  /** --- Remove event from currentEvents --- */
+  clearEvent(eventId) {
+    const idx = this.game.currentEvents.findIndex((e) => e.id === eventId);
+    if (idx === -1) return { success: false, message: 'Event not found.' };
+    const [removed] = this.game.currentEvents.splice(idx, 1);
+    return {
+      success: true,
+      message: `${removed.action} cleared.`,
+      event: removed,
+    };
+  }
+
+  /** --- Register a player's response to an event --- */
+  registerResponse(playerId, eventId, response) {
+    const event = this.getEventById(eventId);
+    if (!event) return { success: false, message: 'Event not found.' };
+    if (!event.eligible.includes(playerId))
+      return { success: false, message: 'Player not eligible.' };
 
     event.results[playerId] = response;
+
+    const player = this.game.players.find((p) => p.id === playerId);
+    if (player) {
+      player.state.selections[event.action] = response;
+      player.state.confirmedSelections[event.action] = true;
+    }
+
     return { success: true };
   }
 
-  /** Finalize an event and mark as resolved */
-  resolveEvent(actionName) {
-    const event = this.getActiveEvent(actionName);
-    if (!event) {
-      return { success: false, message: `No active ${actionName} event.` };
-    }
-
-    event.resolved = true;
-    return { success: true, message: `${actionName} resolved.`, event };
-  }
-
-  /** Return the currently active (unresolved) event for a given action */
-  getActiveEvent(actionName) {
-    return (
-      this.game.currentEvents
-        ?.slice()
-        .reverse()
-        .find((e) => e.action === actionName && !e.resolved) || null
-    );
+  /** --- Helper: get event by id --- */
+  getEventById(id) {
+    return this.game.currentEvents.find((e) => e.id === id) || null;
   }
 }

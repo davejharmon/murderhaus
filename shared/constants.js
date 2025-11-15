@@ -32,46 +32,90 @@ export const TEAMS = {
 export const ACTIONS = {
   vote: {
     name: 'vote',
-    trigger: 'event', // event | interrupt
-    returns: {
-      type: 'player', // selectable target
+    trigger: 'event', // event (host triggers) | interrupt (any time)
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'], // selectable target
       allowNone: false,
+      confirmReq: true, // requires confirm click to submit
     },
-    maxPerPhase: 1,
-    maxPerGame: Infinity,
+    uses: Infinity,
+    usesPerPhase: 1,
     conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
+    result: (actor, action, target) => {
+      action.selectedTarget = target.id;
+      action.confirmed = true;
+    },
   },
 
   kill: {
     name: 'kill',
     trigger: 'event',
-    returns: { type: 'player' },
-    maxPerPhase: 1,
-    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      allowNone: false,
+      confirmReq: true,
+    },
+    uses: Infinity,
+    usesPerPhase: 1,
+    conditions: ({ actor, target }) =>
+      actor?.state.isAlive && target?.state.isAlive,
+    result: (actor, action, target) => {
+      action.selectedTarget = target.id;
+      action.confirmed = true;
+      target.state.isAlive = false;
+      target.state.diedThisTurn = true;
+    },
   },
 
   protect: {
     name: 'protect',
     trigger: 'event',
-    returns: { type: 'player' },
-    maxPerPhase: 1,
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      allowNone: true,
+      confirmReq: true,
+    },
+    uses: Infinity,
+    usesPerPhase: 1,
     conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
+    result: (actor, action, target) => {
+      action.selectedTarget = target.id;
+      action.confirmed = true;
+    },
   },
 
   investigate: {
     name: 'investigate',
     trigger: 'event',
-    returns: { type: 'player' },
-    maxPerPhase: 1,
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      allowNone: true,
+      confirmReq: true,
+    },
+    uses: Infinity,
+    usesPerPhase: 1,
     conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
+    result: (actor, action, target) => {
+      action.selectedTarget = target.id;
+      action.confirmed = true;
+    },
   },
 
   commute: {
     name: 'commute',
     trigger: 'interrupt',
-    returns: { type: 'boolean' },
-    maxPerPhase: 1,
+    input: {
+      allowed: ['A', 'B'],
+      allowNone: true,
+      confirmReq: true,
+    },
+    uses: Infinity,
+    usesPerPhase: 1,
     conditions: ({ actor }) => actor?.isAlive,
+    result: (actor, action, target) => {
+      action.selectedTarget = target.id;
+      action.confirmed = true;
+    },
   },
 };
 

@@ -49,25 +49,13 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
-    case 'PLAYER_SELECT': {
-      const { playerId, actionName, value } = payload;
-      gameManager.playerAction(playerId, actionName, value);
+    case 'PLAYER_INPUT': {
+      const { actorId, key } = payload;
+      gameManager.playerInput(actorId, key);
       break;
     }
 
-    case 'PLAYER_CONFIRM': {
-      const { playerId, actionName } = payload;
-      gameManager.playerConfirm(playerId, actionName);
-      break;
-    }
-
-    case 'PLAYER_INTERRUPT': {
-      const { playerId, actionName } = payload;
-      gameManager.playerInterrupt(playerId, actionName);
-      break;
-    }
-
-    case 'UPDATE_PLAYER_NAME': {
+    case 'HOST_UPDATE_PLAYER_NAME': {
       const { id, name } = payload;
       gameManager.updatePlayerName(id, name);
       break;
@@ -79,16 +67,34 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
-    // --- Refactored event messages ---
     case 'START_EVENT': {
       const { actionName, initiatedBy } = payload;
+      // Still using actionName because the event hasn’t been created yet
       gameManager.startEvent(actionName, initiatedBy || 'host');
       break;
     }
 
     case 'RESOLVE_EVENT': {
-      const { actionName } = payload;
-      gameManager.resolveEvent(actionName);
+      const { eventId } = payload;
+      if (!eventId)
+        return sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: 'Missing eventId' },
+        });
+
+      gameManager.resolveEvent(eventId);
+      break;
+    }
+
+    case 'CLEAR_EVENT': {
+      const { eventId } = payload;
+      if (!eventId)
+        return sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: 'Missing eventId' },
+        });
+
+      gameManager.clearEvent(eventId);
       break;
     }
 

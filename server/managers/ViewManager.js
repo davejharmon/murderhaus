@@ -1,4 +1,3 @@
-// server/managers/ViewManager.js
 import { publish } from '../utils/Broadcast.js';
 import { logger } from '../utils/Logger.js';
 
@@ -14,7 +13,6 @@ export class ViewManager {
   publishPlayer(player) {
     if (!player) return;
     publish(`PLAYER_UPDATE:${player.id}`, player.getPublicState());
-    this.publishAllPlayers();
   }
 
   publishAllPlayers() {
@@ -25,10 +23,7 @@ export class ViewManager {
   publishGameMeta() {
     const phase = this.game.getCurrentPhase?.() ?? { name: null };
     const pendingEvents = this.events?.getPendingEvents?.() ?? [];
-    console.log(
-      '[DEBUG] Publishing GAME_META_UPDATE, pendingEvents:',
-      pendingEvents
-    );
+
     publish('GAME_META_UPDATE', {
       phase: phase.name,
       gameStarted: this.game.gameStarted,
@@ -43,18 +38,9 @@ export class ViewManager {
   }
 
   updatePlayerViews() {
-    const phase = this.game.getCurrentPhase();
-    const started = this.game.gameStarted;
-
-    this.game.players.forEach((p) => {
-      p.update({
-        phaseName: phase.name,
-        gameStarted: started,
-        game: this.game,
-      });
-      this.publishPlayer(p); // 👈 Publish each player individually
-    });
-
+    // Since Player.update is gone, just publish current state
+    this.game.players.forEach((p) => this.publishPlayer(p));
+    this.publishAllPlayers();
     this.publishGameMeta();
   }
 }

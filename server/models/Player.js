@@ -1,29 +1,22 @@
-// /server/models/Player.js
-import { ROLES, PHASES, ACTIONS, TEAMS } from '../../shared/constants.js';
+import { ACTIONS, ROLES, TEAMS, PHASES } from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
-    this.id = id;
-    this.name = `Player ${id}`;
+    this.id = id; // assigned on join
+    this.name = `Player ${id}`; // editable
+    this.role = null; // villager | seer | werewolf
+    this.team = null; // villagers | werewolves
+    this.color = '#666'; // UI color
 
-    // Role & team identity
-    this.role = null;
-    this.team = null;
-    this.color = '#666';
-
-    // Game state
-    this.isAlive = true;
-
-    // Action state
-    this.actions = []; // all actions from role
-    this.availableActions = []; // filtered per phase
-    this.selections = {}; // { actionName: targetId }
-    this.confirmedSelections = {}; // { actionName: boolean }
-    this.actionUsage = {}; // per-phase usage
-    this.interruptUsedMap = {};
+    this.state = {
+      isAlive: true,
+      diedThisTurn: false,
+      actions: [],
+      bulbOverride: undefined, // {r,g,b} or undefined
+    };
   }
 
-  /** Assign a role */
+  /** --- Role assignment --- */
   assignRole(roleName) {
     const role = ROLES[roleName];
     if (!role) throw new Error(`Role ${roleName} does not exist`);
@@ -32,121 +25,289 @@ export class Player {
     this.team = role.team;
     this.color = role.color ?? TEAMS[role.team]?.color ?? '#999';
 
-    // Initialize actions & selections
-    this.actions = [...role.defaultActions];
-    this.selections = {};
-    this.confirmedSelections = {};
-    this.actions.forEach((a) => {
-      this.selections[a] = null;
-      this.confirmedSelections[a] = false;
+    // Initialize actions in state
+    this.state.actions = role.defaultActions.map((name) => {
+      const baseAction = { ...ACTIONS[name] };
+      return {
+        ...baseAction,
+        active: false,
+        selectedTarget: null,
+        confirmed: false,
+        remainingUsesThisPhase: baseAction.usesPerPhase ?? baseAction.uses ?? 1,
+      };
     });
   }
 
-  /** Update available actions for the current phase */
-  update({ phaseName, gameStarted, game }) {
-    const phase = PHASES.find((p) => p.name === phaseName);
+  /** --- Phase management --- */
+  initializePhase() {
+    this.state.diedThisTurn = false;
+    this.state.bulbOverride = undefined;
 
-    // Find currently active events for this player
-    const activeEventNames = game.currentEvents
-      .filter((e) => !e.resolved && e.eligible.includes(this.id))
-      .map((e) => e.action);
-
-    this.availableActions = this.actions
-      .map((actionName) => {
-        const def = ACTIONS[actionName];
-        if (!def) return null;
-
-        // Always available if flagged, or if currently active event
-        const eventActive = activeEventNames.includes(actionName);
-        const conditionMet = def.conditions(
-          { actor: this, target: null },
-          game
-        );
-        const phaseAllowed = phase?.playerActions?.includes(def.name);
-        const available = def.alwaysAvailable
-          ? conditionMet
-          : (phaseAllowed && conditionMet) || eventActive;
-
-        return available ? def : null;
-      })
-      .filter(Boolean);
+    this.state.actions.forEach((a) => {
+      a.selectedTarget = null;
+      a.active = false;
+      a.confirmed = false;
+      a.remainingUsesThisPhase = a.usesPerPhase ?? a.uses ?? 1;
+    });
   }
 
-  /** Helper: can perform action this phase */
-  canPerform(actionName) {
-    return this.availableActions.some((a) => a.name === actionName);
+  /** --- Event / action state updates --- */
+  setActionActive(
+    actionName,
+    active = true,
+    resetTarget = true,
+    remainingUses
+  ) {
+    const action = this.state.actions.find((a) => a.name === actionName);
+    if (!action) return;
+
+    action.active = active;
+    if (resetTarget) action.selectedTarget = null;
+    if (remainingUses !== undefined)
+      action.remainingUsesThisPhase = remainingUses;
   }
 
-  /** Perform a regular action on a target */
-  performAction(actionName, game, targetId) {
-    const actionDef = this.availableActions.find((a) => a.name === actionName);
-    if (!actionDef) return { success: false, message: 'Action unavailable' };
+  addAction(actionName, options = {}) {
+    const baseAction = ACTIONS[actionName];
+    if (!baseAction) return;
 
-    const usedCount = this.actionUsage[actionName] || 0;
-    if (usedCount >= actionDef.maxPerPhase)
-      return { success: false, message: 'Action already used this phase' };
-
-    const target = game.getPlayer(targetId);
-    if (!actionDef.conditions(this, game, target))
-      return { success: false, message: 'Conditions not met' };
-
-    this.selections[actionName] = targetId;
-    this.actionUsage[actionName] = usedCount + 1;
-
-    return {
-      success: true,
-      message: `Action ${actionName} performed by Player ${this.id}`,
+    const actionObj = {
+      ...baseAction,
+      active: options.active ?? false,
+      selectedTarget: null,
+      confirmed: false,
+      remainingUsesThisPhase: baseAction.usesPerPhase ?? baseAction.uses ?? 1,
     };
+    this.state.actions.push(actionObj);
   }
 
-  /** Confirm a previously made selection */
-  confirmAction(actionName) {
-    const selection = this.selections[actionName];
-    if (selection == null)
-      return { success: false, message: 'No selection to confirm' };
+  /** --- Available actions based on game state --- */
 
-    this.confirmedSelections[actionName] = selection;
-    return {
-      success: true,
-      message: `Player ${this.id} confirmed ${actionName}`,
-    };
-  }
+  getEnabledKeys() {
+    const enabled = new Set();
 
-  /** Perform an interrupt-type action */
-  performInterrupt(actionName, game) {
-    const actionDef = this.availableActions.find(
-      (a) => a.name === actionName && a.type === 'interrupt'
+    const activeActions = this.state.actions.filter(
+      (a) =>
+        a.active &&
+        a.remainingUsesThisPhase > 0 &&
+        Array.isArray(a.input?.allowed)
     );
-    if (!actionDef) return { success: false, message: 'Interrupt unavailable' };
 
-    if (this.interruptUsedMap[actionName])
-      return { success: false, message: 'Interrupt already used' };
+    // Add all allowed keys from active actions that are not confirmed
+    activeActions.forEach((action) => {
+      if (!action.confirmed) {
+        action.input.allowed.forEach((key) => enabled.add(String(key)));
+      }
+    });
 
-    if (!actionDef.conditions(this, game))
-      return { success: false, message: 'Conditions not met for interrupt' };
+    // Add confirm button if any action requires confirmation and has a selected target
+    const confirmActive = activeActions.some(
+      (a) => a.input.confirmReq && a.selectedTarget != null
+    );
+    if (confirmActive) enabled.add('confirm');
 
-    this.interruptUsedMap[actionName] = true;
-    this.actionUsage[actionName] = (this.actionUsage[actionName] || 0) + 1;
+    return Array.from(enabled); // e.g. ['1','2','A','confirm']
+  }
 
+  getAvailableActions() {
+    const phase = PHASES.find((p) => p.name === game.getCurrentPhase()?.name);
+
+    return this.state.actions.filter((action) => {
+      if (!action.active) return false;
+      if (action.remainingUsesThisPhase <= 0) return false;
+
+      const phaseAllowed = phase?.playerActions?.includes(action.name);
+      return action.alwaysAvailable || phaseAllowed;
+    });
+  }
+
+  /** --- Handle raw player input (from Keypad/WS) --- */
+  handleInput(key) {
+    console.group(`[Player ${this.id}] handleInput: key="${key}"`);
+    console.log('Current actions state:');
+    this.state.actions.forEach((a) => {
+      console.log(
+        `- ${a.name}: active=${a.active}, remaining=${a.remainingUsesThisPhase}, confirmed=${a.confirmed}, allowed=${a.input?.allowed}, confirmReq=${a.input?.confirmReq}, selectedTarget=${a.selectedTarget}`
+      );
+    });
+
+    const action = this.state.actions.find(
+      (a) =>
+        a.active &&
+        a.remainingUsesThisPhase > 0 &&
+        Array.isArray(a.input?.allowed) &&
+        !a.confirmed &&
+        (a.input.allowed.includes(key) ||
+          (key === 'confirm' && a.input.confirmReq))
+    );
+
+    if (!action) {
+      console.warn(`[Player ${this.id}] No action available for key="${key}"`);
+      console.groupEnd();
+      return { success: false, message: 'No action available for this key' };
+    }
+
+    console.log(`[Player ${this.id}] Matched action: ${action.name}`);
+
+    // --- Confirm input
+    if (key === 'confirm') {
+      if (!action.selectedTarget && !action.input?.allowNone) {
+        console.warn(`[Player ${this.id}] Confirm failed: no target selected`);
+        console.groupEnd();
+        return { success: false, message: 'No target selected' };
+      }
+      action.confirmed = true;
+      console.log(`[Player ${this.id}] Confirmed action: ${action.name}`);
+      console.groupEnd();
+      return {
+        success: true,
+        message: `${this.name} confirmed ${action.name}`,
+      };
+    }
+
+    // --- Validate input
+    if (!action.input?.allowed.includes(key)) {
+      console.warn(
+        `[Player ${this.id}] Invalid input "${key}" for action ${action.name}`
+      );
+      console.groupEnd();
+      return { success: false, message: 'Invalid input for this action' };
+    }
+
+    // --- Interrupt actions (A/B or boolean) can just use key as target
+    if (action.trigger === 'interrupt') {
+      action.selectedTarget = key;
+      console.log(
+        `[Player ${this.id}] Interrupt action triggered by key "${key}"`
+      );
+      console.groupEnd();
+      return this.performAction(action);
+    }
+
+    // --- Regular player selection
+    action.selectedTarget = key;
+    console.log(
+      `[Player ${this.id}] Selected target "${key}" for action ${action.name}`
+    );
+
+    // Auto-confirm if confirm not required
+    if (!action.input?.confirmReq) {
+      console.log(`[Player ${this.id}] Auto-confirming action ${action.name}`);
+      console.groupEnd();
+      return this.performAction(action);
+    }
+
+    console.groupEnd();
     return {
       success: true,
-      message: `Player ${this.id} used interrupt ${actionName}`,
+      message: `${this.name} selected ${key} for ${action.name}`,
     };
   }
 
-  /** Public state for clients */
+  /** --- Perform an action and apply its result --- */
+  performAction(action, initiatedByHost = false) {
+    if (!action || action.remainingUsesThisPhase <= 0) {
+      return { success: false, message: 'Action cannot be performed' };
+    }
+
+    // Apply the action's result
+    if (typeof action.result === 'function') {
+      const target = action.selectedTarget;
+      // target can be a Player object if you pass it in, or just ID
+      action.result(this, action, target);
+    }
+
+    // Reduce remaining uses if not host-initiated
+    if (!initiatedByHost && action.remainingUsesThisPhase !== Infinity) {
+      action.remainingUsesThisPhase -= 1;
+    }
+
+    // Deactivate action unless it’s persistent
+    if (!action.persistent) action.active = false;
+
+    return {
+      success: true,
+      message: `${this.name} performed ${action.name}`,
+      action,
+    };
+  }
+
+  /** --- Confirm selection (if needed for actions) --- */
+  confirmAction(actionName) {
+    const action = this.state.actions.find((a) => a.name === actionName);
+    if (!action) return { success: false, message: 'Action not found' };
+    if (!action.selectedTarget)
+      return { success: false, message: 'No target selected' };
+
+    action.confirmed = true;
+    return { success: true, message: `${this.name} confirmed ${actionName}` };
+  }
+
+  /** --- Public state for UI --- */
   getPublicState() {
+    // Compute enabled keys here because React receives only plain JSON
+    const activeActions = this.state.actions.filter(
+      (a) =>
+        a.active &&
+        a.remainingUsesThisPhase > 0 &&
+        Array.isArray(a.input?.allowed)
+    );
+
+    const enabled = new Set();
+
+    // Allowed keys for any unconfirmed action
+    activeActions.forEach((a) => {
+      if (!a.confirmed) {
+        a.input.allowed.forEach((key) => enabled.add(String(key)));
+      }
+    });
+
+    // Confirm enabled if an action requires confirmation AND has selected target
+    const confirmActive = activeActions.some(
+      (a) => a.input.confirmReq && a.selectedTarget != null
+    );
+    if (confirmActive) enabled.add('confirm');
+
     return {
       id: this.id,
       name: this.name,
       role: this.role?.name ?? null,
       team: this.team ?? null,
       color: this.color,
-      isAlive: this.isAlive,
-      actions: this.actions,
-      availableActions: this.availableActions,
-      selections: this.selections,
-      confirmedSelections: this.confirmedSelections,
+      enabledKeys: Array.from(enabled), // <-- SEND IT TO CLIENT
+      state: {
+        ...this.state,
+        actions: this.state.actions.map((a) => ({
+          ...a,
+          name: a.name,
+          active: a.active,
+          confirmed: a.confirmed,
+          selectedTarget: a.selectedTarget,
+          remainingUsesThisPhase: a.remainingUsesThisPhase,
+        })),
+      },
+    };
+  }
+
+  /**
+   * Flexible setter for Player properties
+   * @param {string} key - top-level property or state property
+   * @param {any} value - new value
+   * @param {boolean} inState - whether to update inside this.state
+   */
+  set(key, value, inState = false) {
+    if (inState) {
+      if (!(key in this.state))
+        console.warn(`[Player.set] Unknown state key: ${key}`);
+      this.state[key] = value;
+    } else {
+      if (!(key in this)) console.warn(`[Player.set] Unknown property: ${key}`);
+      this[key] = value;
+    }
+
+    return {
+      success: true,
+      message: `Player ${this.id} set ${inState ? 'state.' : ''}${key}`,
     };
   }
 }

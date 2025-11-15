@@ -1,5 +1,5 @@
 // src/pages/Player.jsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { send, subscribe } from '../ws';
 import { Bulb } from '../components/Bulb';
@@ -9,7 +9,7 @@ import styles from './Player.module.css';
 
 export default function Player({ compact = false, id }) {
   const params = useParams();
-  const playerId = Number(id ?? params.id); // prop first, then route param
+  const playerId = Number(id ?? params.id);
   if (isNaN(playerId)) throw new Error('Invalid player ID');
 
   const { wsStatus, gameMeta, me, setMe } = useGameState(
@@ -19,13 +19,13 @@ export default function Player({ compact = false, id }) {
 
   const registeredRef = useRef(false);
 
-  // Subscribe to this player's updates
+  // 🔥 SUBSCRIBE — runs always, hook order unchanged
   useEffect(() => {
     const unsub = subscribe(`PLAYER_UPDATE:${playerId}`, setMe);
     return () => unsub();
   }, [playerId, setMe]);
 
-  // Register player once per mount
+  // 🔥 REGISTER PLAYER — runs always, hook order unchanged
   useEffect(() => {
     if (!registeredRef.current) {
       send('REGISTER_PLAYER', { id: playerId });
@@ -33,6 +33,14 @@ export default function Player({ compact = false, id }) {
     }
   }, [playerId]);
 
+  // 🔥 NEW HOOKS MUST GO HERE (always before return)
+  const activeActions = useMemo(() => {
+    return me?.availableActions ?? [];
+  }, [me]);
+
+  const roleColor = me?.color || 'gray';
+
+  // 🔥 SAFE EARLY RETURN AFTER ALL HOOKS
   if (!me)
     return (
       <div className={styles.loading}>
@@ -40,14 +48,13 @@ export default function Player({ compact = false, id }) {
       </div>
     );
 
-  const roleColor = me.color || 'gray';
-
   return (
     <div className={compact ? undefined : styles.pageWrapper}>
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.number}>{me.id}</div>
           <div className={styles.name}>{me.name}</div>
+
           <div className={styles.role} style={{ color: roleColor }}>
             {me.role || 'Unassigned'}
           </div>
@@ -57,7 +64,7 @@ export default function Player({ compact = false, id }) {
           </div>
 
           <div className={styles.keypadWrapper}>
-            <Keypad player={me} activeActions={me.availableActions || []} />
+            <Keypad player={me} activeActions={activeActions} />
           </div>
         </div>
       </div>

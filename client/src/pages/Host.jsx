@@ -21,24 +21,54 @@ export default function Host() {
     currentEvents = [],
   } = gameMeta;
 
-  // --- Host Event Buttons ---
   const hostEventButtons = useMemo(() => {
-    if (!gameStarted || !pendingEvents?.length) return [];
+    if (!gameStarted) return [];
 
-    return pendingEvents.map((actionName) => {
+    const buttons = [];
+
+    // 1️⃣ Pending events: show START
+    pendingEvents?.forEach((actionName) => {
       const activeEvent = currentEvents?.find(
         (e) => e.action === actionName && !e.resolved
       );
-
-      return {
-        actionName,
-        isActive: !!activeEvent,
-        label: `${
-          activeEvent ? 'RESOLVE' : 'START'
-        } ${actionName.toUpperCase()}`,
-        sendType: activeEvent ? 'RESOLVE_EVENT' : 'START_EVENT',
-      };
+      if (!activeEvent) {
+        buttons.push({
+          eventId: null, // not started yet, no ID
+          actionName,
+          label: `START ${actionName.toUpperCase()}`,
+          sendType: 'START_EVENT',
+          state: 'unlocked',
+        });
+      }
     });
+
+    // 2️⃣ Active current events: show RESOLVE
+    currentEvents?.forEach((event) => {
+      if (!event.resolved) {
+        buttons.push({
+          eventId: event.id,
+          actionName: event.action,
+          label: `RESOLVE ${event.action.toUpperCase()}`,
+          sendType: 'RESOLVE_EVENT',
+          state: 'selected',
+        });
+      }
+    });
+
+    // 3️⃣ Resolved events: show CLEAR
+    currentEvents?.forEach((event) => {
+      if (event.resolved) {
+        buttons.push({
+          eventId: event.id,
+          actionName: event.action,
+          label: `CLEAR ${event.action.toUpperCase()}`,
+          sendType: 'CLEAR_EVENT',
+          state: 'locked',
+        });
+      }
+    });
+    console.log(gameMeta);
+    return buttons;
   }, [gameStarted, pendingEvents, currentEvents]);
 
   // --- Vote Selectors by Player ---
@@ -69,7 +99,7 @@ export default function Host() {
     <div className={styles.container}>
       <div className={styles.leftColumn}>
         <header className={styles.header}>
-          <h1>{pendingEvents}</h1>
+          <h1>Dashboard</h1>
           <h2>
             {gameStarted
               ? `DAY ${dayCount}, PHASE: ${phase || 'Unknown'}`
@@ -98,12 +128,18 @@ export default function Host() {
           {hostEventButtons.length > 0 && (
             <div className={styles.selectionControls}>
               {hostEventButtons.map(
-                ({ actionName, label, sendType, isActive }) => (
+                ({ eventId, actionName, label, sendType, state }) => (
                   <Button
-                    key={actionName}
+                    key={eventId || label} // fallback for pending events without ID
                     label={label}
-                    onClick={() => send(sendType, { actionName })}
-                    state={isActive ? 'selected' : 'unlocked'}
+                    onClick={() => {
+                      if (sendType === 'START_EVENT') {
+                        send(sendType, { actionName }); // START uses actionName
+                      } else {
+                        send(sendType, { eventId }); // RESOLVE/CLEAR use eventId
+                      }
+                    }}
+                    state={state}
                   />
                 )
               )}
@@ -120,7 +156,7 @@ export default function Host() {
                 actions={(p.hostActions || []).map((actionName) => ({
                   label: actionName.toUpperCase(),
                   action: () =>
-                    send('HOST_ACTION', { playerId: p.id, action: actionName }),
+                    send('HOST_ACTION', { playerId: p.id, actionName }),
                 }))}
                 variant='light'
                 voteSelectors={voteSelectorsByPlayer[p.id] || []}

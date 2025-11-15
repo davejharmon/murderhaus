@@ -1,4 +1,3 @@
-// server/models/Game.js
 import {
   MAX_PLAYERS,
   PHASES,
@@ -23,8 +22,7 @@ export class Game {
     if (this.players.length >= MAX_PLAYERS) {
       return { success: false, message: 'Max players reached' };
     }
-
-    const player = new Player(id);
+    const player = new Player(id, this);
     this.players.push(player);
     return { success: true, message: `Player ${id} registered`, player };
   }
@@ -33,20 +31,20 @@ export class Game {
     const index = this.players.findIndex((p) => p.id === id);
     if (index === -1)
       return { success: false, message: `Player ${id} not found` };
-
     this.players.splice(index, 1);
     return { success: true, message: `Player ${id} removed` };
   }
 
-  updatePlayerName(id, name) {
-    const player = this.getPlayer(id);
-    if (!player) return { success: false, message: `Player ${id} not found` };
-    player.name = name;
-    return { success: true, message: `Player ${id} changed name to ${name}` };
-  }
-
   getPlayer(id) {
     return this.players.find((p) => p.id === id) || null;
+  }
+
+  /** Flexible setter for player properties */
+  setPlayerProperty(playerId, key, value, inState = false) {
+    const player = this.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
+    return player.set(key, value, inState);
   }
 
   /** --- Phase management --- */
@@ -65,31 +63,19 @@ export class Game {
 
   nextPhase() {
     this.phaseIndex = (this.phaseIndex + 1) % PHASES.length;
-    if (this.getCurrentPhase().name === 'day') this.dayCount++;
+    const phase = this.getCurrentPhase();
+    if (phase.name === 'day') this.dayCount++;
 
-    // Reset per-phase usage
-    this.players.forEach((p) => {
-      p.actionUsage = {};
-      p.interruptUsedMap = {};
-    });
-
-    // Update available actions for all players
-    this.players.forEach((p) =>
-      p.update({
-        phaseName: this.getCurrentPhase().name,
-        gameStarted: this.gameStarted,
-        game: this,
-      })
-    );
+    // Reset each player's per-phase state
+    this.players.forEach((p) => p.initializePhase());
 
     return {
       success: true,
-      message: `Phase advanced to ${this.getCurrentPhase().name}`,
+      message: `Phase started: Day ${this.dayCount}, ${phase.name}`,
     };
   }
 
   /** --- Game lifecycle --- */
-  // In Game.js
   start() {
     if (this.gameStarted)
       return { success: false, message: 'Game already started' };
@@ -100,9 +86,19 @@ export class Game {
     this.dayCount = 1;
     this.phaseIndex = 0;
 
-    this.assignRoles(); // roles are assigned but player updates are minimal
+    // Assign roles
+    this.assignRoles();
 
-    return { success: true, message: 'Game started.' };
+    // Initialize players for the first phase
+    const phase = this.getCurrentPhase();
+    this.players.forEach((p) => p.initializePhase());
+
+    // EventManager is handled by GameManager, so no EventManager calls here
+
+    return {
+      success: true,
+      message: `Game started: Day ${this.dayCount}, ${phase.name}`,
+    };
   }
 
   assignRoles() {
@@ -137,7 +133,7 @@ export class Game {
 
   /** --- Convenience helpers --- */
   getAlivePlayers() {
-    return this.players.filter((p) => p.isAlive);
+    return this.players.filter((p) => p.state.isAlive);
   }
 
   getPlayersByRole(roleName) {
@@ -145,12 +141,11 @@ export class Game {
   }
 
   isGameOver() {
-    // Example: check if all werewolves dead or villagers lost
     const werewolvesAlive = this.getPlayersByRole('werewolf').some(
-      (p) => p.isAlive
+      (p) => p.state.isAlive
     );
     const villagersAlive = this.getPlayersByRole('villager').some(
-      (p) => p.isAlive
+      (p) => p.state.isAlive
     );
     return !werewolvesAlive || !villagersAlive;
   }
