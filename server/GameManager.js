@@ -95,9 +95,9 @@ class GameManager {
   }
 
   /** --- Host actions --- */
-  hostAction(pid, action) {
-    const result = this.host.performHostAction(pid, action);
-    this.handleActionResult(result, { player: this.game.getPlayer(pid) });
+  hostAction(playerId, actionName) {
+    const result = this.host.performHostAction(playerId, actionName);
+    this.handleActionResult(result);
   }
 
   /** --- Events --- */

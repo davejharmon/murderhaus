@@ -30,6 +30,7 @@ export class ViewManager {
       dayCount: this.game.dayCount,
       currentEvents: this.game.currentEvents,
       pendingEvents,
+      playersSelecting: this.game.playersSelecting,
     });
   }
 

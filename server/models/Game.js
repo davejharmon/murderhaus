@@ -149,4 +149,18 @@ export class Game {
     );
     return !werewolvesAlive || !villagersAlive;
   }
+
+  /** --- Getter: all players currently making a selection --- */
+  get playersSelecting() {
+    const map = {};
+    this.players.forEach((p) => {
+      p.state.actions.forEach((a) => {
+        if (a.active && a.selectedTarget != null) {
+          if (!map[a.selectedTarget]) map[a.selectedTarget] = [];
+          map[a.selectedTarget].push({ id: p.id, confirmed: a.confirmed });
+        }
+      });
+    });
+    return map;
+  }
 }

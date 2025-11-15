@@ -37,7 +37,8 @@ export class HostManager {
     if (!player) return { success: false, message: 'Player not found' };
 
     const action = HOST_ACTIONS[actionName];
-    if (!action) return { success: false, message: 'Unknown host action' };
+    if (!action)
+      return { success: false, message: `Unknown host action: ${actionName}` };
 
     if (!action.condition(player, this.game)) {
       return {

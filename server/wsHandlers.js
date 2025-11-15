@@ -62,8 +62,8 @@ export function handleWSMessage(ws, data) {
     }
 
     case 'HOST_ACTION': {
-      const { playerId, action } = payload;
-      gameManager.hostAction(playerId, action);
+      const { playerId, actionName } = payload;
+      gameManager.hostAction(playerId, actionName);
       break;
     }
 

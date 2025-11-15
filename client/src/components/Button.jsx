@@ -9,13 +9,13 @@ export function Button({ label, onClick, disabled, state }) {
   let border = '2px solid #555'; // default border for unlocked
 
   switch (state) {
-    case 'unlocked':
+    case 'enabled':
       bgColor = '#222';
       color = '#fff';
       border = '2px solid #00bfa5'; // teal border for actionable
       break;
 
-    case 'locked':
+    case 'disabled':
       bgColor = '#333';
       color = '#888';
       border = '2px solid #555'; // grayed out

@@ -7,7 +7,8 @@ import { MAX_PLAYERS } from '@shared/constants';
 export const Keypad = ({ player }) => {
   if (!player) return <div>Loading player...</div>;
 
-  const enabled = new Set(player.enabledKeys ?? []);
+  // keyStates: { '1': 'enabled' | 'disabled' | 'highlighted', ... }
+  const keyStates = player.keyStates ?? {};
 
   const handleClick = (key) => {
     send('PLAYER_INPUT', {
@@ -16,44 +17,23 @@ export const Keypad = ({ player }) => {
     });
   };
 
-  const getButtonState = (label) =>
-    enabled.has(label) ? 'unlocked' : 'locked';
-
-  const numericButtons = Array.from({ length: MAX_PLAYERS }, (_, i) => {
-    const label = String(i + 1);
-    return (
-      <Button
-        key={label}
-        label={label}
-        onClick={() => handleClick(label)}
-        state={getButtonState(label)}
-      />
-    );
-  });
-
-  const letterButtons = ['A', 'B'].map((label) => (
-    <Button
-      key={label}
-      label={label}
-      onClick={() => handleClick(label)}
-      state={getButtonState(label)}
-      disabled={!enabled.has(label)}
-    />
-  ));
-
-  const confirmButton = (
-    <Button
-      key='C'
-      label='C'
-      onClick={() => handleClick('confirm')}
-      state={getButtonState('confirm')}
-      disabled={!enabled.has('confirm')}
-    />
-  );
+  const allKeys = [
+    ...Array.from({ length: MAX_PLAYERS }, (_, i) => String(i + 1)),
+    'A',
+    'B',
+    'confirm',
+  ];
 
   return (
     <div style={styles.keypad}>
-      {[...numericButtons, ...letterButtons, confirmButton]}
+      {allKeys.map((label) => (
+        <Button
+          key={label}
+          label={label === 'confirm' ? 'C' : label}
+          state={keyStates[label] ?? 'disabled'}
+          onClick={() => handleClick(label)}
+        />
+      ))}
     </div>
   );
 };

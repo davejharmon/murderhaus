@@ -1,4 +1,4 @@
-// src/components/PlayerRow.jsx
+// src/components/PlayerCard.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Bulb } from './Bulb';
 import { Button } from './Button';
@@ -10,11 +10,12 @@ export const PlayerCard = React.memo(function PlayerCard({
   player,
   actions = [],
   voteSelectors = [],
-  DEBUG = true,
+  DEBUG = false,
   variant = 'dark',
 }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
+
   // Sync name with game state unless editing
   useEffect(() => {
     if (!isEditing) setName(player.name || '');
@@ -46,6 +47,7 @@ export const PlayerCard = React.memo(function PlayerCard({
       <NumberEmoji key={`vote-${id}`} number={id} isConfirmed={isConfirmed} />
     ));
   }, [voteSelectors]);
+
   return (
     <div
       className={`${styles.row} ${!player.state.isAlive ? styles.dead : ''} ${

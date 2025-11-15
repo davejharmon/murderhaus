@@ -6,6 +6,7 @@ import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import styles from './Host.module.css';
+import { PHASES, PREGAME_HOST_ACTIONS } from '@shared/constants.js';
 
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
@@ -21,9 +22,8 @@ export default function Host() {
     currentEvents = [],
   } = gameMeta;
 
+  // --- Host Event Buttons (START/RESOLVE/CLEAR) ---
   const hostEventButtons = useMemo(() => {
-    if (!gameStarted) return [];
-
     const buttons = [];
 
     // 1️⃣ Pending events: show START
@@ -33,7 +33,7 @@ export default function Host() {
       );
       if (!activeEvent) {
         buttons.push({
-          eventId: null, // not started yet, no ID
+          eventId: null,
           actionName,
           label: `START ${actionName.toUpperCase()}`,
           sendType: 'START_EVENT',
@@ -42,7 +42,7 @@ export default function Host() {
       }
     });
 
-    // 2️⃣ Active current events: show RESOLVE
+    // 2️⃣ Active events: show RESOLVE
     currentEvents?.forEach((event) => {
       if (!event.resolved) {
         buttons.push({
@@ -67,33 +67,32 @@ export default function Host() {
         });
       }
     });
-    console.log(gameMeta);
+
     return buttons;
-  }, [gameStarted, pendingEvents, currentEvents]);
+  }, [pendingEvents, currentEvents]);
+
+  // --- Host Actions for Player Cards ---
+  const hostActions = useMemo(() => {
+    if (!gameStarted) return PREGAME_HOST_ACTIONS;
+    const currentPhaseObj = PHASES.find((p) => p.name === phase);
+    return currentPhaseObj?.hostActions || [];
+  }, [gameStarted, phase]);
 
   // --- Vote Selectors by Player ---
   const voteSelectorsByPlayer = useMemo(() => {
     const map = {};
-    players.forEach((target) => {
-      const selectors = players
-        .map((p) => {
-          if (!p.selections || !p.confirmedSelections) return null;
+    const ps = gameMeta.playersSelecting;
+    if (!ps) return map;
 
-          const isConfirmed = Object.entries(p.confirmedSelections).some(
-            ([_, val]) => val === target.id
-          );
-          const isSelected = Object.entries(p.selections).some(
-            ([_, val]) => val === target.id
-          );
-
-          return isSelected ? { id: p.id, isConfirmed } : null;
-        })
-        .filter(Boolean);
-
-      map[target.id] = selectors;
+    Object.entries(ps).forEach(([targetId, selectors]) => {
+      map[targetId] = selectors.map(({ id, confirmed }) => ({
+        id,
+        isConfirmed: confirmed,
+      }));
     });
+
     return map;
-  }, [players]);
+  }, [gameMeta]);
 
   return (
     <div className={styles.container}>
@@ -130,13 +129,13 @@ export default function Host() {
               {hostEventButtons.map(
                 ({ eventId, actionName, label, sendType, state }) => (
                   <Button
-                    key={eventId || label} // fallback for pending events without ID
+                    key={eventId || label}
                     label={label}
                     onClick={() => {
                       if (sendType === 'START_EVENT') {
-                        send(sendType, { actionName }); // START uses actionName
+                        send(sendType, { actionName });
                       } else {
-                        send(sendType, { eventId }); // RESOLVE/CLEAR use eventId
+                        send(sendType, { eventId });
                       }
                     }}
                     state={state}
@@ -153,7 +152,7 @@ export default function Host() {
               <PlayerCard
                 key={p.id}
                 player={p}
-                actions={(p.hostActions || []).map((actionName) => ({
+                actions={hostActions.map((actionName) => ({
                   label: actionName.toUpperCase(),
                   action: () =>
                     send('HOST_ACTION', { playerId: p.id, actionName }),
