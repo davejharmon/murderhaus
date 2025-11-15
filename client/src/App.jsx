@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import DebugPlayers from './pages/DebugPlayers';
 import Badge from './components/Badge';
 import { useGameState } from './hooks/useGameState';
+import BigScreen from './pages/BigScreen';
 
 function App() {
   const { wsStatus } = useGameState(); // just for badge
@@ -14,6 +15,7 @@ function App() {
       <Badge status={wsStatus} />
       <Routes>
         <Route path='/' element={<Landing />} />
+        <Route path='/screen' element={<BigScreen />} />
         <Route path='/host' element={<Host />} />
         <Route path='/player/:id' element={<Player />} />
         <Route path='/player/debug' element={<DebugPlayers />} />

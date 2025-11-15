@@ -12,6 +12,7 @@ export const PlayerCard = React.memo(function PlayerCard({
   voteSelectors = [],
   DEBUG = false,
   variant = 'dark',
+  phase,
 }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -40,11 +41,15 @@ export const PlayerCard = React.memo(function PlayerCard({
     },
     [player.name]
   );
-
   // Render vote selectors (NumberEmoji)
   const memoedVoteSelectors = useMemo(() => {
-    return voteSelectors.map(({ id, isConfirmed }) => (
-      <NumberEmoji key={`vote-${id}`} number={id} isConfirmed={isConfirmed} />
+    return voteSelectors.map(({ id, isConfirmed, col }) => (
+      <NumberEmoji
+        key={`vote-${id}`}
+        number={id}
+        color={col}
+        isConfirmed={isConfirmed}
+      />
     ));
   }, [voteSelectors]);
 
@@ -59,7 +64,7 @@ export const PlayerCard = React.memo(function PlayerCard({
         <div className={styles.number}>{player.id}</div>
 
         <div className={styles.bulb}>
-          <Bulb player={player} phase={player.phase} />
+          <Bulb player={player} phase={phase} />
         </div>
 
         {isEditing ? (

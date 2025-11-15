@@ -6,12 +6,13 @@ import { Bulb } from '../components/Bulb';
 import { Keypad } from '../components/Keypad';
 import { useGameState } from '../hooks/useGameState';
 import styles from './Player.module.css';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Player({ compact = false, id }) {
   const params = useParams();
   const playerId = Number(id ?? params.id);
   if (isNaN(playerId)) throw new Error('Invalid player ID');
-
+  usePageTitle(`Player ${playerId}`);
   const { wsStatus, gameMeta, me, setMe } = useGameState(
     ['PLAYER_UPDATE', 'GAME_META_UPDATE'],
     playerId
@@ -60,7 +61,7 @@ export default function Player({ compact = false, id }) {
           </div>
 
           <div className={styles.bulb}>
-            <Bulb player={me} size={40} showConfirmed />
+            <Bulb player={me} phase={gameMeta.phase} />
           </div>
 
           <div className={styles.keypadWrapper}>

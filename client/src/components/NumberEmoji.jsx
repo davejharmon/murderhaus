@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 export const NumberEmoji = React.memo(function NumberEmoji({
   number,
   isConfirmed = true,
+  color,
 }) {
   const style = useMemo(() => {
     return {
@@ -18,13 +19,13 @@ export const NumberEmoji = React.memo(function NumberEmoji({
       lineHeight: 1,
       textAlign: 'center',
       userSelect: 'none',
-      backgroundColor: '#fff',
+      backgroundColor: color,
       color: '#000',
       opacity: isConfirmed ? 1 : 0.4,
       transition: 'opacity 0.25s',
       marginRight: '0.25em',
     };
-  }, [isConfirmed]);
+  }, [isConfirmed, color]);
 
   return <span style={style}>{number}</span>;
 });

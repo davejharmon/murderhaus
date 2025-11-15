@@ -94,6 +94,10 @@ export class Player {
     });
   }
 
+  kill() {
+    this.state.isAlive = false;
+    this.state.diedThisTurn = true;
+  }
   /** --- Get UI state of all keys --- */
   getKeyState() {
     const keys = {};

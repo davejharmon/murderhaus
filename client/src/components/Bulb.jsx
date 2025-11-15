@@ -1,39 +1,40 @@
 // src/components/Bulb.jsx
-import React, { useMemo } from 'react';
+import React from 'react';
+import styles from './Bulb.module.css';
 
-/**
- * Bulb shows a visual indicator for a player:
- * - Color based on role/team or custom `bulbColor`
- * - Dimmed if dead
- * - Optionally shows confirmation highlight
- */
-export const Bulb = React.memo(function Bulb({
-  player,
-  size = 40,
-  showConfirmed = true,
-}) {
-  const color = player.color || '#666';
-  const isDead = !player.isAlive;
-  const confirmed = showConfirmed
-    ? Object.values(player.confirmedSelections || {}).some((v) => v)
-    : false;
+export function Bulb({ player, size = 40, phase }) {
+  if (!player) return null;
 
-  const style = useMemo(() => {
-    return {
-      width: `${size}px`,
-      height: `${size}px`,
-      borderRadius: '50%',
-      background: isDead
-        ? '#222'
-        : confirmed
-        ? `radial-gradient(circle at 30% 30%, ${color} 0%, #111 70%)`
-        : `radial-gradient(circle at 30% 30%, ${color} 0%, #333 80%)`,
-      border: confirmed ? '2px solid #fff' : 'none',
-      boxShadow: confirmed ? `0 0 8px 2px ${color}aa` : '0 0 4px 1px #00000088',
-      transition: '0.25s all ease-in-out',
-      display: 'inline-block',
-    };
-  }, [color, size, isDead, confirmed]);
+  const { color } = player;
+  const { isAlive, diedThisTurn, actions } = player.state;
 
-  return <div style={style} />;
-});
+  // Derive UI states from the Player.js data structure
+  const selecting = actions.some(
+    (a) => a.selectedTarget !== null && !a.confirmed
+  );
+
+  const confirmed = actions.some((a) => a.confirmed === true);
+
+  const classes = [styles.bulb];
+
+  if (!phase) classes.push(styles.default);
+
+  if (isAlive && phase === 'day') classes.push(styles.aliveDay);
+  if (isAlive && phase === 'night') classes.push(styles.aliveNight);
+
+  if (!isAlive) classes.push(styles.dead);
+  if (diedThisTurn) classes.push(styles.diedThisTurn);
+
+  if (selecting) classes.push(styles.selectionEntered);
+  if (confirmed) classes.push(styles.selectionConfirmed);
+
+  return (
+    <div
+      className={classes.join(' ')}
+      style={{
+        width: size,
+        height: size,
+      }}
+    />
+  );
+}

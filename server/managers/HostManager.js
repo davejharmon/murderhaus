@@ -1,30 +1,5 @@
 // server/managers/HostManager.js
-import { TEAMS } from '../../shared/constants.js';
-
-const HOST_ACTIONS = {
-  kick: {
-    label: 'Kick Player',
-    condition: () => true, // always allowed
-    execute: (player, game) => game.removePlayer(player.id),
-  },
-  kill: {
-    label: 'Kill Player',
-    condition: (player) => player.isAlive,
-    execute: (player) => {
-      player.isAlive = false;
-      return { success: true, message: `Player ${player.id} killed` };
-    },
-  },
-  revive: {
-    label: 'Revive Player',
-    condition: (player) => !player.isAlive,
-    execute: (player) => {
-      player.isAlive = true;
-      return { success: true, message: `Player ${player.id} revived` };
-    },
-  },
-  // Future host actions can be added here easily
-};
+import { HOST_ACTIONS } from '../../shared/constants.js';
 
 export class HostManager {
   constructor(game) {
@@ -35,26 +10,28 @@ export class HostManager {
   performHostAction(playerId, actionName) {
     const player = this.game.getPlayer(playerId);
     if (!player) return { success: false, message: 'Player not found' };
-
     const action = HOST_ACTIONS[actionName];
+
     if (!action)
       return { success: false, message: `Unknown host action: ${actionName}` };
 
-    if (!action.condition(player, this.game)) {
+    if (!action.conditions({ player, game: this.game })) {
       return {
         success: false,
-        message: `Cannot perform ${actionName} on this player`,
+        message: `Cannot perform ${actionName} on ${player.name}`,
       };
     }
 
+    action.result(player, this.game);
+
     // Execute the action
-    return action.execute(player, this.game);
+    return { succes: true, message: `Host ${actionName}ed ${player.name}` };
   }
 
-  /** Return a list of available host actions for a player (e.g., for UI) */
+  /** Get available host actions for a player */
   getAvailableActions(player) {
-    return Object.entries(HOST_ACTIONS)
-      .filter(([_, action]) => action.condition(player, this.game))
-      .map(([key, action]) => key);
+    return Object.values(HOST_ACTIONS).filter((action) =>
+      action.conditions({ player, game: this.game })
+    );
   }
 }

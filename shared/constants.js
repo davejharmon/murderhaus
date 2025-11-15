@@ -2,9 +2,6 @@
 
 export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
 
-// --- Game Phases ---
-export const PREGAME_HOST_ACTIONS = ['kick', 'assign'];
-
 export const PHASES = [
   {
     name: 'day',
@@ -26,6 +23,40 @@ export const PHASES = [
 export const TEAMS = {
   villagers: { name: 'Villagers', color: '#4db8ff' },
   werewolves: { name: 'Werewolves', color: '#ff6b6b' },
+};
+
+// --- Host Actions ---
+export const HOST_ACTIONS = {
+  kill: {
+    name: 'kill',
+    label: '🗡️',
+    phase: ['day', 'night'],
+    pregame: false,
+    conditions: ({ player }) => player?.state?.isAlive,
+    result: (player) => {
+      player.kill();
+    },
+  },
+  rezz: {
+    name: 'rezz',
+    label: '🪦',
+    phase: ['day', 'night'],
+    pregame: false,
+    conditions: ({ player }) => !player?.state?.isAlive,
+    result: (player) => {
+      player.set('isAlive', true, true);
+    },
+  },
+  kick: {
+    name: 'kick',
+    label: '🥾',
+    phase: ['day', 'night'],
+    pregame: true,
+    conditions: ({ player }) => true,
+    result: (player, game) => {
+      return game.removePlayer(player.id);
+    },
+  },
 };
 
 // --- Player Actions ---

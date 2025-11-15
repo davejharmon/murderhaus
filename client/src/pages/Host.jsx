@@ -6,14 +6,15 @@ import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import styles from './Host.module.css';
-import { PHASES, PREGAME_HOST_ACTIONS } from '@shared/constants.js';
+import { ACTIONS, HOST_ACTIONS } from '../../../shared/constants';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
     'PLAYERS_UPDATE',
     'GAME_META_UPDATE',
   ]);
-
+  usePageTitle('Host');
   const {
     phase,
     gameStarted = false,
@@ -22,60 +23,72 @@ export default function Host() {
     currentEvents = [],
   } = gameMeta;
 
-  // --- Host Event Buttons (START/RESOLVE/CLEAR) ---
   const hostEventButtons = useMemo(() => {
     const buttons = [];
 
-    // 1️⃣ Pending events: show START
+    // --- 1️⃣ START buttons for pending events ---
     pendingEvents?.forEach((actionName) => {
-      const activeEvent = currentEvents?.find(
+      const def = ACTIONS[actionName];
+      const active = currentEvents?.some(
         (e) => e.action === actionName && !e.resolved
       );
-      if (!activeEvent) {
+
+      if (!active) {
         buttons.push({
           eventId: null,
           actionName,
-          label: `START ${actionName.toUpperCase()}`,
+          label: `START ${def?.label ?? actionName.toUpperCase()}`,
           sendType: 'START_EVENT',
           state: 'unlocked',
         });
       }
     });
 
-    // 2️⃣ Active events: show RESOLVE
-    currentEvents?.forEach((event) => {
-      if (!event.resolved) {
+    // --- 2️⃣ Active events → RESOLVE buttons ---
+    currentEvents
+      ?.filter((e) => !e.resolved)
+      .forEach((e) => {
+        const def = ACTIONS[e.action];
         buttons.push({
-          eventId: event.id,
-          actionName: event.action,
-          label: `RESOLVE ${event.action.toUpperCase()}`,
+          eventId: e.id,
+          actionName: e.action,
+          label: `RESOLVE ${def?.label ?? e.action.toUpperCase()}`,
           sendType: 'RESOLVE_EVENT',
           state: 'selected',
         });
-      }
-    });
+      });
 
-    // 3️⃣ Resolved events: show CLEAR
-    currentEvents?.forEach((event) => {
-      if (event.resolved) {
+    // --- 3️⃣ Resolved events → CLEAR buttons ---
+    currentEvents
+      ?.filter((e) => e.resolved)
+      .forEach((e) => {
+        const def = ACTIONS[e.action];
         buttons.push({
-          eventId: event.id,
-          actionName: event.action,
-          label: `CLEAR ${event.action.toUpperCase()}`,
+          eventId: e.id,
+          actionName: e.action,
+          label: `CLEAR ${def?.label ?? e.action.toUpperCase()}`,
           sendType: 'CLEAR_EVENT',
           state: 'locked',
         });
-      }
-    });
+      });
 
     return buttons;
   }, [pendingEvents, currentEvents]);
 
-  // --- Host Actions for Player Cards ---
   const hostActions = useMemo(() => {
-    if (!gameStarted) return PREGAME_HOST_ACTIONS;
-    const currentPhaseObj = PHASES.find((p) => p.name === phase);
-    return currentPhaseObj?.hostActions || [];
+    // Collect all actions from HOST_ACTIONS object
+    const all = Object.values(HOST_ACTIONS);
+
+    return all.filter((action) => {
+      if (!gameStarted) {
+        // Pregame: only include actions flagged for pregame
+        return action.pregame === true;
+      }
+
+      // In-game: match phase AND allow non-pregame actions
+      if (!phase) return false;
+      return action.phase?.includes(phase);
+    });
   }, [gameStarted, phase]);
 
   // --- Vote Selectors by Player ---
@@ -85,14 +98,18 @@ export default function Host() {
     if (!ps) return map;
 
     Object.entries(ps).forEach(([targetId, selectors]) => {
-      map[targetId] = selectors.map(({ id, confirmed }) => ({
-        id,
-        isConfirmed: confirmed,
-      }));
+      map[targetId] = selectors.map(({ id, confirmed }) => {
+        const player = players.find((p) => p.id === id);
+        return {
+          id,
+          isConfirmed: confirmed,
+          col: player?.color || '#000', // fallback to black
+        };
+      });
     });
 
     return map;
-  }, [gameMeta]);
+  }, [gameMeta, players]);
 
   return (
     <div className={styles.container}>
@@ -148,19 +165,30 @@ export default function Host() {
 
         <section className={styles.playersSection}>
           <div className={styles.playerList}>
-            {players.map((p) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                actions={hostActions.map((actionName) => ({
-                  label: actionName.toUpperCase(),
-                  action: () =>
-                    send('HOST_ACTION', { playerId: p.id, actionName }),
-                }))}
-                variant='light'
-                voteSelectors={voteSelectorsByPlayer[p.id] || []}
-              />
-            ))}
+            {players.map((p) => {
+              // Determine which host actions are available for this player
+              const availableActions = hostActions.filter((action) =>
+                action.conditions({ player: p, game: gameMeta })
+              );
+
+              return (
+                <PlayerCard
+                  key={p.id}
+                  player={p}
+                  actions={availableActions.map((action) => ({
+                    label: action.label,
+                    action: () =>
+                      send('HOST_ACTION', {
+                        playerId: p.id,
+                        actionName: action.name,
+                      }),
+                  }))}
+                  variant='light'
+                  voteSelectors={voteSelectorsByPlayer[p.id] || []}
+                  phase={phase}
+                />
+              );
+            })}
           </div>
         </section>
       </div>

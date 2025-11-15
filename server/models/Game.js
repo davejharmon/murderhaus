@@ -27,12 +27,22 @@ export class Game {
     return { success: true, message: `Player ${id} registered`, player };
   }
 
-  removePlayer(id) {
-    const index = this.players.findIndex((p) => p.id === id);
-    if (index === -1)
-      return { success: false, message: `Player ${id} not found` };
-    this.players.splice(index, 1);
-    return { success: true, message: `Player ${id} removed` };
+  removePlayer(playerId) {
+    const index = this.players.findIndex((p) => p.id === playerId);
+    if (index === -1) {
+      return { success: false, message: `Player ${playerId} not found` };
+    }
+
+    const [removed] = this.players.splice(index, 1); // Remove player
+
+    // Optional: cleanup other game state that references this player
+    if (this.playersSelecting) {
+      delete this.playersSelecting[removed.id];
+    }
+
+    // Add more cleanup here if needed (votes, events, etc.)
+
+    return { success: true, message: `Player ${removed.id} has been kicked` };
   }
 
   getPlayer(id) {
