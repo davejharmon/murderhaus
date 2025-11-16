@@ -18,7 +18,7 @@ export default function BigScreen() {
   const {
     dayCount = 0,
     phase = null,
-    currentEvents = [],
+    activeEvents = [],
     gameStarted,
   } = gameMeta;
 
@@ -33,8 +33,8 @@ export default function BigScreen() {
   );
 
   const voteEvent = useMemo(
-    () => currentEvents.find((e) => e.action === 'vote'),
-    [currentEvents]
+    () => activeEvents.find((e) => e.action === 'vote'),
+    [activeEvents]
   );
   // --- Check for any player who died this turn ---
   const diedThisTurn = useMemo(

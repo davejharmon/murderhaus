@@ -6,7 +6,7 @@ import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import styles from './Host.module.css';
-import { ACTIONS, HOST_ACTIONS } from '../../../shared/constants';
+import { EVENTS, HOST_ACTIONS } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Host() {
@@ -15,83 +15,87 @@ export default function Host() {
     'GAME_META_UPDATE',
   ]);
   usePageTitle('Host');
+
   const {
     phase,
     gameStarted = false,
     dayCount = 0,
-    pendingEvents = [],
-    currentEvents = [],
+    pendingEvents = [], // comes from server (EventManager.buildPendingEvents)
+    activeEvents = [], // active events list
   } = gameMeta;
 
+  /** ----------------------------
+   * Host buttons for events
+   * ---------------------------- */
+  /** ----------------------------
+   * Host buttons for events (refactored)
+   * ---------------------------- */
   const hostEventButtons = useMemo(() => {
     const buttons = [];
 
-    // --- 1️⃣ START buttons for pending events ---
-    pendingEvents?.forEach((actionName) => {
-      const def = ACTIONS[actionName];
-      const active = currentEvents?.some(
-        (e) => e.action === actionName && !e.resolved
+    // 1️⃣ Pending events → START
+    pendingEvents?.forEach((eventName) => {
+      const active = activeEvents?.some(
+        (e) => e.eventName === eventName && !e.resolved
       );
-
       if (!active) {
+        const def = EVENTS[eventName];
         buttons.push({
           eventId: null,
-          actionName,
-          label: `START ${def?.label ?? actionName.toUpperCase()}`,
+          eventName,
+          label: `START ${def?.label ?? eventName.toUpperCase()}`,
           sendType: 'START_EVENT',
           state: 'unlocked',
         });
       }
     });
 
-    // --- 2️⃣ Active events → RESOLVE buttons ---
-    currentEvents
+    // 2️⃣ Active events → RESOLVE
+    activeEvents
       ?.filter((e) => !e.resolved)
       .forEach((e) => {
-        const def = ACTIONS[e.action];
+        const def = EVENTS[e.eventName];
         buttons.push({
           eventId: e.id,
-          actionName: e.action,
-          label: `RESOLVE ${def?.label ?? e.action.toUpperCase()}`,
+          eventName: e.eventName,
+          label: `RESOLVE ${def?.label ?? e.eventName.toUpperCase()}`,
           sendType: 'RESOLVE_EVENT',
           state: 'selected',
         });
       });
 
-    // --- 3️⃣ Resolved events → CLEAR buttons ---
-    currentEvents
+    // 3️⃣ Resolved events → CLEAR
+    activeEvents
       ?.filter((e) => e.resolved)
       .forEach((e) => {
-        const def = ACTIONS[e.action];
+        const def = EVENTS[e.eventName];
         buttons.push({
           eventId: e.id,
-          actionName: e.action,
-          label: `CLEAR ${def?.label ?? e.action.toUpperCase()}`,
+          eventName: e.eventName,
+          label: `CLEAR ${def?.label ?? e.eventName.toUpperCase()}`,
           sendType: 'CLEAR_EVENT',
           state: 'locked',
         });
       });
 
     return buttons;
-  }, [pendingEvents, currentEvents]);
+  }, [pendingEvents, activeEvents]);
 
+  /** ----------------------------
+   * Host actions per player
+   * ---------------------------- */
   const hostActions = useMemo(() => {
-    // Collect all actions from HOST_ACTIONS object
-    const all = Object.values(HOST_ACTIONS);
-
-    return all.filter((action) => {
-      if (!gameStarted) {
-        // Pregame: only include actions flagged for pregame
-        return action.pregame === true;
-      }
-
-      // In-game: match phase AND allow non-pregame actions
+    const allActions = Object.values(HOST_ACTIONS);
+    return allActions.filter((action) => {
+      if (!gameStarted) return action.pregame === true;
       if (!phase) return false;
       return action.phase?.includes(phase);
     });
   }, [gameStarted, phase]);
 
-  // --- Vote Selectors by Player ---
+  /** ----------------------------
+   * Vote selectors mapping
+   * ---------------------------- */
   const voteSelectorsByPlayer = useMemo(() => {
     const map = {};
     const ps = gameMeta.playersSelecting;
@@ -103,7 +107,7 @@ export default function Host() {
         return {
           id,
           isConfirmed: confirmed,
-          col: player?.color || '#000', // fallback to black
+          col: player?.color || '#000',
         };
       });
     });
@@ -144,13 +148,13 @@ export default function Host() {
           {hostEventButtons.length > 0 && (
             <div className={styles.selectionControls}>
               {hostEventButtons.map(
-                ({ eventId, actionName, label, sendType, state }) => (
+                ({ eventId, eventName, label, sendType, state }) => (
                   <Button
                     key={eventId || label}
                     label={label}
                     onClick={() => {
                       if (sendType === 'START_EVENT') {
-                        send(sendType, { actionName });
+                        send(sendType, { eventName });
                       } else {
                         send(sendType, { eventId });
                       }
@@ -166,7 +170,6 @@ export default function Host() {
         <section className={styles.playersSection}>
           <div className={styles.playerList}>
             {players.map((p) => {
-              // Determine which host actions are available for this player
               const availableActions = hostActions.filter((action) =>
                 action.conditions({ player: p, game: gameMeta })
               );

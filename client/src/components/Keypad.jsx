@@ -2,13 +2,10 @@
 import React from 'react';
 import { Button } from './Button';
 import { send } from '../ws';
-import { MAX_PLAYERS } from '@shared/constants';
+import { ALL_KEYS } from '@shared/constants';
 
 export const Keypad = ({ player }) => {
   if (!player) return <div>Loading player...</div>;
-
-  // keyStates: { '1': 'enabled' | 'disabled' | 'highlighted', ... }
-  const keyStates = player.keyStates ?? {};
 
   const handleClick = (key) => {
     send('PLAYER_INPUT', {
@@ -17,23 +14,23 @@ export const Keypad = ({ player }) => {
     });
   };
 
-  const allKeys = [
-    ...Array.from({ length: MAX_PLAYERS }, (_, i) => String(i + 1)),
-    'A',
-    'B',
-    'confirm',
-  ];
+  const keymap = player.keyStates ?? {};
 
   return (
     <div style={styles.keypad}>
-      {allKeys.map((label) => (
-        <Button
-          key={label}
-          label={label === 'confirm' ? 'C' : label}
-          state={keyStates[label] ?? 'disabled'}
-          onClick={() => handleClick(label)}
-        />
-      ))}
+      {ALL_KEYS.map((key) => {
+        const km = keymap[key] ?? {};
+
+        return (
+          <Button
+            key={key}
+            label={key === 'confirm' ? 'C' : key}
+            state={km.isHighlighted ? 'selected' : 'enabled'}
+            onClick={() => handleClick(key)}
+            disabled={km.isDisabled}
+          />
+        );
+      })}
     </div>
   );
 };

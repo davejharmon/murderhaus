@@ -14,7 +14,7 @@ export class Game {
     this.phaseIndex = 0;
     this.dayCount = 0;
     this.gameStarted = false;
-    this.currentEvents = [];
+    this.activeEvents = [];
   }
 
   /** --- Player management --- */
@@ -103,8 +103,6 @@ export class Game {
     const phase = this.getCurrentPhase();
     this.players.forEach((p) => p.initializePhase());
 
-    // EventManager is handled by GameManager, so no EventManager calls here
-
     return {
       success: true,
       message: `Game started: Day ${this.dayCount}, ${phase.name}`,
@@ -159,7 +157,14 @@ export class Game {
     );
     return !werewolvesAlive || !villagersAlive;
   }
-
+  getPublicState() {
+    return {
+      phase: this.phase,
+      players: this.players.map((p) => p.getPublicState()),
+      activeEvents: this.activeEvents,
+      pendingEvents: this.pendingEvents,
+    };
+  }
   /** --- Getter: all players currently making a selection --- */
   get playersSelecting() {
     const map = {};

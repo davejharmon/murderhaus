@@ -71,7 +71,7 @@ class GameManager {
     const result = this.game.start();
 
     // Initialize pending host events for the first phase
-    this.events.initPendingHostEvents();
+    this.events.buildPendingEvents();
 
     this.handleActionResult(result);
   }
@@ -80,7 +80,7 @@ class GameManager {
     const result = this.game.nextPhase();
 
     // Re-initialize pending host events for the new phase
-    this.events.initPendingHostEvents();
+    this.events.buildPendingEvents();
 
     this.handleActionResult(result);
   }
@@ -93,7 +93,16 @@ class GameManager {
   playerInput(actorId, key) {
     const actor = this.game.getPlayer(actorId);
 
-    const result = actor.handleInput(key);
+    // Look up the event associated with this key
+    const keyEntry = actor.state.keymap[key];
+    let event = null;
+    if (keyEntry?.eventId) {
+      event = this.events.getEventById(keyEntry.eventId);
+    }
+
+    const result = actor.handleInput(key, event);
+    if (event) actor.updateKeymap(this.game.activeEvents);
+
     this.handleActionResult(result, { player: actor });
   }
 
@@ -104,16 +113,16 @@ class GameManager {
   }
 
   /** --- Events --- */
-  startEvent(actionName, initiatedBy = 'host') {
+  startEvent(eventName, initiatedBy = 'host') {
     // Create a new event object and get its unique ID
-    const result = this.events.startEvent(actionName, initiatedBy);
+    const result = this.events.startEvent(eventName, initiatedBy);
 
     // Return or broadcast the eventId so frontend can reference it
     this.handleActionResult(result);
   }
 
   resolveEvent(eventId) {
-    const event = this.game.currentEvents.find((e) => e.id === eventId);
+    const event = this.game.activeEvents.find((e) => e.id === eventId);
     const result = this.events.resolveEvent(event);
     if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);

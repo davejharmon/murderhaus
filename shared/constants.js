@@ -2,20 +2,35 @@
 
 export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
 
+export const ALL_KEYS = [
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  'A',
+  'B',
+  'confirm',
+];
+
 export const PHASES = [
   {
     name: 'day',
     description: 'Players discuss and vote on whom to lynch.',
-    playerActions: ['vote'], // Player-usable actions
-    hostActions: ['kill', 'revive'], // Host actions available anytime
-    events: ['vote'], // Host can start these selection events
+    playerActions: ['vote'],
+    hostActions: ['kill', 'revive'],
+    events: ['vote'], // ← restore this
   },
   {
     name: 'night',
     description: 'Special roles perform their night abilities.',
     playerActions: ['kill', 'protect', 'investigate', 'commute'],
     hostActions: ['kill', 'revive'],
-    events: ['kill', 'protect', 'investigate'],
+    events: ['dummy', 'kill', 'investigate', 'protect'], // ← add these
   },
 ];
 
@@ -61,91 +76,113 @@ export const HOST_ACTIONS = {
 
 // --- Player Actions ---
 export const ACTIONS = {
-  vote: {
-    name: 'vote',
-    trigger: 'event', // event (host triggers) | interrupt (any time)
-    input: {
-      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'], // selectable target
-      allowNone: false,
-      confirmReq: true, // requires confirm click to submit
-    },
-    uses: Infinity,
-    usesPerPhase: 1,
-    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
-    result: (actor, action, target) => {
-      action.selectedTarget = target.id;
-      action.confirmed = true;
-    },
-  },
-
-  kill: {
-    name: 'kill',
-    trigger: 'event',
-    input: {
-      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
-      allowNone: false,
-      confirmReq: true,
-    },
-    uses: Infinity,
-    usesPerPhase: 1,
-    conditions: ({ actor, target }) =>
-      actor?.state.isAlive && target?.state.isAlive,
-    result: (actor, action, target) => {
-      action.selectedTarget = target.id;
-      action.confirmed = true;
-      target.state.isAlive = false;
-      target.state.diedThisTurn = true;
-    },
-  },
-
-  protect: {
-    name: 'protect',
-    trigger: 'event',
-    input: {
-      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
-      allowNone: true,
-      confirmReq: true,
-    },
-    uses: Infinity,
-    usesPerPhase: 1,
-    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
-    result: (actor, action, target) => {
-      action.selectedTarget = target.id;
-      action.confirmed = true;
-    },
-  },
-
-  investigate: {
-    name: 'investigate',
-    trigger: 'event',
-    input: {
-      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
-      allowNone: true,
-      confirmReq: true,
-    },
-    uses: Infinity,
-    usesPerPhase: 1,
-    conditions: ({ actor, target }) => actor?.isAlive && target?.isAlive,
-    result: (actor, action, target) => {
-      action.selectedTarget = target.id;
-      action.confirmed = true;
-    },
-  },
-
-  commute: {
-    name: 'commute',
-    trigger: 'interrupt',
+  oneshot: {
+    name: 'oneshot',
     input: {
       allowed: ['A', 'B'],
-      allowNone: true,
       confirmReq: true,
     },
-    uses: Infinity,
-    usesPerPhase: 1,
-    conditions: ({ actor }) => actor?.isAlive,
-    result: (actor, action, target) => {
-      action.selectedTarget = target.id;
-      action.confirmed = true;
+    uses: 1,
+    usesPerPhase: Infinity,
+    conditions: ({ actor }) => actor?.state?.isAlive,
+    result: (actor) => {
+      actor.kill(); //
+    },
+  },
+};
+
+export const EVENTS = {
+  vote: {
+    name: 'vote',
+    phase: ['day'],
+    participantCondition: (player) => player.state.isAlive,
+    targetCondition: (player) => player.state.isAlive,
+
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      confirmReq: true,
+      allowNone: false,
+      resultType: 'majority', // or 'perPlayer'
+      allowTies: true, // handles ties in resolution
+    },
+
+    resolution: (event, game) => {
+      // if tie, start a tiebreaker event with just the most targeted participants, else
+      event.showResults();
+    },
+  },
+
+  dummy: {
+    name: 'dummy',
+    phase: ['night'],
+    participantCondition: (player) => player.state.isAlive,
+    targetCondition: (player) => player.state.isAlive,
+
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      confirmReq: true,
+      allowNone: true,
+      resultType: 'perPlayer',
+      allowTies: false, // cannot end event while a tie is in place.
+    },
+
+    resolution: (event, game) => {
+      return; // no effect, used to make sure everyone presses buttons during this phase.
+    },
+  },
+  kill: {
+    name: 'kill',
+    phase: ['night'],
+    participantCondition: (player) => player.state.isAlive,
+    targetCondition: (player, actor) =>
+      player.state.isAlive && player.id !== actor.id,
+
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      confirmReq: true,
+      allowNone: false,
+      resultType: 'majority',
+      allowTies: false, // cannot end event while a tie is in place.
+    },
+
+    resolution: (event, game) => {
+      // kill player associated with the most targeted key in results
+    },
+  },
+  investigate: {
+    name: 'investigate',
+    phase: ['night'],
+    participantCondition: (player) => player.state.isAlive,
+    targetCondition: (player) => player.state.isAlive,
+
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      confirmReq: true,
+      allowNone: false,
+      resultType: 'perPlayer',
+      allowTies: false, // cannot end event while a tie is in place.
+    },
+
+    resolution: (event, game) => {
+      // return investigate status to investigator
+    },
+  },
+  protect: {
+    name: 'protect',
+    phase: ['night'],
+    participantCondition: (player) => player.state.isAlive,
+    targetCondition: (player, actor) => player.state.isAlive && player != actor, // can we adjust this to be 'and target is not the player participating in the event'
+
+    input: {
+      allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      confirmReq: true,
+      allowNone: false,
+      resultType: 'perPlayer',
+      allowTies: false, // cannot end event while a tie is in place.
+    },
+
+    resolution: (event, game) => {
+      // target is immune to kill actions this phase.
     },
   },
 };
@@ -156,31 +193,29 @@ export const ROLES = {
     name: 'villager',
     team: 'villagers',
     color: undefined,
-    defaultActions: ['vote'],
+    defaultActions: ['dummy'],
+    defaultEvents: ['vote'],
   },
   werewolf: {
     name: 'werewolf',
     team: 'werewolves',
     color: '#ff6b6b',
-    defaultActions: ['kill', 'vote'],
+    defaultActions: [],
+    defaultEvents: ['vote', 'kill'],
   },
   seer: {
     name: 'seer',
     team: 'villagers',
     color: '#a1ff9b',
-    defaultActions: ['investigate', 'vote'],
+    defaultActions: [],
+    defaultEvents: ['vote', 'protect'],
   },
   doctor: {
     name: 'doctor',
     team: 'villagers',
     color: '#9be2ff',
-    defaultActions: ['protect', 'vote'],
-  },
-  governor: {
-    name: 'governor',
-    team: 'villagers',
-    color: '#ffc27b',
-    defaultActions: ['commute', 'vote'],
+    defaultActions: [],
+    defaultEvents: ['vote', 'protect'],
   },
 };
 

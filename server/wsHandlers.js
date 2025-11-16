@@ -97,9 +97,9 @@ export function handleWSMessage(ws, data) {
     }
 
     case 'START_EVENT': {
-      const { actionName, initiatedBy } = payload;
+      const { eventName, initiatedBy } = payload;
       // Still using actionName because the event hasn’t been created yet
-      gameManager.startEvent(actionName, initiatedBy || 'host');
+      gameManager.startEvent(eventName, initiatedBy || 'host');
       break;
     }
 

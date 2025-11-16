@@ -21,16 +21,10 @@ export class ViewManager {
   }
 
   publishGameMeta() {
-    const phase = this.game.getCurrentPhase?.() ?? { name: null };
-    const pendingEvents = this.events?.getPendingEvents?.() ?? [];
-
+    const gameState = this.game.getPublicState();
     publish('GAME_META_UPDATE', {
-      phase: phase.name,
-      gameStarted: this.game.gameStarted,
-      dayCount: this.game.dayCount,
-      currentEvents: this.game.currentEvents,
-      pendingEvents,
-      playersSelecting: this.game.playersSelecting,
+      ...gameState,
+      pendingEvents: this.events?.getPendingEvents?.() ?? [],
     });
   }
 
