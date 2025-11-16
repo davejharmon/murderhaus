@@ -8,7 +8,7 @@ let isConnecting = false;
 const reconnectInterval = 2000;
 
 const WS_URL = import.meta.env.DEV
-  ? 'ws://localhost:8080'
+  ? `ws://${location.hostname}:8080`
   : `${window.location.origin.replace(/^http/, 'ws')}`;
 
 function notifyStatus(status) {

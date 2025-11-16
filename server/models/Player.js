@@ -155,14 +155,6 @@ export class Player {
 
   /** --- Handle raw input from Keypad/WS --- */
   handleInput(key) {
-    console.group(`[Player ${this.id}] handleInput: key="${key}"`);
-    console.log('Current actions state:');
-    this.state.actions.forEach((a) => {
-      console.log(
-        `- ${a.name}: active=${a.active}, remaining=${a.remainingUsesThisPhase}, confirmed=${a.confirmed}, allowed=${a.input?.allowed}, confirmReq=${a.input?.confirmReq}, selectedTarget=${a.selectedTarget}`
-      );
-    });
-
     const activeActions = this.state.actions.filter(
       (a) =>
         a.active &&

@@ -63,6 +63,9 @@ class GameManager {
     return result;
   }
 
+  getPlayer(id) {
+    return this.game.getPlayer(id);
+  }
   /** --- Game lifecycle --- */
   startGame() {
     const result = this.game.start();
@@ -110,7 +113,8 @@ class GameManager {
   }
 
   resolveEvent(eventId) {
-    const result = this.events.resolveEvent(eventId);
+    const event = this.game.currentEvents.find((e) => e.id === eventId);
+    const result = this.events.resolveEvent(event);
     if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);
   }

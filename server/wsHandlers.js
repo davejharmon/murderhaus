@@ -29,6 +29,35 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
+    case 'QUERY_PLAYER_EXISTS': {
+      const { id } = payload;
+      const player = gameManager.getPlayer(id);
+
+      // Inform client whether the player exists
+      sendTo(ws, {
+        type: 'PLAYER_EXISTS',
+        payload: { id, exists: !!player },
+      });
+
+      if (player) {
+        // Subscribe the client to updates
+        subscribe(ws, `PLAYER_UPDATE:${id}`);
+        subscribe(ws, 'GAME_META_UPDATE');
+
+        // Immediately push current state so this client is up-to-date
+        sendTo(ws, {
+          type: `PLAYER_UPDATE:${id}`,
+          payload: player.getPublicState(),
+        });
+        sendTo(ws, {
+          type: 'GAME_META_UPDATE',
+          payload: gameManager.game.getPublicState(), // or whatever your meta payload is
+        });
+      }
+
+      break;
+    }
+
     case 'REGISTER_PLAYER': {
       const { id } = payload;
       if (id == null)

@@ -56,7 +56,14 @@ export default function Landing() {
         <ul className={styles.playerList}>
           {sortedPlayers.map((p) => (
             <li key={p.id}>
-              #{p.id} — {p.name || 'Unnamed'} {p.isAlive ? '' : '(dead)'}
+              <a
+                href={`/player/${p.id}`}
+                target='_blank'
+                rel='noopener noreferrer'
+                className={styles.playerLink}
+              >
+                #{p.id} — {p.name || 'Unnamed'} {p.isAlive ? '' : '(dead)'}
+              </a>
             </li>
           ))}
         </ul>
