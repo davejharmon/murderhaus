@@ -54,6 +54,7 @@ function initSocket() {
     }
 
     const { type, payload } = msg;
+
     const typeListeners = listeners[type] || [];
     typeListeners.forEach((fn) => fn(payload));
   };
@@ -110,6 +111,10 @@ export function subscribe(type, fn) {
   return () => {
     listeners[type] = listeners[type].filter((l) => l !== fn);
   };
+}
+
+export function subscribeServerChannel(channel) {
+  send('SUBSCRIBE', { channel }); // send a WS message to server
 }
 
 export function subscribeStatus(fn) {

@@ -9,7 +9,7 @@ import { send } from '../ws';
 export const PlayerCard = React.memo(function PlayerCard({
   player,
   actions = [],
-  voteSelectors = [],
+  selectionGlyphs = [],
   DEBUG = false,
   variant = 'dark',
   phase,
@@ -42,8 +42,8 @@ export const PlayerCard = React.memo(function PlayerCard({
     [player.name]
   );
   // Render vote selectors (NumberEmoji)
-  const memoedVoteSelectors = useMemo(() => {
-    return voteSelectors.map(({ id, isConfirmed, col }) => (
+  const memoedselectionGlyphs = useMemo(() => {
+    return selectionGlyphs.map(({ id, isConfirmed, col }) => (
       <NumberEmoji
         key={`vote-${id}`}
         number={id}
@@ -51,7 +51,7 @@ export const PlayerCard = React.memo(function PlayerCard({
         isConfirmed={isConfirmed}
       />
     ));
-  }, [voteSelectors]);
+  }, [selectionGlyphs]);
 
   return (
     <div
@@ -88,8 +88,8 @@ export const PlayerCard = React.memo(function PlayerCard({
           {player.role || 'Unassigned'}
         </span>
 
-        {memoedVoteSelectors.length > 0 && (
-          <div className={styles.selections}>{memoedVoteSelectors}</div>
+        {memoedselectionGlyphs.length > 0 && (
+          <div className={styles.selections}>{memoedselectionGlyphs}</div>
         )}
       </div>
 

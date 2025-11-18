@@ -96,24 +96,34 @@ export default function Host() {
   /** ----------------------------
    * Vote selectors mapping
    * ---------------------------- */
-  const voteSelectorsByPlayer = useMemo(() => {
+  const selectionGlyphs = useMemo(() => {
     const map = {};
-    const ps = gameMeta.playersSelecting;
-    if (!ps) return map;
 
-    Object.entries(ps).forEach(([targetId, selectors]) => {
-      map[targetId] = selectors.map(({ id, confirmed }) => {
-        const player = players.find((p) => p.id === id);
-        return {
-          id,
-          isConfirmed: confirmed,
-          col: player?.color || '#000',
-        };
+    // Find the active vote event (unresolved)
+    const voteEvent = activeEvents?.find(
+      (e) => e.eventName === 'vote' && !e.resolved
+    );
+
+    if (!voteEvent) return map;
+
+    const { results = {}, completedBy = [] } = voteEvent;
+
+    // Build mapping target → list of selectors
+    Object.entries(results).forEach(([actorId, targetId]) => {
+      const actor = players.find((p) => p.id === Number(actorId));
+      if (!actor) return;
+
+      if (!map[targetId]) map[targetId] = [];
+
+      map[targetId].push({
+        id: actor.id,
+        isConfirmed: completedBy.includes(actor.id),
+        col: actor.color,
       });
     });
 
     return map;
-  }, [gameMeta, players]);
+  }, [activeEvents, players]);
 
   return (
     <div className={styles.container}>
@@ -187,7 +197,7 @@ export default function Host() {
                       }),
                   }))}
                   variant='light'
-                  voteSelectors={voteSelectorsByPlayer[p.id] || []}
+                  selectionGlyphs={selectionGlyphs[p.id] || []}
                   phase={phase}
                 />
               );

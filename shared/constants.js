@@ -101,14 +101,14 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNone: false,
+      allowNoResponse: false,
       resultType: 'majority', // or 'perPlayer'
       allowTies: true, // handles ties in resolution
     },
 
     resolution: (event, game) => {
       // if tie, start a tiebreaker event with just the most targeted participants, else
-      event.showResults();
+      console.log('VOTE ENDED BOY!');
     },
   },
 

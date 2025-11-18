@@ -32,6 +32,13 @@ export class ViewManager {
     publish('LOG_UPDATE', logger.getEntries());
   }
 
+  publishSlides(slideSlice) {
+    // slideSlice should be { buffer, active }
+    console.log(slideSlice);
+    if (!slideSlice) return;
+    publish('SLIDES_UPDATE', slideSlice);
+  }
+
   updatePlayerViews() {
     // Since Player.update is gone, just publish current state
     this.game.players.forEach((p) => this.publishPlayer(p));

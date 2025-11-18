@@ -1,5 +1,5 @@
 // src/state/GameBus.js
-import { subscribe } from '../ws';
+import { subscribe, subscribeServerChannel } from '../ws';
 
 // Keep global data and listener registry
 const gameData = {
@@ -7,6 +7,11 @@ const gameData = {
   gameMeta: { phase: null, gameStarted: false, dayCount: 0 },
   log: [],
   playerSlices: new Map(), // playerId -> data
+
+  slides: {
+    buffer: [], // array of slide objects
+    active: null, // optional convenience pointer
+  },
 };
 
 const updateFns = {
@@ -14,6 +19,7 @@ const updateFns = {
   GAME_META_UPDATE: new Set(),
   LOG_UPDATE: new Set(),
   PLAYER_UPDATE: new Map(), // playerId -> Set()
+  SLIDES_UPDATE: new Set(),
 };
 
 let initialized = false;
@@ -21,6 +27,8 @@ let initialized = false;
 export function initGameBus() {
   if (initialized) return;
   initialized = true;
+
+  subscribeServerChannel('SLIDES_UPDATE');
 
   // Global subscriptions — each fan out to registered listeners
   subscribe('PLAYERS_UPDATE', (payload) => {
@@ -35,6 +43,21 @@ export function initGameBus() {
     gameData.log = payload;
     updateFns.LOG_UPDATE.forEach((fn) => fn(payload));
   });
+  // -------------------------------
+  // NEW: slide lifecycle handling
+  // -------------------------------
+
+  // front-end GameBus
+  subscribe('SLIDES_UPDATE', (slice) => {
+    console.log('[GameBus] SLIDES_UPDATE received:', slice); // debug log
+    gameData.slides = slice;
+    emitSlides();
+  });
+}
+
+function emitSlides() {
+  console.log('[GameBus] emitSlides called, current slice:', gameData.slides);
+  updateFns.SLIDES_UPDATE.forEach((fn) => fn(gameData.slides));
 }
 
 // Register a slice listener
@@ -48,6 +71,11 @@ export function listenToSlice(type, fn, playerId = null) {
     updateFns[type].add(fn);
     return () => updateFns[type].delete(fn);
   }
+}
+
+export function listenToSlides(fn) {
+  updateFns.SLIDES_UPDATE.add(fn);
+  return () => updateFns.SLIDES_UPDATE.delete(fn);
 }
 
 export function getGameData() {

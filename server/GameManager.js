@@ -4,8 +4,9 @@ import { ActionManager } from './managers/ActionManager.js';
 import { HostManager } from './managers/HostManager.js';
 import { EventManager } from './managers/EventManager.js';
 import { ViewManager } from './managers/ViewManager.js';
+import { SlideManager } from './managers/SlideManager.js';
 import { logger } from './utils/Logger.js';
-import { ACTIONS } from '../shared/constants.js';
+import { Slide } from './models/Slide.js';
 
 class GameManager {
   constructor() {
@@ -14,7 +15,8 @@ class GameManager {
     this.host = new HostManager(this.game);
     this.events = new EventManager(this.game);
     this.view = new ViewManager(this.game);
-
+    this.slideManager = new SlideManager();
+    this.slideManager.init(this.view);
     this.view.setEvents(this.events);
   }
 
@@ -68,12 +70,23 @@ class GameManager {
   }
   /** --- Game lifecycle --- */
   startGame() {
+    // Start the core game state
     const result = this.game.start();
 
-    // Initialize pending host events for the first phase
+    // Ensure all host-prompt events for the first phase are ready
     this.events.buildPendingEvents();
 
+    // Handle role assignments / initial actions etc.
     this.handleActionResult(result);
+
+    // SLIDES: enqueue and immediately broadcast the first slide
+    this.slideManager.replaceQueue([
+      new Slide({
+        title: { text: 'GAME STARTING' },
+        subtitle: 'Prepare yourselves',
+        countdown: Date.now() + 5000,
+      }),
+    ]);
   }
 
   nextPhase() {
@@ -81,8 +94,8 @@ class GameManager {
 
     // Re-initialize pending host events for the new phase
     this.events.buildPendingEvents();
-
     this.handleActionResult(result);
+    this.slideManager.clearOnPhaseEnd();
   }
 
   endGame() {

@@ -203,7 +203,7 @@ export class Player {
       return { success: false, message: `[INPUT] Key "${key}" is disabled` };
     }
 
-    const { eventId, actionName } = keyEntry;
+    const { eventId } = keyEntry;
 
     if (!eventId) {
       return {
@@ -222,10 +222,10 @@ export class Player {
     // Determine type of input
     if (key === 'confirm') {
       // Confirm marks completion for events requiring confirmation
-      event.recordResult(this.id, null, true);
+      event.recordResult(this.id, key, true);
       return {
         success: true,
-        message: `[INPUT] Player ${this.name} confirmed completion for event ${eventId}`,
+        message: `[INPUT] ${this.name} confirmed completion for ${event.eventName}`,
         event,
       };
     }
@@ -235,7 +235,7 @@ export class Player {
 
     return {
       success: true,
-      message: `[INPUT] Player ${this.name} selected "${key}" for event ${eventId}`,
+      message: `[INPUT] ${this.name} selected "${key}" for ${event.eventName}`,
       event,
     };
   }
@@ -254,7 +254,7 @@ export class Player {
 
     return {
       success: true,
-      message: `Player ${this.name} triggered interrupt "${actionName}" with "${key}"`,
+      message: `[INPUT] ${this.name} triggered interrupt "${actionName}" with "${key}"`,
       action,
     };
   }
@@ -280,7 +280,7 @@ export class Player {
     }
     return {
       success: true,
-      message: `Player ${this.id} set ${inState ? 'state.' : ''}${key}`,
+      message: `[PLAYER] ${this.name} set ${inState ? 'state.' : ''}${key}`,
     };
   }
 

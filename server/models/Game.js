@@ -158,13 +158,19 @@ export class Game {
     return !werewolvesAlive || !villagersAlive;
   }
   getPublicState() {
+    const phase = this.getCurrentPhase(); // get from PHASES array
+
     return {
-      phase: this.phase,
+      gameStarted: this.gameStarted,
+      dayCount: this.dayCount,
+      phase: phase?.name || null,
       players: this.players.map((p) => p.getPublicState()),
       activeEvents: this.activeEvents,
-      pendingEvents: this.pendingEvents,
+      pendingEvents: this.pendingEvents || [],
+      phaseIndex: this.phaseIndex, // optional but useful
     };
   }
+
   /** --- Getter: all players currently making a selection --- */
   get playersSelecting() {
     const map = {};

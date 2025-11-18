@@ -18,7 +18,7 @@ function App() {
         <Route path='/screen' element={<BigScreen />} />
         <Route path='/host' element={<Host />} />
         <Route path='/player/:id' element={<Player />} />
-        <Route path='/player/debug' element={<DebugPlayers />} />
+        <Route path='/players' element={<DebugPlayers />} />
       </Routes>
     </Router>
   );

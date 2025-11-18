@@ -32,7 +32,7 @@ export default function Landing() {
   const openHostAndDashboard = () => {
     window.open('/host', '_blank', 'noopener,noreferrer'); // Host page
     window.open('/screen', '_blank', 'noopener,noreferrer'); // Big Screen page
-    navigate('/player/debug'); // Debug player dashboard
+    navigate('/players'); // Debug player dashboard
   };
 
   const sortedPlayers = [...players].sort((a, b) => a.id - b.id);

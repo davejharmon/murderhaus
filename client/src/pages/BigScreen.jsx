@@ -1,109 +1,55 @@
-import React, { useMemo } from 'react';
-import { useGameState } from '../hooks/useGameState';
-import Title from '../components/BigScreen/Title';
-import Subtitle from '../components/BigScreen/Subtitle';
-import EnemiesRemaining from '../components/BigScreen/EnemiesRemaining';
-import PlayerGallery from '../components/BigScreen/PlayerGallery';
-import SelectionResults from '../components/BigScreen/SelectionResults';
-import BigPortraitUpdate from '../components/BigScreen/BigPortraitUpdate';
-import styles from '../components/BigScreen/BigScreen.module.css';
+// src/pages/BigScreen.jsx
+import React from 'react';
+import { useSlides } from '../hooks/useSlides';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+import Gallery from '../components/BigScreen/Gallery';
+import Title from '../components/BigScreen/Title';
+import Subtitle from '../components/BigScreen/Subtitle';
+import CountdownTimer from '../components/BigScreen/CountdownTimer';
+import PlayerUpdate from '../components/BigScreen/PlayerUpdate';
+import EventUpdate from '../components/BigScreen/EventUpdate';
+import GameUpdate from '../components/BigScreen/GameUpdate';
+
 export default function BigScreen() {
-  const { players = [], gameMeta } = useGameState([
-    'PLAYERS_UPDATE',
-    'GAME_META_UPDATE',
-  ]);
-  usePageTitle('Big Screen');
-  const {
-    dayCount = 0,
-    phase = null,
-    activeEvents = [],
-    gameStarted,
-  } = gameMeta;
+  usePageTitle('Screen');
 
-  const alivePlayers = useMemo(
-    () => players.filter((p) => p.state?.isAlive),
-    [players]
-  );
+  const { active } = useSlides();
 
-  const enemies = useMemo(
-    () => players.filter((p) => p.role === 'werewolf'),
-    [players]
-  );
-
-  const voteEvent = useMemo(
-    () => activeEvents.find((e) => e.action === 'vote'),
-    [activeEvents]
-  );
-  // --- Check for any player who died this turn ---
-  const diedThisTurn = useMemo(
-    () => players.find((p) => p.state?.diedThisTurn),
-    [players]
-  );
-  // --- Determine what content to show ---
-  const displayView = useMemo(() => {
-    if (diedThisTurn) {
-      return (
-        <>
-          <BigPortraitUpdate
-            player={diedThisTurn}
-            title={`${diedThisTurn.name || 'Unknown'} murdered`}
-            subtitle='Eliminated'
-          />
-          <EnemiesRemaining enemies={enemies} />
-        </>
-      );
-    }
-    if (!gameStarted) {
-      return <Title text='GAME STARTING SOON' />;
-    }
-
-    if (phase === 'day') {
-      if (!voteEvent) {
-        return (
-          <>
-            <PlayerGallery players={players} />
-            <Title text={`DAY ${dayCount}`} />
-            <Subtitle text='ELIMINATION VOTING STARTS SOON' />
-            <EnemiesRemaining enemies={enemies} />
-          </>
-        );
-      }
-
-      if (voteEvent && !voteEvent.resolved) {
-        return (
-          <>
-            <PlayerGallery players={players} />
-            <Title text={`DAY ${dayCount}`} />
-            <Subtitle text='CHOOSE A PLAYER TO ELIMINATE' />
-            <EnemiesRemaining enemies={enemies} />
-          </>
-        );
-      }
-
-      if (voteEvent && voteEvent.resolved) {
-        return <SelectionResults voteEvent={voteEvent} />;
-      }
-    }
-
-    if (phase === 'night') {
-      return (
-        <>
-          <PlayerGallery players={players} />
-          <Title text={`NIGHT ${dayCount}`} />
-          <Subtitle text='EVERYBODY GO TO SLEEP' />
-          <EnemiesRemaining enemies={enemies} />
-        </>
-      );
-    }
-
-    return <Title text='WAITING FOR GAME STATE...' />;
-  }, [gameStarted, phase, dayCount, voteEvent, enemies, players]);
+  if (!active) {
+    return (
+      <div className='bigscreen-empty'>
+        <h1>Waiting for slides…</h1>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.container}>
-      <section className={styles.mainDisplay}>{displayView}</section>
+    <div className='bigscreen'>
+      {active.title && (
+        <Title text={active.title.text} color={active.title.color} />
+      )}
+      {active.subtitle && <Subtitle text={active.subtitle} />}
+      {active.gallery && (
+        <Gallery
+          players={active.gallery.players}
+          header={active.gallery.header}
+        />
+      )}
+      {active.countdown && <CountdownTimer startTime={active.countdown} />}
+      {active.playerUpdate && (
+        <PlayerUpdate
+          player={active.playerUpdate.player}
+          text={active.playerUpdate.text}
+        />
+      )}
+      {active.eventUpdate && <EventUpdate event={active.eventUpdate} />}
+      {active.gameUpdate && (
+        <GameUpdate
+          players={active.gameUpdate.players}
+          text={active.gameUpdate.text}
+        />
+      )}
     </div>
   );
 }

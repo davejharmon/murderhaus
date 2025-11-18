@@ -1,0 +1,85 @@
+.bigscreen-title {
+  font-size: 4rem;
+  font-weight: 800;
+  text-align: center;
+  margin: 40px 0 20px;
+}
+
+.bigscreen-subtitle {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 40px;
+  opacity: 0.8;
+}
+
+.bigscreen-gallery {
+  margin-top: 40px;
+}
+
+.bigscreen-gallery-header {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.bigscreen-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.bigscreen-gallery-item {
+  text-align: center;
+}
+
+.bigscreen-gallery-img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.bigscreen-gallery-name {
+  margin-top: 10px;
+  font-size: 1.2rem;
+}
+
+.bigscreen-countdown {
+  font-size: 6rem;
+  font-weight: bold;
+  text-align: center;
+  margin: 60px 0;
+}
+
+.bigscreen-playerupdate,
+.bigscreen-eventupdate,
+.bigscreen-gameupdate {
+  margin: 40px 0;
+  text-align: center;
+}
+
+.bigscreen-eventupdate-title {
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+.bigscreen-eventupdate-description {
+  margin-top: 10px;
+  font-size: 1.4rem;
+  opacity: 0.8;
+}
+
+.bigscreen-eventupdate-players span {
+  display: inline-block;
+  margin: 10px;
+  font-size: 1.4rem;
+}
+
+.bigscreen-gameupdate-text {
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.bigscreen-gameupdate-player {
+  margin: 6px 0;
+  font-size: 1.4rem;
+}

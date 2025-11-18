@@ -1,3 +1,5 @@
+// /server/wsHandlers.js
+
 import { gameManager } from './GameManager.js';
 import { sendTo, subscribe } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
@@ -133,6 +135,20 @@ export function handleWSMessage(ws, data) {
 
     case 'NEXT_PHASE':
       gameManager.nextPhase();
+      break;
+
+    // SLIDE MANAGEMENT
+
+    case 'HOST_NEXT_SLIDE':
+      gameManager.slideManager.next();
+      break;
+
+    case 'HOST_PREV_SLIDE':
+      gameManager.slideManager.prev();
+      break;
+
+    case 'HOST_CLEAR_SLIDES':
+      gameManager.slideManager.clear();
       break;
 
     default:

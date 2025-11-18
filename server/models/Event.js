@@ -4,7 +4,7 @@ export class Event {
     this.id = id;
     this.eventName = eventName;
     this.eventDef = eventDef; // full event definition from EVENTS[name]
-
+    this.resolution = eventDef.resolution;
     this.phase = game.getCurrentPhase()?.name || null;
     this.initiatedBy = initiatedBy;
     this.createdAt = Date.now();
@@ -34,11 +34,14 @@ export class Event {
   }
 
   recordResult(actorId, selection, confirmed = true) {
-    const input = this.eventDef?.input || {};
-    this.results[actorId] = selection;
+    const confirmReq = this.eventDef?.input?.confirmReq || false;
+    const prevSelection = this.results[actorId];
+    // Only toggle to null if NOT confirmed
+    if (selection === prevSelection) {
+      this.results[actorId] = null;
+    } else if (selection !== 'confirm') this.results[actorId] = selection;
 
-    const requiresConfirm = input.confirmReq ?? false;
-    const isFinal = requiresConfirm ? confirmed : true;
+    const isFinal = !confirmReq | confirmed;
     if (isFinal) this.markCompleted(actorId);
   }
 
@@ -46,12 +49,12 @@ export class Event {
     return this.completedBy.length >= this.participants.length;
   }
 
-  resolve(game) {
-    if (this.resolved) return;
-    const resolutionFn = this.eventDef?.resolution;
-    if (typeof resolutionFn === 'function') resolutionFn(this, game);
-    this.resolved = true;
-  }
+  // resolve(game) {
+  //   if (this.resolved) return;
+  //   const resolutionFn = this.eventDef?.resolution;
+  //   if (typeof resolutionFn === 'function') resolutionFn(this, game);
+  //   this.resolved = true;
+  // }
 
   getPublicState() {
     return {

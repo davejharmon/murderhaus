@@ -73,7 +73,9 @@ export class EventManager {
       if (!player) return;
       player.updateKeymap(this.game.activeEvents);
     });
-
+    // Push a slide to BigScreen clients
+    console.log('pushing slide to screen');
+    this.game.screen.eventSlide({ event, initiatedBy });
     return { success: true, message: `[EVENTS] ${eventName} started.`, event };
   }
 
@@ -86,22 +88,32 @@ export class EventManager {
       return { success: false, message: '[EVENTS] No such event.' };
     }
 
-    if (!event.isFullyComplete()) {
+    if (event.resolved) {
+      return {
+        success: false,
+        message: '[EVENTS] Event has already resolved.',
+      };
+    }
+
+    if (!event.isFullyComplete() && !event.input.allowNoResponse) {
       return {
         success: false,
         message: '[EVENTS] Cannot resolve — not all participants completed.',
       };
     }
 
-    // TODO later when implementing:
-    // - event.eventDef.applyResults(event.results, this.game)
-    // - event.resolved = true
-    // - clear event keymaps for players
-    // - anything else needed
-
+    const resolutionFn = this.resolution;
+    if (typeof resolutionFn === 'function') {
+      const result = resolutionFn(this, game);
+      this.resolved = true;
+      return {
+        success: true,
+        message: `[EVENT] ${event.eventName} resolved.`,
+      };
+    }
     return {
       success: false,
-      message: '[EVENTS] resolveEvent not implemented.',
+      message: '[EVENTS] End of Resolve method, something went wrong.',
     };
   }
 

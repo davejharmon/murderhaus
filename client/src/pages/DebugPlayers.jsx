@@ -7,7 +7,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function DebugPlayers() {
   const playerIds = Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1);
-  usePageTitle('Player Grid');
+  usePageTitle('Players');
   return (
     <div className={styles.gridContainer}>
       {playerIds.map((id) => (
