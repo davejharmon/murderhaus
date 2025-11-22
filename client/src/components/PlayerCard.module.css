@@ -71,3 +71,11 @@
   color: gray;
   margin-top: 4px;
 }
+
+.portrait {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #888; /* subtle border, optional */
+}

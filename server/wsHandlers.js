@@ -92,6 +92,13 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
+    case 'HOST_UPDATE_PLAYER_IMAGE': {
+      const { id, image } = payload;
+      console.log('[WS] Got here');
+      gameManager.updatePlayerImage(id, image);
+      break;
+    }
+
     case 'HOST_ACTION': {
       const { playerId, actionName } = payload;
       gameManager.hostAction(playerId, actionName);

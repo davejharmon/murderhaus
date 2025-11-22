@@ -50,15 +50,30 @@ class GameManager {
   }
 
   /** --- Player management --- */
-  updatePlayerName(pid, name) {
-    const player = this.game.getPlayer(pid);
+  updatePlayerName(id, name) {
+    const player = this.game.getPlayer(id);
     if (!player) {
-      return { success: false, message: `Player ${pid} not found` };
+      return { success: false, message: `Player ${id} not found` };
     }
 
     // Use new Player.set()
     const result = player.set('name', name);
+    result.message = `Player ${id} name set to ${name}`;
+    // Send to logger + view updates
+    this.handleActionResult(result, { player });
 
+    return result;
+  }
+
+  updatePlayerImage(id, image) {
+    const player = this.game.getPlayer(id);
+    console.log('[GAMEMGR] got to game manager', id, player);
+    if (!player) {
+      return { success: false, message: `Player ${id} not found` };
+    }
+    // Use new Player.set()
+    const result = player.set('image', image);
+    result.message = `Player ${id} image set to ${image}`;
     // Send to logger + view updates
     this.handleActionResult(result, { player });
 

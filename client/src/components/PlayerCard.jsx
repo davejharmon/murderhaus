@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { NumberEmoji } from './NumberEmoji';
 import styles from './PlayerCard.module.css';
 import { send } from '../ws';
+import anonImg from '../assets/anon.png'; // default portrait
 
 export const PlayerCard = React.memo(function PlayerCard({
   player,
@@ -13,6 +14,7 @@ export const PlayerCard = React.memo(function PlayerCard({
   DEBUG = false,
   variant = 'dark',
   phase,
+  onPortraitClick, // <-- new prop
 }) {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -41,7 +43,7 @@ export const PlayerCard = React.memo(function PlayerCard({
     },
     [player.name]
   );
-  // Render vote selectors (NumberEmoji)
+
   const memoedselectionGlyphs = useMemo(() => {
     return selectionGlyphs.map(({ id, isConfirmed, col }) => (
       <NumberEmoji
@@ -66,6 +68,14 @@ export const PlayerCard = React.memo(function PlayerCard({
         <div className={styles.bulb}>
           <Bulb player={player} phase={phase} />
         </div>
+
+        <img
+          src={player.image ? `/images/players/${player.image}` : anonImg}
+          alt={player.name}
+          className={styles.portrait}
+          onClick={() => onPortraitClick && onPortraitClick(player)} // <-- click handler
+          style={{ cursor: onPortraitClick ? 'pointer' : 'default' }}
+        />
 
         {isEditing ? (
           <input

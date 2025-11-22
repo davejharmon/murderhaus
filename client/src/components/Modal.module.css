@@ -1,0 +1,19 @@
+.overlay {
+  position: fixed;
+  inset: 0; /* top/right/bottom/left = 0 */
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.content {
+  background: #222;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  color: white;
+}

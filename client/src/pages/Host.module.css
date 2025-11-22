@@ -101,3 +101,27 @@
   justify-content: center;
   align-items: center;
 }
+
+/* Modal portrait gallery */
+.portraitGallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  max-height: 70vh; /* keep gallery from overflowing vertically */
+  overflow-y: auto;
+}
+
+.modalPortrait {
+  width: min(10vw, 80px);
+  height: min(10vh, 80px);
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, border 0.2s;
+  border: 2px solid transparent;
+}
+
+.selected {
+  filter: sepia(1) saturate(5) hue-rotate(-50deg);
+}

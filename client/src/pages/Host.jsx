@@ -1,10 +1,11 @@
 // src/pages/Host.jsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { send } from '../ws';
 import { Button } from '../components/Button';
 import { PlayerCard } from '../components/PlayerCard';
 import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
+import Modal from '../components/Modal';
 import styles from './Host.module.css';
 import { EVENTS, HOST_ACTIONS } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -22,20 +23,41 @@ export default function Host() {
     phase,
     gameStarted = false,
     dayCount = 0,
-    pendingEvents = [], // comes from server (EventManager.buildPendingEvents)
-    activeEvents = [], // active events list
+    pendingEvents = [],
+    activeEvents = [],
   } = gameMeta;
+
+  // Modal state
+  const [modalPlayer, setModalPlayer] = useState(null);
+  const [modalSelection, setModalSelection] = useState(null);
+
+  // All static player portraits
+  const playerPortraits = useMemo(() => {
+    return Array.from(
+      { length: 9 },
+      (_, i) => `/images/players/player${i + 1}.png`
+    );
+  }, []);
+
+  // Confirm portrait selection
+  const handleConfirmPortrait = () => {
+    if (modalPlayer && modalSelection) {
+      send('HOST_UPDATE_PLAYER_IMAGE', {
+        id: modalPlayer.id,
+        image: modalSelection.replace('/images/players/', ''),
+      });
+      setModalPlayer(null);
+      setModalSelection(null);
+    }
+  };
 
   /** ----------------------------
    * Host buttons for events
    * ---------------------------- */
-  /** ----------------------------
-   * Host buttons for events (refactored)
-   * ---------------------------- */
   const hostEventButtons = useMemo(() => {
     const buttons = [];
 
-    // 1️⃣ Pending events → START
+    // Pending events → START
     pendingEvents?.forEach((eventName) => {
       const active = activeEvents?.some(
         (e) => e.eventName === eventName && !e.resolved
@@ -52,7 +74,7 @@ export default function Host() {
       }
     });
 
-    // 2️⃣ Active events → RESOLVE
+    // Active events → RESOLVE
     activeEvents
       ?.filter((e) => !e.resolved)
       .forEach((e) => {
@@ -66,7 +88,7 @@ export default function Host() {
         });
       });
 
-    // 3️⃣ Resolved events → CLEAR
+    // Resolved events → CLEAR
     activeEvents
       ?.filter((e) => e.resolved)
       .forEach((e) => {
@@ -100,17 +122,13 @@ export default function Host() {
    * ---------------------------- */
   const selectionGlyphs = useMemo(() => {
     const map = {};
-
-    // Find the active vote event (unresolved)
     const voteEvent = activeEvents?.find(
       (e) => e.eventName === 'vote' && !e.resolved
     );
-
     if (!voteEvent) return map;
 
     const { results = {}, completedBy = [] } = voteEvent;
 
-    // Build mapping target → list of selectors
     Object.entries(results).forEach(([actorId, targetId]) => {
       const actor = players.find((p) => p.id === Number(actorId));
       if (!actor) return;
@@ -167,11 +185,9 @@ export default function Host() {
                     key={eventId || label}
                     label={label}
                     onClick={() => {
-                      if (sendType === 'START_EVENT') {
+                      if (sendType === 'START_EVENT')
                         send(sendType, { eventName });
-                      } else {
-                        send(sendType, { eventId });
-                      }
+                      else send(sendType, { eventId });
                     }}
                     state={state}
                   />
@@ -203,6 +219,7 @@ export default function Host() {
                   variant='light'
                   selectionGlyphs={selectionGlyphs[p.id] || []}
                   phase={phase}
+                  onPortraitClick={() => setModalPlayer(p)}
                 />
               );
             })}
@@ -213,6 +230,28 @@ export default function Host() {
       <div className={styles.rightColumn}>
         <History />
       </div>
+
+      {/* Player Portrait Modal */}
+      <Modal isOpen={!!modalPlayer} onClose={() => setModalPlayer(null)}>
+        <h2>Select Portrait for {modalPlayer?.name}</h2>
+        <div className={styles.portraitGallery}>
+          {playerPortraits.map((src) => (
+            <img
+              key={src}
+              src={src}
+              alt=''
+              className={`${styles.modalPortrait} ${
+                modalSelection === src ? styles.selected : ''
+              }`}
+              onClick={() => setModalSelection(src)}
+            />
+          ))}
+        </div>
+        <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+          <Button label='Confirm' onClick={handleConfirmPortrait} />
+          <Button label='Cancel' onClick={() => setModalPlayer(null)} />
+        </div>
+      </Modal>
     </div>
   );
 }
