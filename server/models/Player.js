@@ -14,7 +14,7 @@ export class Player {
     this.role = null;
     this.team = null;
     this.color = '#666';
-    this.image = 'demi.png';
+    this.image = `player${id}.png`;
 
     this.state = {
       isAlive: true,
@@ -266,6 +266,11 @@ export class Player {
   kill() {
     this.state.isAlive = false;
     this.state.diedThisTurn = true;
+  }
+
+  rezz() {
+    this.state.isAlive = true;
+    this.state.diedThisTurn = false;
   }
 
   /** Flexible setter */

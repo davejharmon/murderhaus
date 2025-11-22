@@ -123,9 +123,10 @@ function getFallbackSlide(gameMeta) {
   if (!gameStarted) {
     return {
       id: 'fallback-start',
-      image: { path: '/src/assets/logo.png', alt: 'Big Time Murder' },
+      image: { path: '/images/logo.png', alt: 'Big Time Murder' },
       title: { text: 'GAME STARTING SOON', color: '#888' },
       subtitle: `${players ? players.length : 0} players connected`,
+      order: ['title', 'image', 'subtitle'],
     };
   }
 

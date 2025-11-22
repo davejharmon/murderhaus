@@ -59,7 +59,7 @@ export const HOST_ACTIONS = {
     pregame: false,
     conditions: ({ player }) => !player?.state?.isAlive,
     result: (player) => {
-      player.set('isAlive', true, true);
+      player.rezz();
     },
   },
   kick: {

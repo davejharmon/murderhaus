@@ -1,8 +1,6 @@
 import React from 'react';
 import styles from './BigScreen.module.css';
-import { TEAMS } from '@shared/constants.js';
-import { imageMap } from '../../assets/imageMap';
-import anonImg from '../../assets/anon.png';
+import anonImg from '../../assets/anon.png'; // fallback placeholder
 
 export default function Gallery({
   players = [],
@@ -30,9 +28,13 @@ export default function Gallery({
             .filter(Boolean)
             .join(' ');
 
-          // Map server-side filename to imported asset
+          // Use anon placeholder if needed, otherwise map to public/players folder
           const imgSrc =
-            anonWhileAlive && !isDead ? anonImg : imageMap[p.image] || anonImg;
+            anonWhileAlive && !isDead
+              ? anonImg
+              : p.image
+              ? `/images/players/${p.image}`
+              : anonImg;
 
           return (
             <div key={p.id} className={itemClass}>
