@@ -139,15 +139,15 @@ export function handleWSMessage(ws, data) {
 
     // SLIDE MANAGEMENT
 
-    case 'HOST_NEXT_SLIDE':
+    case 'SLIDE_NEXT':
       gameManager.slideManager.next();
       break;
 
-    case 'HOST_PREV_SLIDE':
+    case 'SLIDE_PREV':
       gameManager.slideManager.prev();
       break;
 
-    case 'HOST_CLEAR_SLIDES':
+    case 'SLIDES_CLEAR':
       gameManager.slideManager.clear();
       break;
 

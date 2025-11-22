@@ -8,12 +8,14 @@ import History from '../components/History';
 import styles from './Host.module.css';
 import { EVENTS, HOST_ACTIONS } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useSlides } from '../hooks/useSlides';
 
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
     'PLAYERS_UPDATE',
     'GAME_META_UPDATE',
   ]);
+  const { active, buffer } = useSlides();
   usePageTitle('Host');
 
   const {
@@ -142,15 +144,17 @@ export default function Host() {
             <Button label='START GAME' onClick={() => send('START_GAME')} />
           ) : (
             <div className={styles.globalControls}>
+              <Button label='NEXT PHASE' onClick={() => send('NEXT_PHASE')} />
+              <Button label='END GAME' onClick={() => send('END_GAME')} />
               <Button
-                label='NEXT PHASE'
-                onClick={() => send('NEXT_PHASE')}
-                isNext
+                label='PREV SLIDE'
+                onClick={() => send('SLIDE_BACK')}
+                state={buffer.slideIndex > 0 ? 'default' : 'disabled'}
               />
               <Button
-                label='END GAME'
-                onClick={() => send('END_GAME')}
-                state='selected'
+                label={`NEXT SLIDE (${buffer.length ?? 0})`}
+                onClick={() => send('SLIDE_NEXT')}
+                state={buffer.length > 0 ? 'selected' : 'disabled'}
               />
             </div>
           )}

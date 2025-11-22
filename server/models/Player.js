@@ -14,7 +14,7 @@ export class Player {
     this.role = null;
     this.team = null;
     this.color = '#666';
-    this.image = 'anon.png';
+    this.image = 'demi.png';
 
     this.state = {
       isAlive: true,
@@ -292,6 +292,7 @@ export class Player {
     return {
       id: this.id,
       name: this.name,
+      image: this.image,
       role: this.role?.name ?? null,
       team: this.team ?? null,
       color: this.color,

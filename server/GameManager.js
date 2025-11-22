@@ -78,15 +78,6 @@ class GameManager {
 
     // Handle role assignments / initial actions etc.
     this.handleActionResult(result);
-
-    // SLIDES: enqueue and immediately broadcast the first slide
-    this.slideManager.replaceQueue([
-      new Slide({
-        title: { text: 'GAME STARTING' },
-        subtitle: 'Prepare yourselves',
-        countdown: Date.now() + 5000,
-      }),
-    ]);
   }
 
   nextPhase() {
@@ -95,7 +86,7 @@ class GameManager {
     // Re-initialize pending host events for the new phase
     this.events.buildPendingEvents();
     this.handleActionResult(result);
-    this.slideManager.clearOnPhaseEnd();
+    this.slideManager.clear();
   }
 
   endGame() {
@@ -132,6 +123,11 @@ class GameManager {
 
     // Return or broadcast the eventId so frontend can reference it
     this.handleActionResult(result);
+
+    this.slideManager.queueSlides([
+      Slide.eventStart(this.game.players, result.event),
+      Slide.eventTimer(this.game.players),
+    ]);
   }
 
   resolveEvent(eventId) {

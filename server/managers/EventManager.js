@@ -73,9 +73,7 @@ export class EventManager {
       if (!player) return;
       player.updateKeymap(this.game.activeEvents);
     });
-    // Push a slide to BigScreen clients
-    console.log('pushing slide to screen');
-    this.game.screen.eventSlide({ event, initiatedBy });
+
     return { success: true, message: `[EVENTS] ${eventName} started.`, event };
   }
 

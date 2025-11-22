@@ -34,7 +34,6 @@ export class ViewManager {
 
   publishSlides(slideSlice) {
     // slideSlice should be { buffer, active }
-    console.log(slideSlice);
     if (!slideSlice) return;
     publish('SLIDES_UPDATE', slideSlice);
   }

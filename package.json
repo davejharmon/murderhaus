@@ -1,6 +1,7 @@
 {
   "name": "murderhaus",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "server": "node server/index.js",
@@ -9,7 +10,7 @@
     "devflow": "node devflow.js"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
+    "concurrently": "^9.2.1",
     "open": "^10.2.0",
     "wait-on": "^9.0.1"
   }

@@ -1,19 +1,113 @@
 .container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   height: 100vh;
   width: 100%;
-  margin: 0;
-  background: radial-gradient(circle at center, #222 0%, #000 100%);
+  background: radial-gradient(circle at center, #333 0%, #000 100%);
   color: white;
-  font-family: system-ui, sans-serif;
-  text-align: center;
+  margin: 0;
   overflow: hidden;
+}
+
+.slideFlex {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
 }
 
 .header {
   text-align: center;
   margin-bottom: 2rem;
+}
+
+.title {
+  font-family: 'Cabin Sketch', sans-serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 4rem;
+  text-align: center;
+  margin: 40px 0 20px;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  font-family: 'Cabin Sketch', sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 40px;
+  opacity: 0.8;
+  text-transform: lowercase;
+}
+
+.gallery {
+  margin-top: 40px;
+  align-self: baseline;
+  width: 100%;
+}
+
+.galleryHeader {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.galleryFlow {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  overflow-x: auto; /* horizontal scroll if needed */
+  justify-content: center;
+}
+
+.galleryItem {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  max-width: 10vw;
+}
+
+.galleryImg {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+}
+
+.galleryDead {
+  opacity: 0.25;
+}
+
+.galleryName {
+  margin-top: 10px;
+  font-size: 1.2rem;
+}
+
+.countdown {
+  font-size: 6rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s linear, color 0.2s linear, text-shadow 0.2s linear;
+}
+
+/* === Last 30 seconds — subtle pulsing === */
+.juice30 {
+  animation: pulse30 1s infinite ease-in-out;
+  color: tomato;
+}
+
+@keyframes pulse30 {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

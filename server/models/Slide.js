@@ -3,6 +3,7 @@ export class Slide {
   constructor({
     id,
     gallery,
+    galleries = [], // new
     title,
     subtitle,
     countdown,
@@ -10,9 +11,11 @@ export class Slide {
     eventUpdate,
     gameUpdate,
     meta,
+    order = null,
   } = {}) {
     this.id = id ?? crypto.randomUUID();
     this.gallery = gallery;
+    this.galleries = galleries; // store multiple galleries
     this.title = title;
     this.subtitle = subtitle;
     this.countdown = countdown;
@@ -20,9 +23,10 @@ export class Slide {
     this.eventUpdate = eventUpdate;
     this.gameUpdate = gameUpdate;
     this.meta = meta;
+    this.order = order;
 
     this.typeFlags = {
-      hasGallery: !!gallery,
+      hasGallery: !!gallery || galleries.length > 0,
       hasTitle: !!title,
       hasSubtitle: !!subtitle,
       hasCountdown: countdown != null,
@@ -49,7 +53,11 @@ export class Slide {
   }
 
   static gallery(players = [], header = null) {
-    return new Slide({ gallery: { players, header } });
+    return new Slide({ galleries: [{ players, header }] });
+  }
+
+  static galleries(listOfGalleries = []) {
+    return new Slide({ galleries: listOfGalleries });
   }
 
   static playerUpdate(playerId, text) {
@@ -82,5 +90,36 @@ export class Slide {
 
   static countdownWithSubtitle(seconds, subtitleText) {
     return new Slide({ countdown: seconds, subtitle: subtitleText });
+  }
+
+  static eventStart(players, event) {
+    const topGallery = { players };
+    const bottomGallery = {
+      players: players.filter((p) => p.team === 'werewolves'),
+      anonWhileAlive: true,
+    };
+
+    return new Slide({
+      galleries: [topGallery, bottomGallery],
+      title: { text: `${event.eventName} starting soon` },
+      subtitle: `${event.eventDef.description}`,
+      countdown: 360,
+      order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
+    });
+  }
+
+  static eventTimer(players) {
+    const topGallery = { players };
+    const bottomGallery = {
+      players: players.filter((p) => p.team === 'werewolves'),
+      anonWhileAlive: true,
+    };
+
+    return new Slide({
+      galleries: [topGallery, bottomGallery],
+      subtitle: `${bottomGallery.length} murderers remain`,
+      countdown: 45,
+      order: ['galleries[0]', 'countdown', 'galleries[1]'],
+    });
   }
 }

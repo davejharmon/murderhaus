@@ -36,8 +36,8 @@ export const PHASES = [
 
 // --- Teams ---
 export const TEAMS = {
-  villagers: { name: 'Villagers', color: '#4db8ff' },
-  werewolves: { name: 'Werewolves', color: '#ff6b6b' },
+  villagers: { name: 'villagers', color: '#4db8ff' },
+  werewolves: { name: 'werewolves', color: '#be0000' },
 };
 
 // --- Host Actions ---
@@ -94,6 +94,7 @@ export const ACTIONS = {
 export const EVENTS = {
   vote: {
     name: 'vote',
+    description: 'Choose a player to eliminate',
     phase: ['day'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player) => player.state.isAlive,
@@ -114,6 +115,7 @@ export const EVENTS = {
 
   dummy: {
     name: 'dummy',
+    description: 'A dummy event so everyone has a button to press.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player) => player.state.isAlive,
@@ -132,6 +134,7 @@ export const EVENTS = {
   },
   kill: {
     name: 'kill',
+    description: 'Choose a player to murder in the night.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player, actor) =>
@@ -151,6 +154,7 @@ export const EVENTS = {
   },
   investigate: {
     name: 'investigate',
+    description: 'WRITE ME.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player) => player.state.isAlive,
@@ -169,6 +173,7 @@ export const EVENTS = {
   },
   protect: {
     name: 'protect',
+    description: 'WRITE ME.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player, actor) => player.state.isAlive && player != actor, // can we adjust this to be 'and target is not the player participating in the event'

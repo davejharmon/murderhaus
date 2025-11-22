@@ -12,7 +12,14 @@ export class SlideManager {
   }
 
   push(slide) {
-    this._queue.push(slide instanceof Slide ? slide : new Slide(slide));
+    const s = slide instanceof Slide ? slide : new Slide(slide);
+    this._queue.push(s);
+
+    // If queue was empty, show this slide immediately
+    if (this._index === -1) {
+      this._index = 0;
+    }
+
     this._emitSlice();
   }
 
@@ -42,6 +49,12 @@ export class SlideManager {
   current() {
     if (this._index === -1) return null;
     return this._queue[this._index] || null;
+  }
+
+  currentGalleries() {
+    const slide = this.current();
+    if (!slide) return [];
+    return slide.galleries ?? (slide.gallery ? [slide.gallery] : []);
   }
 
   getSlice() {
