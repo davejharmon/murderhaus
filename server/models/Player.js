@@ -130,21 +130,34 @@ export class Player {
       };
     });
 
+    // Skip if player is dead
+    if (!this.state.isAlive) return;
+
     activeEvents.forEach((event) => {
+      // Skip events this player isn't participating in
       if (!event.participants.includes(this.id)) return;
+
       const actionName = event.eventName;
       const eventId = event.id;
       const actionDef = event.eventDef;
       const results = event.results ?? {};
       const completed = event.completedBy.includes(this.id);
 
-      const allowedKeys = actionDef.input?.allowed ?? event.targets ?? [];
+      // Only allow alive targets
+      const aliveTargets = event.targets.filter((tid) => {
+        const player = event.game?.players.find((p) => p.id === tid);
+        return !player || player.state?.isAlive !== false; // allow if alive or player info missing
+      });
+
+      const allowedKeys = (
+        actionDef.input?.allowed ?? aliveTargets.map(String)
+      ).filter((k) => aliveTargets.map(String).includes(k));
 
       if (actionDef.input?.confirmReq) {
         const playerSelection = results[this.id];
 
         if (!completed) {
-          // highlight selected key if chosen, enable confirm
+          // enable allowed keys, highlight selection if chosen
           allowedKeys.forEach((key) => {
             this.state.keymap[key] = {
               isDisabled: false,
@@ -163,7 +176,7 @@ export class Player {
             };
           }
         } else {
-          // completed: highlight result key, disable all others
+          // completed: disable all keys, highlight chosen result
           allowedKeys.forEach((key) => {
             this.state.keymap[key] = {
               isDisabled: true,
@@ -180,7 +193,7 @@ export class Player {
           };
         }
       } else {
-        // No confirm required: enable all target keys
+        // No confirm required: enable all alive target keys
         allowedKeys.forEach((key) => {
           this.state.keymap[key] = {
             isDisabled: false,
