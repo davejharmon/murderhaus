@@ -10,6 +10,7 @@ export class Slide {
     playerUpdate,
     eventUpdate,
     gameUpdate,
+    voteResults,
     meta,
     order = null,
   } = {}) {
@@ -22,6 +23,7 @@ export class Slide {
     this.playerUpdate = playerUpdate;
     this.eventUpdate = eventUpdate;
     this.gameUpdate = gameUpdate;
+    this.voteResults = voteResults;
     this.meta = meta;
     this.order = order;
 
@@ -33,6 +35,7 @@ export class Slide {
       hasPlayerUpdate: !!playerUpdate,
       hasEventUpdate: !!eventUpdate,
       hasGameUpdate: !!gameUpdate,
+      hasVoteResults: !!voteResults,
     };
   }
 
@@ -138,6 +141,18 @@ export class Slide {
       subtitle: `${bottomGallery.playerIds.length} murderers remain`,
       countdown: 45,
       order: ['galleries[0]', 'countdown', 'subtitle', 'galleries[1]'],
+    });
+  }
+
+  static voteResults(event) {
+    return new Slide({
+      voteResults: {
+        results: event.results,
+        completedBy: event.completedBy,
+        confirmReq: event.eventDef?.input?.confirmReq ?? false,
+      },
+      order: ['title', 'voteResults'],
+      title: { text: 'Vote Results' },
     });
   }
 }

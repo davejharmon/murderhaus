@@ -114,6 +114,7 @@ export function handleWSMessage(ws, data) {
 
     case 'RESOLVE_EVENT': {
       const { eventId } = payload;
+      console.log('[WS]Resolving', eventId);
       if (!eventId)
         return sendTo(ws, {
           type: 'ERROR',

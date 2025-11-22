@@ -81,7 +81,6 @@ export default function Host() {
         const def = EVENTS[e.eventName];
         buttons.push({
           eventId: e.id,
-          eventName: e.eventName,
           label: `RESOLVE ${def?.label ?? e.eventName.toUpperCase()}`,
           sendType: 'RESOLVE_EVENT',
           state: 'selected',
@@ -170,7 +169,10 @@ export default function Host() {
                 state={buffer.slideIndex > 0 ? 'default' : 'disabled'}
               />
               <Button
-                label={`NEXT SLIDE (${buffer.length ?? 0})`}
+                label={`NEXT SLIDE (${Math.max(
+                  (buffer.length ?? 0) - active - 1,
+                  0
+                )})`}
                 onClick={() => send('SLIDE_NEXT')}
                 state={buffer.length > 0 ? 'selected' : 'disabled'}
               />

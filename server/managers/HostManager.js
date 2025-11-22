@@ -12,6 +12,7 @@ export class HostManager {
     if (!player) return { success: false, message: 'Player not found' };
     const action = HOST_ACTIONS[actionName];
 
+    console.log(player, action);
     if (!action)
       return { success: false, message: `Unknown host action: ${actionName}` };
 
@@ -22,10 +23,9 @@ export class HostManager {
       };
     }
 
-    action.result(player, this.game);
-
     // Execute the action
-    return { succes: true, message: `Host ${actionName}ed ${player.name}` };
+    const result = action.result(player, this.game);
+    return { success: true, message: result };
   }
 
   /** Get available host actions for a player */

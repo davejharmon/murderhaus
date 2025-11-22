@@ -17,6 +17,7 @@ class GameManager {
     this.view = new ViewManager(this.game);
     this.slideManager = new SlideManager();
     this.slideManager.init(this.view);
+    this.game.slideManager = this.slideManager;
     this.view.setEvents(this.events);
   }
 
@@ -143,8 +144,7 @@ class GameManager {
   }
 
   resolveEvent(eventId) {
-    const event = this.game.activeEvents.find((e) => e.id === eventId);
-    const result = this.events.resolveEvent(event);
+    const result = this.events.resolveEvent(eventId);
     if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);
   }

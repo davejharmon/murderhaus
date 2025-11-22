@@ -11,13 +11,18 @@ export class SlideManager {
     this.view = viewManager;
   }
 
-  push(slide) {
+  push(slide, jumpTo = false) {
     const s = slide instanceof Slide ? slide : new Slide(slide);
     this._queue.push(s);
 
-    // If queue was empty, show this slide immediately
+    const newIndex = this._queue.length - 1;
+
     if (this._index === -1) {
+      // Queue was empty — default behaviour: show first slide
       this._index = 0;
+    } else if (jumpTo) {
+      // Explicit override: jump to the newly pushed slide
+      this._index = newIndex;
     }
 
     this._emitSlice();
@@ -40,6 +45,7 @@ export class SlideManager {
   }
 
   next() {
+    console.log(this._queue.length);
     if (!this._queue.length) return null;
     if (this._index < this._queue.length - 1) this._index++;
     this._emitSlice();
@@ -60,7 +66,7 @@ export class SlideManager {
   getSlice() {
     return {
       buffer: this._queue.slice(), // copy of the queue
-      active: this.current(), // current active slide
+      active: this._index,
     };
   }
 

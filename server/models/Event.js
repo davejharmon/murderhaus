@@ -1,7 +1,7 @@
 // /server/models/Event.js
 export class Event {
   constructor({ id, eventName, eventDef, game, initiatedBy }) {
-    this.id = id;
+    this.id = id ?? `${eventName}-${Math.random().toString(36).substr(2, 8)}`;
     this.eventName = eventName;
     this.eventDef = eventDef; // full event definition from EVENTS[name]
     this.resolution = eventDef.resolution;
@@ -33,7 +33,7 @@ export class Event {
     if (!this.completedBy.includes(pid)) this.completedBy.push(pid);
   }
 
-  recordResult(actorId, selection, confirmed = true) {
+  recordResult(actorId, selection, confirmed = true, initiatedByHost = false) {
     const confirmReq = this.eventDef?.input?.confirmReq || false;
     const prevSelection = this.results[actorId];
     // Only toggle to null if NOT confirmed
@@ -48,13 +48,6 @@ export class Event {
   isFullyComplete() {
     return this.completedBy.length >= this.participants.length;
   }
-
-  // resolve(game) {
-  //   if (this.resolved) return;
-  //   const resolutionFn = this.eventDef?.resolution;
-  //   if (typeof resolutionFn === 'function') resolutionFn(this, game);
-  //   this.resolved = true;
-  // }
 
   getPublicState() {
     return {

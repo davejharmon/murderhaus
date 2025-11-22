@@ -7,6 +7,7 @@ import {
 } from '../../shared/constants.js';
 import { Player } from './Player.js';
 import { logger } from '../utils/Logger.js';
+import { Slide } from './Slide.js';
 
 export class Game {
   constructor() {
@@ -183,5 +184,12 @@ export class Game {
       });
     });
     return map;
+  }
+
+  showVoteResults(event) {
+    const slide = Slide.voteResults(event);
+    const jumpTo = true;
+    console.log('boyo');
+    this.slideManager.push(slide, jumpTo);
   }
 }

@@ -49,7 +49,9 @@ export const HOST_ACTIONS = {
     pregame: false,
     conditions: ({ player }) => player?.state?.isAlive,
     result: (player) => {
+      console.log;
       player.kill();
+      return `Host killed ${player.name}.`;
     },
   },
   rezz: {
@@ -60,6 +62,7 @@ export const HOST_ACTIONS = {
     conditions: ({ player }) => !player?.state?.isAlive,
     result: (player) => {
       player.rezz();
+      return `Host rezzed ${player.name}.`;
     },
   },
   kick: {
@@ -69,7 +72,47 @@ export const HOST_ACTIONS = {
     pregame: true,
     conditions: ({ player }) => true,
     result: (player, game) => {
-      return game.removePlayer(player.id);
+      game.removePlayer(player.id);
+      return `Host kicked ${player.name}.`;
+    },
+  },
+  debugVote: {
+    name: 'debugVote',
+    label: '🎲',
+    phase: ['day'], // only during day votes
+    pregame: false,
+
+    // Only show if there is an active vote event where the player hasn't completed yet
+    conditions: ({ player, game }) => {
+      return game?.activeEvents?.some(
+        (e) =>
+          e.eventName === 'vote' &&
+          !e.resolved &&
+          e.participants.includes(player.id) &&
+          !e.completedBy.includes(player.id)
+      );
+    },
+
+    // Simulate a vote for that player
+    result: (player, game) => {
+      const event = game.activeEvents.find(
+        (e) =>
+          e.eventName === 'vote' &&
+          !e.resolved &&
+          e.participants.includes(player.id) &&
+          !e.completedBy.includes(player.id)
+      );
+
+      if (!event) return;
+
+      // Pick a random valid target for this player
+      const targetId =
+        event.targets[Math.floor(Math.random() * event.targets.length)];
+
+      // Record the result and mark the player as completed
+      event.recordResult(player.id, targetId, true);
+
+      return `Host cast a debug vote for ${player.name} -> Player ${targetId}`;
     },
   },
 };
@@ -102,14 +145,14 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNoResponse: false,
+      allowNoResponse: true,
       resultType: 'majority', // or 'perPlayer'
       allowTies: true, // handles ties in resolution
     },
 
     resolution: (event, game) => {
       // if tie, start a tiebreaker event with just the most targeted participants, else
-      console.log('VOTE ENDED BOY!');
+      game.showVoteResults(event);
     },
   },
 

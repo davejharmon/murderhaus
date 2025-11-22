@@ -121,3 +121,43 @@
     opacity: 1;
   }
 }
+
+.voteResultsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.voteRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voteTarget {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.targetName {
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+
+.voteCount {
+  font-size: 1.5rem;
+  color: #ccc;
+}
+
+.voterList {
+  display: flex;
+  gap: 8px;
+}
+
+.voterPortrait {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}

@@ -14,13 +14,14 @@ import EventUpdate from '../components/BigScreen/EventUpdate';
 import GameUpdate from '../components/BigScreen/GameUpdate';
 import { useGameState } from '../hooks/useGameState';
 import { TEAMS } from '@shared/constants';
+import VoteResults from '../components/BigScreen/VoteResults';
 
 export default function BigScreen() {
   usePageTitle('Screen');
   const { active, buffer } = useSlides();
   const { gameMeta } = useGameState(['GAME_META_UPDATE']);
 
-  const slide = active || getFallbackSlide(gameMeta);
+  const slide = buffer[active] || getFallbackSlide(gameMeta);
 
   if (!slide) {
     // placeholder while waiting for server/fallback
@@ -70,6 +71,10 @@ export default function BigScreen() {
           text={slide.gameUpdate.text}
         />
       ) : null,
+    voteResults: (slide) =>
+      slide.voteResults ? (
+        <VoteResults players={gameMeta.players} voteData={slide.voteResults} />
+      ) : null,
     galleries: (slide) =>
       slide.galleries?.map((g, i) => (
         <Gallery
@@ -108,6 +113,7 @@ export default function BigScreen() {
     'image',
     'title',
     'galleries',
+    'voteResults',
     'subtitle',
     'countdown',
     'playerUpdate',
@@ -149,9 +155,11 @@ function getFallbackSlide(gameMeta) {
 
   const topGallery = { playerIds: gameMeta.players.map((p) => p.id) };
   const werewolves = gameMeta.players.filter((p) => p.team === 'werewolves');
+  const aliveWerewolves = werewolves.filter((p) => p.state?.isAlive);
+
   const bottomGallery = {
     playerIds: werewolves.map((p) => p.id),
-    header: `${werewolves.length} enemies remain`,
+    header: `${aliveWerewolves.length} enemies remain`,
     anonWhileAlive: true,
   };
 

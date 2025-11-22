@@ -1,4 +1,3 @@
-// src/hooks/useSlides.js
 import { useState, useEffect } from 'react';
 import { initGameBus, listenToSlides, getGameData } from '../state/GameBus';
 
@@ -8,12 +7,14 @@ export function useSlides() {
   useEffect(() => {
     initGameBus();
     const unsub = listenToSlides((slice) => {
-      console.log('[useSlides] got slide slice', slice);
       setSlides(slice);
     });
 
     return () => unsub();
   }, []);
 
-  return { buffer: slides.buffer, active: slides.active };
+  const buffer = slides.buffer ?? [];
+  const activeIndex = slides.active ?? 0; // already an index
+
+  return { buffer, active: activeIndex };
 }

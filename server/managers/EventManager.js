@@ -93,17 +93,18 @@ export class EventManager {
       };
     }
 
-    if (!event.isFullyComplete() && !event.input.allowNoResponse) {
+    if (!event.isFullyComplete() && !event.eventDef.input.allowNoResponse) {
       return {
         success: false,
         message: '[EVENTS] Cannot resolve — not all participants completed.',
       };
     }
 
-    const resolutionFn = this.resolution;
+    const resolutionFn = event.resolution;
+
     if (typeof resolutionFn === 'function') {
-      const result = resolutionFn(this, game);
-      this.resolved = true;
+      const result = resolutionFn(event, this.game);
+      event.resolved = true;
       return {
         success: true,
         message: `[EVENT] ${event.eventName} resolved.`,
@@ -137,7 +138,7 @@ export class EventManager {
     // TODO:
     // - Players recalc keymaps after event removal
 
-    return { success: true };
+    return { success: true, message: `[EVENTS] Event cleared: ${eventId}` };
   }
 
   /** -------------------------------------------------
