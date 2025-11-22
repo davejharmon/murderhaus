@@ -75,7 +75,16 @@
 }
 
 .galleryDead {
-  opacity: 0.25;
+  opacity: 0.2;
+}
+
+.galleryEnemy {
+  filter: sepia(1) saturate(5) hue-rotate(-50deg);
+}
+
+.galleryDeadEnemy {
+  filter: sepia(1) saturate(5) hue-rotate(-50deg);
+  opacity: 0.5;
 }
 
 .galleryName {
@@ -84,6 +93,7 @@
 }
 
 .countdown {
+  align-self: center;
   font-size: 6rem;
   font-weight: bold;
   color: white;

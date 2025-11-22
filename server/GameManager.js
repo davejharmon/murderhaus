@@ -118,10 +118,7 @@ class GameManager {
 
   /** --- Events --- */
   startEvent(eventName, initiatedBy = 'host') {
-    // Create a new event object and get its unique ID
     const result = this.events.startEvent(eventName, initiatedBy);
-
-    // Return or broadcast the eventId so frontend can reference it
     this.handleActionResult(result);
 
     this.slideManager.queueSlides([

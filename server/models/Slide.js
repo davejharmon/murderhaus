@@ -2,8 +2,8 @@
 export class Slide {
   constructor({
     id,
-    gallery,
-    galleries = [], // new
+    gallery, // single gallery (optional)
+    galleries = [], // multiple galleries
     title,
     subtitle,
     countdown,
@@ -36,7 +36,10 @@ export class Slide {
     };
   }
 
-  // --- Factory / helper methods ---
+  // -------------------------
+  // Helper / Factory Methods
+  // -------------------------
+
   static title(text, color = null) {
     return new Slide({ title: { text, color } });
   }
@@ -52,11 +55,15 @@ export class Slide {
     });
   }
 
-  static gallery(players = [], header = null) {
-    return new Slide({ galleries: [{ players, header }] });
+  /** Galleries now only store player IDs */
+  static gallery(playerIds = [], header = null, anonWhileAlive = false) {
+    return new Slide({
+      galleries: [{ playerIds, header, anonWhileAlive }],
+    });
   }
 
   static galleries(listOfGalleries = []) {
+    // listOfGalleries: [{ playerIds, header, anonWhileAlive }]
     return new Slide({ galleries: listOfGalleries });
   }
 
@@ -68,11 +75,13 @@ export class Slide {
     return new Slide({ eventUpdate: eventObj });
   }
 
-  static gameUpdate(players, text) {
-    return new Slide({ gameUpdate: { players, text } });
+  static gameUpdate(playerIds = [], text) {
+    return new Slide({ gameUpdate: { playerIds, text } });
   }
 
-  // templates
+  // -------------------------
+  // Templates
+  // -------------------------
 
   static titleWithSubtitle(titleText, subtitleText, color = null) {
     return new Slide({
@@ -81,10 +90,15 @@ export class Slide {
     });
   }
 
-  static titleWithGallery(titleText, players, header = null, color = null) {
+  static titleWithGallery(
+    titleText,
+    playerIds = [],
+    header = null,
+    color = null
+  ) {
     return new Slide({
       title: { text: titleText, color },
-      gallery: { players, header },
+      gallery: { playerIds, header },
     });
   }
 
@@ -92,34 +106,38 @@ export class Slide {
     return new Slide({ countdown: seconds, subtitle: subtitleText });
   }
 
-  static eventStart(players, event) {
-    const topGallery = { players };
+  static eventStart(players = [], event) {
+    const topGallery = { playerIds: players.map((p) => p.id) };
     const bottomGallery = {
-      players: players.filter((p) => p.team === 'werewolves'),
+      playerIds: players
+        .filter((p) => p.team === 'werewolves')
+        .map((p) => p.id),
       anonWhileAlive: true,
     };
 
     return new Slide({
       galleries: [topGallery, bottomGallery],
       title: { text: `${event.eventName} starting soon` },
-      subtitle: `${event.eventDef.description}`,
+      subtitle: event.eventDef?.description ?? '',
       countdown: 360,
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
     });
   }
 
-  static eventTimer(players) {
-    const topGallery = { players };
+  static eventTimer(players = []) {
+    const topGallery = { playerIds: players.map((p) => p.id) };
     const bottomGallery = {
-      players: players.filter((p) => p.team === 'werewolves'),
+      playerIds: players
+        .filter((p) => p.team === 'werewolves')
+        .map((p) => p.id),
       anonWhileAlive: true,
     };
 
     return new Slide({
       galleries: [topGallery, bottomGallery],
-      subtitle: `${bottomGallery.length} murderers remain`,
+      subtitle: `${bottomGallery.playerIds.length} murderers remain`,
       countdown: 45,
-      order: ['galleries[0]', 'countdown', 'galleries[1]'],
+      order: ['galleries[0]', 'countdown', 'subtitle', 'galleries[1]'],
     });
   }
 }
