@@ -43,14 +43,26 @@ export default function BigScreen() {
   const slideRenderers = {
     title: (s) =>
       s.title && (
-        <Title key='title' text={s.title.text} color={s.title.color} />
+        <Title
+          key='title'
+          text={s.title.text}
+          color={s.title.color}
+          size={s.title.size}
+        />
       ),
     image: (s) =>
       s.image && (
         <SingleImage key='image' path={s.image.path} alt={s.image.alt} />
       ),
     subtitle: (s) =>
-      s.subtitle && <Subtitle key='subtitle' text={s.subtitle} />,
+      s.subtitle && (
+        <Subtitle
+          key='subtitle'
+          text={s.subtitle.text}
+          color={s.subtitle.color}
+          size={s.subtitle.size}
+        />
+      ),
     countdown: (s) =>
       s.countdown != null && (
         <CountdownTimer key='countdown' countdown={s.countdown} />
@@ -76,8 +88,13 @@ export default function BigScreen() {
       ),
     voteResults: (s) =>
       s.voteResults && (
-        <VoteResults players={gameMeta.players} voteData={s.voteResults} />
+        <VoteResults
+          key={`voteResults-${s.id}`}
+          players={gameMeta.players}
+          voteData={s.voteResults}
+        />
       ),
+
     galleries: (s) =>
       s.galleries?.map((g, i) => renderGallery(g, `gallery-${i}-${s.id}`)),
   };
@@ -131,17 +148,17 @@ function getFallbackSlide(game) {
       id: 'fallback-start',
       image: { path: '/images/logo.png', alt: 'Big Time Murder' },
       title: { text: 'GAME STARTING SOON', color: '#888' },
-      subtitle: `${players?.length || 0} players connected`,
+      subtitle: { text: `${players?.length || 0} players connected` },
       order: ['title', 'image', 'subtitle'],
     };
   }
 
-  const topGallery = { playerIds: players.map((p) => p.id) };
-  const werewolves = players.filter((p) => p.team === 'werewolves');
-  const aliveWerewolves = werewolves.filter((p) => p.state?.isAlive);
-  const bottomGallery = {
-    playerIds: werewolves.map((p) => p.id),
-    header: `${aliveWerewolves.length} enemies remain`,
+  const playerGallery = { playerIds: players.map((p) => p.id) };
+  const enemies = players.filter((p) => p.team === 'werewolves');
+  const aliveEnemies = enemies.filter((p) => p.state?.isAlive);
+  const enemyGallery = {
+    playerIds: enemies.map((p) => p.id),
+    header: `${aliveEnemies.length} enemies remain`,
     anonWhileAlive: true,
   };
 
@@ -150,7 +167,7 @@ function getFallbackSlide(game) {
       id: 'fallback-day',
       title: { text: `Day ${dayCount}`, color: '#fff' },
       subtitle: 'No sign of rain',
-      galleries: [topGallery, bottomGallery],
+      galleries: [playerGallery, enemyGallery],
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
     };
   }
@@ -160,7 +177,7 @@ function getFallbackSlide(game) {
       id: 'fallback-night',
       title: { text: `Night ${dayCount}`, color: TEAMS.werewolves.color },
       subtitle: `Shepherd's delight`,
-      galleries: [topGallery, bottomGallery],
+      galleries: [playerGallery, enemyGallery],
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
     };
   }
@@ -168,6 +185,6 @@ function getFallbackSlide(game) {
   return {
     id: 'fallback-safe',
     title: { text: 'Game Running', color: '#888' },
-    subtitle: `Phase: ${phase}`,
+    subtitle: { text: `Phase: ${phase}` },
   };
 }

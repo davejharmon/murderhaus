@@ -1,14 +1,14 @@
 import React from 'react';
+import styles from './BigScreen.module.css';
 
-const imgStyle = {
-  maxWidth: '100%',
-  height: 'auto',
-  display: 'block',
-  margin: '0 auto',
-};
-
-export default function SingleImage({ path, alt = '' }) {
+export default function SingleImage({ path, alt = '', className }) {
   if (!path) return null;
 
-  return <img src={path} alt={alt} style={imgStyle} />;
+  return (
+    <img
+      src={path}
+      alt={alt}
+      className={`${styles.singleImage} ${className || ''}`}
+    />
+  );
 }

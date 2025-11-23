@@ -90,7 +90,7 @@ export class Slide {
   static titleWithSubtitle(titleText, subtitleText, color = null) {
     return new Slide({
       title: { text: titleText, color },
-      subtitle: subtitleText,
+      subtitle: { text: subtitleText },
     });
   }
 
@@ -112,9 +112,9 @@ export class Slide {
 
   static eventStart(playerIds = [], enemyIds = [], event) {
     return new Slide({
-      galleries: [playerIds, enemyIds],
+      galleries: [{ playerIds }, { playerIds: enemyIds, anonWhileAlive: true }],
       title: { text: `${event.eventName} starting soon` },
-      subtitle: event.eventDef?.description ?? '',
+      subtitle: { text: event.eventDef?.description ?? 'EVENT DEF MISSING' },
       countdown: 360,
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
     });
@@ -122,8 +122,8 @@ export class Slide {
 
   static eventTimer(playerIds = [], enemyIds = []) {
     return new Slide({
-      galleries: [playerIds, enemyIds],
-      subtitle: `${enemyIds.length} murderers remain`,
+      galleries: [{ playerIds }, { playerIds: enemyIds, anonWhileAlive: true }],
+      subtitle: { text: `${enemyIds.length} murderers remain` },
       countdown: 45,
       order: ['galleries[0]', 'countdown', 'subtitle', 'galleries[1]'],
     });
@@ -137,7 +137,7 @@ export class Slide {
         confirmReq: event.eventDef?.input?.confirmReq ?? false,
       },
       title: { text: 'Vote Results' },
-      subtitle: [`${event.eventName} event concluded`],
+      subtitle: { text: `${event.eventName} event concluded` },
       order: ['title', 'voteResults', 'subtitle'],
     });
   }
@@ -148,7 +148,6 @@ export class Slide {
     resolutionDesc = 'DESC NOT SET',
     showRole = false
   ) {
-    console.log(voterIds);
     return new Slide({
       title: { text: 'Results' },
       playerUpdate: { playerId, desc: resolutionDesc, showRole },

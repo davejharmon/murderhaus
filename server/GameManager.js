@@ -136,8 +136,8 @@ class GameManager {
     const result = this.events.startEvent(eventName, initiatedBy);
     this.handleActionResult(result);
     const playerIds = this.game.players.map((p) => p.id);
-    const enemyIds = this.game.playersByRole('werewolves');
-
+    const enemyIds = this.game.playerIDsByTeam('werewolves');
+    console.log('[GAMEMGR] EnemyIds', enemyIds);
     this.slideManager.queueSlides([
       Slide.eventStart(playerIds, enemyIds, result.event),
       Slide.eventTimer(playerIds, enemyIds),

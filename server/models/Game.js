@@ -194,12 +194,28 @@ export class Game {
     return this.players.filter((p) => !p.state.isAlive);
   }
 
-  playersBy(predicate) {
-    return this.players.filter(predicate);
+  playersBy(predicateFn) {
+    return this.players.filter(predicateFn);
+  }
+
+  playerIDsBy(predicateFn) {
+    return this.players.filter(predicateFn).map((p) => p.id);
+  }
+
+  playersByTeam(teamName) {
+    return this.playersBy((p) => p.team === teamName);
+  }
+
+  playerIDsByTeam(teamName) {
+    return this.playersByTeam(teamName).map((p) => p.id);
   }
 
   playersByRole(roleName) {
-    return this.playersBy((p) => p.role?.name === roleName);
+    return this.playersBy((p) => p.role === roleName);
+  }
+
+  playerIDsByRole(roleName) {
+    return this.playersByRole(roleName).map((p) => p.id);
   }
 
   resolveVote(event) {

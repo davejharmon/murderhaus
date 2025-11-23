@@ -1,46 +1,42 @@
 // src/components/BigScreen/VoteResults.jsx
 import React, { useMemo } from 'react';
 import styles from './BigScreen.module.css';
+import anonImg from '../../assets/anon.png';
 
 export default function VoteResults({ players, voteData }) {
   const { results, completedBy, confirmReq } = voteData;
 
-  // Map players by ID for quick lookup
-  const playerMap = useMemo(() => {
-    const map = new Map();
-    players.forEach((p) => map.set(p.id, p));
-    return map;
-  }, [players]);
+  // Fast lookup by ID
+  const playerMap = useMemo(
+    () => new Map(players.map((p) => [p.id, p])),
+    [players]
+  );
 
-  // Build target → [voterIds]
   const counts = useMemo(() => {
-    const map = new Map();
+    const tally = new Map();
 
-    // Only include voters that completed their vote if confirmReq = true
-    const validVoters = confirmReq
-      ? completedBy
-      : Object.keys(results).map((id) => Number(id));
+    const voters = confirmReq ? completedBy : Object.keys(results).map(Number);
 
-    validVoters.forEach((voterId) => {
+    voters.forEach((voterId) => {
       const targetId = results[voterId];
       if (!targetId) return;
 
-      if (!map.has(targetId)) map.set(targetId, []);
-      map.get(targetId).push(voterId);
+      if (!tally.has(targetId)) tally.set(targetId, []);
+      const voter = playerMap.get(voterId);
+      if (voter) tally.get(targetId).push(voter);
     });
 
-    // Convert → array of { target, voters[] }
-    const arr = Array.from(map.entries()).map(([targetId, voterIds]) => ({
-      target: playerMap.get(Number(targetId)),
-      voters: voterIds.map((id) => playerMap.get(Number(id))),
-    }));
-
-    // Sort by descending votes
-    arr.sort((a, b) => b.voters.length - a.voters.length);
-
-    return arr;
+    return Array.from(tally.entries())
+      .map(([targetId, voterObjs]) => ({
+        target: playerMap.get(Number(targetId)),
+        voters: voterObjs,
+      }))
+      .filter((row) => row.target)
+      .sort((a, b) => b.voters.length - a.voters.length);
   }, [results, completedBy, confirmReq, playerMap]);
+
   const tooMany = counts.length > 5;
+
   return (
     <div
       className={`${styles.voteResultsContainer} ${
@@ -54,14 +50,17 @@ export default function VoteResults({ players, voteData }) {
           </div>
 
           <div className={styles.voterList}>
-            {voters.map((v) => (
-              <img
-                key={`voter-${v.id}`}
-                src={`/images/players/${v.image}`}
-                alt={v.name}
-                className={styles.voterPortrait}
-              />
-            ))}
+            {voters.map((v) => {
+              const src = v.image ? `/images/players/${v.image}` : anonImg;
+              return (
+                <img
+                  key={`voter-${v.id}`}
+                  src={src}
+                  alt={v.name}
+                  className={`${styles.portrait} ${styles.small}`}
+                />
+              );
+            })}
           </div>
         </div>
       ))}

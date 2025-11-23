@@ -8,14 +8,13 @@ export default function Gallery({
   header,
   anonWhileAlive = false,
 }) {
-  // Resolve players from IDs and filter out missing ones
   const players = useMemo(() => {
     return playerIds
       .map((id) => gamePlayers.find((p) => p.id === id))
       .filter(Boolean);
   }, [playerIds, gamePlayers]);
 
-  // Sort: if anonWhileAlive, keep dead players at the end
+  // Optionally push dead players to the end
   const sortedPlayers = useMemo(() => {
     if (!anonWhileAlive) return players;
     return [...players].sort(
@@ -26,24 +25,12 @@ export default function Gallery({
   return (
     <div className={styles.gallery}>
       {header && <div className={styles.galleryHeader}>{header}</div>}
+
       <div className={styles.galleryFlow}>
         {sortedPlayers.map((p) => {
           const isDead = !p.state?.isAlive;
-
-          // Determine if we should show enemy coloring
           const isEnemy = p.team === 'werewolves';
 
-          // Determine CSS class
-          const itemClass = [
-            styles.galleryItem,
-            isDead && !isEnemy ? styles.galleryDead : '',
-            isDead && isEnemy ? styles.galleryDeadEnemy : '',
-            !isDead && isEnemy && anonWhileAlive ? styles.galleryEnemy : '',
-          ]
-            .filter(Boolean)
-            .join(' ');
-
-          // Determine image
           const imgSrc =
             anonWhileAlive && !isDead
               ? anonImg
@@ -51,9 +38,19 @@ export default function Gallery({
               ? `/images/players/${p.image}`
               : anonImg;
 
+          // Unified portrait class handling
+          const portraitClasses = [
+            styles.portrait,
+            styles.small, // gallery portraits are the "small" token
+            isEnemy && isDead ? styles.enemy : '',
+            isDead ? styles.dead : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+
           return (
-            <div key={p.id} className={itemClass}>
-              <img src={imgSrc} alt={p.name} className={styles.galleryImg} />
+            <div key={p.id} className={styles.galleryItem}>
+              <img src={imgSrc} alt={p.name} className={portraitClasses} />
             </div>
           );
         })}
