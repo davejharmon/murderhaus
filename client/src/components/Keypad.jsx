@@ -1,8 +1,9 @@
-// Keypad.jsx
+// src/components/Keypad.jsx
 import React from 'react';
 import { Button } from './Button';
 import { send } from '../ws';
 import { ALL_KEYS } from '@shared/constants';
+import styles from './Keypad.module.css';
 
 export const Keypad = ({ player }) => {
   if (!player) return <div>Loading player...</div>;
@@ -17,7 +18,7 @@ export const Keypad = ({ player }) => {
   const keymap = player.keyStates ?? {};
 
   return (
-    <div style={styles.keypad}>
+    <div className={styles.keypad}>
       {ALL_KEYS.map((key) => {
         const km = keymap[key] ?? {};
 
@@ -33,14 +34,4 @@ export const Keypad = ({ player }) => {
       })}
     </div>
   );
-};
-
-const styles = {
-  keypad: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '0.5rem',
-    justifyItems: 'stretch',
-    width: '100%',
-  },
 };
