@@ -55,11 +55,11 @@ export default function Player({ compact = false, id }) {
 
     if (existsOnServer) {
       console.log(
-        `%cPlayer ${playerId} already registered — skipping register`,
+        `[PLAYER] %cPlayer ${playerId} already registered — skipping register`,
         'color: orange'
       );
     } else {
-      console.log(`Registering player ${playerId} (new client)`);
+      console.log(`[PLAYER] Registering player ${playerId} (new client)`);
       send('REGISTER_PLAYER', { id: playerId });
     }
 

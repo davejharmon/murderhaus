@@ -107,7 +107,7 @@ export class EventManager {
       event.resolved = true;
       return {
         success: true,
-        message: `[EVENT] ${event.eventName} resolved.`,
+        message: result.msg,
       };
     }
     return {

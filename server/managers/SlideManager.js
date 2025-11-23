@@ -1,3 +1,4 @@
+// slideManager
 import { Slide } from '../models/Slide.js';
 
 export class SlideManager {
@@ -45,7 +46,6 @@ export class SlideManager {
   }
 
   next() {
-    console.log(this._queue.length);
     if (!this._queue.length) return null;
     if (this._index < this._queue.length - 1) this._index++;
     this._emitSlice();

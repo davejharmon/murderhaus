@@ -49,14 +49,12 @@ export function initGameBus() {
 
   // front-end GameBus
   subscribe('SLIDES_UPDATE', (slice) => {
-    console.log('[GameBus] SLIDES_UPDATE received:', slice); // debug log
     gameData.slides = slice;
     emitSlides();
   });
 }
 
 function emitSlides() {
-  console.log('[GameBus] emitSlides called, current slice:', gameData.slides);
   updateFns.SLIDES_UPDATE.forEach((fn) => fn(gameData.slides));
 }
 

@@ -12,7 +12,6 @@ export class HostManager {
     if (!player) return { success: false, message: 'Player not found' };
     const action = HOST_ACTIONS[actionName];
 
-    console.log(player, action);
     if (!action)
       return { success: false, message: `Unknown host action: ${actionName}` };
 

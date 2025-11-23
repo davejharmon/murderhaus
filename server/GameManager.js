@@ -68,7 +68,6 @@ class GameManager {
 
   updatePlayerImage(id, image) {
     const player = this.game.getPlayer(id);
-    console.log('[GAMEMGR] got to game manager', id, player);
     if (!player) {
       return { success: false, message: `Player ${id} not found` };
     }
@@ -136,10 +135,12 @@ class GameManager {
   startEvent(eventName, initiatedBy = 'host') {
     const result = this.events.startEvent(eventName, initiatedBy);
     this.handleActionResult(result);
+    const playerIds = this.game.players.map((p) => p.id);
+    const enemyIds = this.game.playersByRole('werewolves');
 
     this.slideManager.queueSlides([
-      Slide.eventStart(this.game.players, result.event),
-      Slide.eventTimer(this.game.players),
+      Slide.eventStart(playerIds, enemyIds, result.event),
+      Slide.eventTimer(playerIds, enemyIds),
     ]);
   }
 
@@ -147,6 +148,7 @@ class GameManager {
     const result = this.events.resolveEvent(eventId);
     if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);
+    this.clearEvent(eventId);
   }
 
   clearEvent(eventId) {

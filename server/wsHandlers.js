@@ -94,7 +94,6 @@ export function handleWSMessage(ws, data) {
 
     case 'HOST_UPDATE_PLAYER_IMAGE': {
       const { id, image } = payload;
-      console.log('[WS] Got here');
       gameManager.updatePlayerImage(id, image);
       break;
     }
@@ -114,7 +113,7 @@ export function handleWSMessage(ws, data) {
 
     case 'RESOLVE_EVENT': {
       const { eventId } = payload;
-      console.log('[WS]Resolving', eventId);
+      console.log('[WS] Resolving', eventId);
       if (!eventId)
         return sendTo(ws, {
           type: 'ERROR',

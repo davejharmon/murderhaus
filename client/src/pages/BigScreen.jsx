@@ -22,91 +22,74 @@ export default function BigScreen() {
   const { gameMeta } = useGameState(['GAME_META_UPDATE']);
 
   const slide = buffer[active] || getFallbackSlide(gameMeta);
+  if (!slide) return <div className={styles.container} />;
 
-  if (!slide) {
-    // placeholder while waiting for server/fallback
-    return <div className={styles.container} />;
-  }
+  /** --- Local helpers --- */
+  const getPlayer = (id) => gameMeta?.players.find((p) => p.id === id) || null;
 
-  const slideRenderers = {
-    title: (slide) =>
-      slide.title ? (
-        <Title key='title' text={slide.title.text} color={slide.title.color} />
-      ) : null,
-    image: (slide) =>
-      slide.image ? (
-        <SingleImage
-          path={slide.image.path}
-          alt={slide.image.alt}
-          key='image'
-        />
-      ) : null,
-    subtitle: (slide) =>
-      slide.subtitle ? <Subtitle key='subtitle' text={slide.subtitle} /> : null,
-    countdown: (slide) =>
-      slide.countdown != null ? (
-        <CountdownTimer key='countdown' countdown={slide.countdown} />
-      ) : null,
-    playerUpdate: (slide) =>
-      slide.playerUpdate ? (
-        <PlayerUpdate
-          key='playerUpdate'
-          player={gameMeta.players.find(
-            (p) => p.id === slide.playerUpdate.playerId
-          )}
-          text={slide.playerUpdate.text}
-        />
-      ) : null,
-    eventUpdate: (slide) =>
-      slide.eventUpdate ? (
-        <EventUpdate key='eventUpdate' event={slide.eventUpdate} />
-      ) : null,
-    gameUpdate: (slide) =>
-      slide.gameUpdate ? (
-        <GameUpdate
-          key='gameUpdate'
-          players={slide.gameUpdate.playerIds.map((id) =>
-            gameMeta.players.find((p) => p.id === id)
-          )}
-          text={slide.gameUpdate.text}
-        />
-      ) : null,
-    voteResults: (slide) =>
-      slide.voteResults ? (
-        <VoteResults players={gameMeta.players} voteData={slide.voteResults} />
-      ) : null,
-    galleries: (slide) =>
-      slide.galleries?.map((g, i) => (
-        <Gallery
-          key={`gallery-${i}`}
-          playerIds={g.playerIds}
-          gamePlayers={gameMeta.players}
-          header={g.header}
-          anonWhileAlive={g.anonWhileAlive}
-        />
-      )),
+  const renderGallery = (gallery, key) => {
+    if (!gallery) return null;
+    return (
+      <Gallery
+        key={key}
+        playerIds={gallery.playerIds}
+        gamePlayers={gameMeta.players}
+        header={gallery.header}
+        anonWhileAlive={gallery.anonWhileAlive}
+      />
+    );
   };
 
-  // Final renderer
-  const renderSlideItem = (slide, key) => {
-    // Handle indexed galleries like galleries[0], galleries[1]
-    const galleryIndexMatch = key.match(/^galleries\[(\d+)\]$/);
-    if (galleryIndexMatch) {
-      const index = parseInt(galleryIndexMatch[1], 10);
-      const g = slide.galleries?.[index];
-      return g ? (
-        <Gallery
-          key={key}
-          playerIds={g.playerIds}
-          gamePlayers={gameMeta.players}
-          header={g.header}
-          anonWhileAlive={g.anonWhileAlive}
+  const slideRenderers = {
+    title: (s) =>
+      s.title && (
+        <Title key='title' text={s.title.text} color={s.title.color} />
+      ),
+    image: (s) =>
+      s.image && (
+        <SingleImage key='image' path={s.image.path} alt={s.image.alt} />
+      ),
+    subtitle: (s) =>
+      s.subtitle && <Subtitle key='subtitle' text={s.subtitle} />,
+    countdown: (s) =>
+      s.countdown != null && (
+        <CountdownTimer key='countdown' countdown={s.countdown} />
+      ),
+    playerUpdate: (s) =>
+      s.playerUpdate && (
+        <PlayerUpdate
+          key='playerUpdate'
+          player={getPlayer(s.playerUpdate.playerId)}
+          text={s.playerUpdate.desc}
+          showRole={s.playerUpdate.showRole}
         />
-      ) : null;
-    }
+      ),
+    eventUpdate: (s) =>
+      s.eventUpdate && <EventUpdate key='eventUpdate' event={s.eventUpdate} />,
+    gameUpdate: (s) =>
+      s.gameUpdate && (
+        <GameUpdate
+          key='gameUpdate'
+          players={s.gameUpdate.playerIds.map(getPlayer)}
+          text={s.gameUpdate.text}
+        />
+      ),
+    voteResults: (s) =>
+      s.voteResults && (
+        <VoteResults players={gameMeta.players} voteData={s.voteResults} />
+      ),
+    galleries: (s) =>
+      s.galleries?.map((g, i) => renderGallery(g, `gallery-${i}-${s.id}`)),
+  };
 
-    // Use slideRenderers map
-    return slideRenderers[key]?.(slide) ?? null;
+  const renderSlideItem = (s, key) => {
+    // handle indexed galleries like galleries[0], galleries[1]
+    const match = key.match(/^galleries\[(\d+)\]$/);
+    if (match) {
+      const index = parseInt(match[1], 10);
+      return renderGallery(s.galleries?.[index], key);
+    }
+    return slideRenderers[key]?.(s) || null;
   };
 
   const renderOrder = slide.order || [
@@ -140,23 +123,22 @@ export default function BigScreen() {
   );
 }
 
-// Fallback slide generator
-function getFallbackSlide(gameMeta) {
-  const { gameStarted, phase, players } = gameMeta || {};
+// --- Fallback slide generator ---
+function getFallbackSlide(game) {
+  const { gameStarted, phase, players, dayCount } = game || {};
   if (!gameStarted) {
     return {
       id: 'fallback-start',
       image: { path: '/images/logo.png', alt: 'Big Time Murder' },
       title: { text: 'GAME STARTING SOON', color: '#888' },
-      subtitle: `${players ? players.length : 0} players connected`,
+      subtitle: `${players?.length || 0} players connected`,
       order: ['title', 'image', 'subtitle'],
     };
   }
 
-  const topGallery = { playerIds: gameMeta.players.map((p) => p.id) };
-  const werewolves = gameMeta.players.filter((p) => p.team === 'werewolves');
+  const topGallery = { playerIds: players.map((p) => p.id) };
+  const werewolves = players.filter((p) => p.team === 'werewolves');
   const aliveWerewolves = werewolves.filter((p) => p.state?.isAlive);
-
   const bottomGallery = {
     playerIds: werewolves.map((p) => p.id),
     header: `${aliveWerewolves.length} enemies remain`,
@@ -166,7 +148,7 @@ function getFallbackSlide(gameMeta) {
   if (phase === 'day') {
     return {
       id: 'fallback-day',
-      title: { text: `Day ${gameMeta.dayCount}`, color: '#fff' },
+      title: { text: `Day ${dayCount}`, color: '#fff' },
       subtitle: 'No sign of rain',
       galleries: [topGallery, bottomGallery],
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
@@ -176,10 +158,7 @@ function getFallbackSlide(gameMeta) {
   if (phase === 'night') {
     return {
       id: 'fallback-night',
-      title: {
-        text: `Night ${gameMeta.dayCount}`,
-        color: TEAMS.werewolves.color,
-      },
+      title: { text: `Night ${dayCount}`, color: TEAMS.werewolves.color },
       subtitle: `Shepherd's delight`,
       galleries: [topGallery, bottomGallery],
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],

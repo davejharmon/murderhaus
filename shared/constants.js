@@ -49,7 +49,6 @@ export const HOST_ACTIONS = {
     pregame: false,
     conditions: ({ player }) => player?.state?.isAlive,
     result: (player) => {
-      console.log;
       player.kill();
       return `Host killed ${player.name}.`;
     },
@@ -147,12 +146,12 @@ export const EVENTS = {
       confirmReq: true,
       allowNoResponse: true,
       resultType: 'majority', // or 'perPlayer'
-      allowTies: true, // handles ties in resolution
+      allowTies: false, // handles ties in resolution
     },
-
+    resolutionDesc: 'ELIMINATED',
     resolution: (event, game) => {
       // if tie, start a tiebreaker event with just the most targeted participants, else
-      game.showVoteResults(event);
+      return game.resolveVote(event);
     },
   },
 
@@ -166,11 +165,11 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNone: true,
+      allowNoResponse: true,
       resultType: 'perPlayer',
       allowTies: false, // cannot end event while a tie is in place.
     },
-
+    resolutionDesc: 'DID NOTHING',
     resolution: (event, game) => {
       return; // no effect, used to make sure everyone presses buttons during this phase.
     },
@@ -186,11 +185,11 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNone: false,
+      allowNoResponse: false,
       resultType: 'majority',
       allowTies: false, // cannot end event while a tie is in place.
     },
-
+    resolutionDesc: 'MURDERED',
     resolution: (event, game) => {
       // kill player associated with the most targeted key in results
     },
@@ -205,11 +204,11 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNone: false,
+      allowNoResponse: false,
       resultType: 'perPlayer',
       allowTies: false, // cannot end event while a tie is in place.
     },
-
+    resolutionDesc: 'INVESTIGATED',
     resolution: (event, game) => {
       // return investigate status to investigator
     },
@@ -224,11 +223,11 @@ export const EVENTS = {
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
-      allowNone: false,
+      allowNoResponse: false,
       resultType: 'perPlayer',
       allowTies: false, // cannot end event while a tie is in place.
     },
-
+    resolutionDesc: 'PROTECTED',
     resolution: (event, game) => {
       // target is immune to kill actions this phase.
     },
@@ -278,3 +277,15 @@ export const MINIMUM_ROLES = {
 };
 
 export const DEFAULT_ROLE = 'villager';
+export const DEBUG_NAMES = [
+  'ZERO',
+  'Demi',
+  'Greg',
+  'Mark',
+  'Ben',
+  'Alex',
+  'Simon',
+  'Michelle',
+  'Tom',
+  'Guy',
+];

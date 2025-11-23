@@ -121,9 +121,7 @@ export default function Host() {
    * ---------------------------- */
   const selectionGlyphs = useMemo(() => {
     const map = {};
-    const voteEvent = activeEvents?.find(
-      (e) => e.eventName === 'vote' && !e.resolved
-    );
+    const voteEvent = activeEvents?.find((e) => e.eventName === 'vote');
     if (!voteEvent) return map;
 
     const { results = {}, completedBy = [] } = voteEvent;
@@ -154,6 +152,19 @@ export default function Host() {
               ? `DAY ${dayCount}, PHASE: ${phase || 'Unknown'}`
               : 'GAME NOT STARTED'}
           </h2>
+
+          {/* Active Events List */}
+          {activeEvents.length > 0 && (
+            <div className={styles.activeEventsList}>
+              <ul>
+                {activeEvents.map((e) => (
+                  <span key={e.id}>
+                    {e.eventName} {e.resolved ? '(Resolved)' : '(Pending)'}
+                  </span>
+                ))}
+              </ul>
+            </div>
+          )}
         </header>
 
         <section className={styles.controls}>

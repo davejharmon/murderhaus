@@ -40,20 +40,23 @@ export default function VoteResults({ players, voteData }) {
 
     return arr;
   }, [results, completedBy, confirmReq, playerMap]);
-
+  const tooMany = counts.length > 5;
   return (
-    <div className={styles.voteResultsContainer}>
+    <div
+      className={`${styles.voteResultsContainer} ${
+        tooMany ? styles.twoColumn : ''
+      }`}
+    >
       {counts.map(({ target, voters }) => (
         <div key={target.id} className={styles.voteRow}>
           <div className={styles.voteTarget}>
             <span className={styles.targetName}>{target.name}</span>
-            <span className={styles.voteCount}>{voters.length} votes</span>
           </div>
 
           <div className={styles.voterList}>
             {voters.map((v) => (
               <img
-                key={v.id}
+                key={`voter-${v.id}`}
                 src={`/images/players/${v.image}`}
                 alt={v.name}
                 className={styles.voterPortrait}

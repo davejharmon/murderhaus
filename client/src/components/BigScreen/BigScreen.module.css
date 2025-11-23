@@ -19,6 +19,8 @@
   margin-bottom: 2rem;
 }
 
+/* === TITLE & SUBTITLE THEMES === */
+
 .title {
   font-family: 'Cabin Sketch', sans-serif;
   font-weight: 700;
@@ -39,6 +41,8 @@
   opacity: 0.8;
   text-transform: lowercase;
 }
+
+/* === GALLERY THEMES === */
 
 .gallery {
   margin-top: 40px;
@@ -92,6 +96,8 @@
   font-size: 1.2rem;
 }
 
+/* === COUNTDOWN THEMES === */
+
 .countdown {
   align-self: center;
   font-size: 6rem;
@@ -101,7 +107,6 @@
   transition: transform 0.2s linear, color 0.2s linear, text-shadow 0.2s linear;
 }
 
-/* === Last 30 seconds — subtle pulsing === */
 .juice30 {
   animation: pulse30 1s infinite ease-in-out;
   color: tomato;
@@ -122,42 +127,79 @@
   }
 }
 
+/* === VOTE RESULTS THEMES === */
+
 .voteResultsContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-row-gap: 1rem;
+  width: 75vw;
+  align-self: center;
+  gap: 1rem;
+}
+
+.voteResultsContainer.twoColumn {
+  width: 90vw;
+  grid-template-columns: 1fr 1fr;
 }
 
 .voteRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 150px auto; /* Name column = fixed width */
   align-items: center;
   justify-content: space-between;
 }
 
-.voteTarget {
+.voterList {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 0.5rem; /* consistent spacing between portraits */
+  justify-self: start; /* ensures it lines up perfectly with the name column start */
+}
+
+.voteTarget {
+  justify-self: start;
 }
 
 .targetName {
-  font-size: 1.6rem;
-  font-weight: bold;
-}
-
-.voteCount {
-  font-size: 1.5rem;
-  color: #ccc;
-}
-
-.voterList {
-  display: flex;
-  gap: 8px;
+  font-family: 'Cabin Sketch', sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 4rem;
+  white-space: nowrap;
 }
 
 .voterPortrait {
-  width: 48px;
-  height: 48px;
+  width: 6rem;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 50%; /* circles */
+  margin: 0.5rem;
+}
+
+/* === PLAYER UPDATE THEMES === */
+
+.playerUpdateContainer {
+  font-family: 'Cabin Sketch', sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 4rem;
+  white-space: nowrap;
+  text-transform: uppercase;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 1rem;
+  max-width: 80vw;
+  justify-content: space-around;
+}
+
+.playerUpdatePortrait {
+  border-radius: 50%;
+  max-width: 30vw;
+}
+
+.playerUpdatePortraitEnemy {
+  border-radius: 50%;
+  max-width: 30vw;
+  filter: sepia(1) saturate(5) hue-rotate(-50deg);
 }

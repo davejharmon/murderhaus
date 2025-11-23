@@ -5,12 +5,13 @@ import {
   TEAMS,
   PHASES,
   ALL_KEYS,
+  DEBUG_NAMES,
 } from '../../shared/constants.js';
 
 export class Player {
   constructor(id) {
     this.id = id;
-    this.name = `Player ${id}`;
+    this.name = DEBUG_NAMES[id];
     this.role = null;
     this.team = null;
     this.color = '#666';
@@ -87,13 +88,13 @@ export class Player {
 
   /** Activate an action by name */
   activateAction(actionName) {
-    const action = this.state.actions.find((a) => a.name === actionName);
+    const action = this.getAction(actionName);
     if (action) action.active = true;
   }
 
   /** Check if player can use an action */
   canUseAction(actionName) {
-    const action = this.state.actions.find((a) => a.name === actionName);
+    const action = this.getAction(actionName);
     return (
       action?.trigger === 'event' &&
       action.remainingUsesThisPhase > 0 &&
@@ -255,7 +256,7 @@ export class Player {
 
   /** Handle interrupt keys (A/B, boolean) */
   handleInterrupt(key, actionName) {
-    const action = this.state.actions.find((a) => a.name === actionName);
+    const action = this.getAction(actionName);
     if (!action) {
       return {
         success: false,
@@ -305,6 +306,10 @@ export class Player {
   // -------------------------
   // Public getters
   // -------------------------
+
+  getAction(name) {
+    return this.state.actions.find((a) => a.name === name) || null;
+  }
 
   getPublicState() {
     return {

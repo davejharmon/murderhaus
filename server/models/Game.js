@@ -140,15 +140,6 @@ export class Game {
     });
   }
 
-  /** --- Convenience helpers --- */
-  getAlivePlayers() {
-    return this.players.filter((p) => p.state.isAlive);
-  }
-
-  getPlayersByRole(roleName) {
-    return this.players.filter((p) => p.role?.name === roleName);
-  }
-
   isGameOver() {
     const werewolvesAlive = this.getPlayersByRole('werewolf').some(
       (p) => p.state.isAlive
@@ -186,10 +177,56 @@ export class Game {
     return map;
   }
 
-  showVoteResults(event) {
-    const slide = Slide.voteResults(event);
+  /** --- Convenience helpers --- */
+  getAlivePlayers() {
+    return this.players.filter((p) => p.state.isAlive);
+  }
+
+  getPlayersByRole(roleName) {
+    return this.players.filter((p) => p.role?.name === roleName);
+  }
+
+  get alivePlayers() {
+    return this.players.filter((p) => p.state.isAlive);
+  }
+
+  get deadPlayers() {
+    return this.players.filter((p) => !p.state.isAlive);
+  }
+
+  playersBy(predicate) {
+    return this.players.filter(predicate);
+  }
+
+  playersByRole(roleName) {
+    return this.playersBy((p) => p.role?.name === roleName);
+  }
+
+  resolveVote(event) {
+    const resultsSlide = Slide.voteResults(event);
     const jumpTo = true;
-    console.log('boyo');
-    this.slideManager.push(slide, jumpTo);
+    const frontRunners = event.getFrontrunners();
+    this.slideManager.push(resultsSlide, jumpTo);
+    let msg;
+    if (frontRunners.length === 1) {
+      const player = this.getPlayer(frontRunners[0]);
+      const voters = event.getVoterIds(player.id);
+      const resolutionDesc = event.eventDef.resolutionDesc;
+      this.slideManager.push(
+        Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc)
+      );
+      player.kill();
+      this.slideManager.push(
+        Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc, true)
+      );
+
+      msg = `[GAME] Vote winner: ${this.getPlayer(frontRunners[0]).name}`;
+    } else {
+      event.tiebreakVoting(frontRunners);
+      msg = `[GAME] Tiebreak vote started: ${frontRunners
+        .map((id) => this.getPlayer(id).name)
+        .join(', ')}`;
+    }
+    return msg;
   }
 }

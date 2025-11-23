@@ -2,7 +2,7 @@
 import React from 'react';
 import Player from './Player';
 import styles from './DebugPlayers.module.css';
-import { MAX_PLAYERS } from '@shared/constants';
+import { MAX_PLAYERS, DEBUG_NAMES } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function DebugPlayers() {

@@ -71,6 +71,7 @@ export class Slide {
   }
 
   static playerUpdate(playerId, text) {
+    console.log(`[SLIDE] Building player update`);
     return new Slide({ playerUpdate: { playerId, text } });
   }
 
@@ -109,17 +110,9 @@ export class Slide {
     return new Slide({ countdown: seconds, subtitle: subtitleText });
   }
 
-  static eventStart(players = [], event) {
-    const topGallery = { playerIds: players.map((p) => p.id) };
-    const bottomGallery = {
-      playerIds: players
-        .filter((p) => p.team === 'werewolves')
-        .map((p) => p.id),
-      anonWhileAlive: true,
-    };
-
+  static eventStart(playerIds = [], enemyIds = [], event) {
     return new Slide({
-      galleries: [topGallery, bottomGallery],
+      galleries: [playerIds, enemyIds],
       title: { text: `${event.eventName} starting soon` },
       subtitle: event.eventDef?.description ?? '',
       countdown: 360,
@@ -127,18 +120,10 @@ export class Slide {
     });
   }
 
-  static eventTimer(players = []) {
-    const topGallery = { playerIds: players.map((p) => p.id) };
-    const bottomGallery = {
-      playerIds: players
-        .filter((p) => p.team === 'werewolves')
-        .map((p) => p.id),
-      anonWhileAlive: true,
-    };
-
+  static eventTimer(playerIds = [], enemyIds = []) {
     return new Slide({
-      galleries: [topGallery, bottomGallery],
-      subtitle: `${bottomGallery.playerIds.length} murderers remain`,
+      galleries: [playerIds, enemyIds],
+      subtitle: `${enemyIds.length} murderers remain`,
       countdown: 45,
       order: ['galleries[0]', 'countdown', 'subtitle', 'galleries[1]'],
     });
@@ -151,8 +136,24 @@ export class Slide {
         completedBy: event.completedBy,
         confirmReq: event.eventDef?.input?.confirmReq ?? false,
       },
-      order: ['title', 'voteResults'],
       title: { text: 'Vote Results' },
+      subtitle: [`${event.eventName} event concluded`],
+      order: ['title', 'voteResults', 'subtitle'],
+    });
+  }
+
+  static playerUpdateWithGallery(
+    playerId,
+    voterIds,
+    resolutionDesc = 'DESC NOT SET',
+    showRole = false
+  ) {
+    console.log(voterIds);
+    return new Slide({
+      title: { text: 'Results' },
+      playerUpdate: { playerId, desc: resolutionDesc, showRole },
+      galleries: [{ playerIds: voterIds, header: 'VOTED FOR' }],
+      order: ['title', 'playerUpdate', 'galleries[0]'],
     });
   }
 }
