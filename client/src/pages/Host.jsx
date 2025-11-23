@@ -10,7 +10,7 @@ import styles from './Host.module.css';
 import { EVENTS, HOST_ACTIONS } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useSlides } from '../hooks/useSlides';
-
+import HostControls from '../components/HostControls';
 export default function Host() {
   const { players = [], gameMeta } = useGameState([
     'PLAYERS_UPDATE',
@@ -171,42 +171,12 @@ export default function Host() {
           {!gameStarted ? (
             <Button label='START GAME' onClick={() => send('START_GAME')} />
           ) : (
-            <div className={styles.globalControls}>
-              <Button label='NEXT PHASE' onClick={() => send('NEXT_PHASE')} />
-              <Button label='END GAME' onClick={() => send('END_GAME')} />
-              <Button
-                label='PREV SLIDE'
-                onClick={() => send('SLIDE_BACK')}
-                state={buffer.slideIndex > 0 ? 'default' : 'disabled'}
-              />
-              <Button
-                label={`NEXT SLIDE (${Math.max(
-                  (buffer.length ?? 0) - active - 1,
-                  0
-                )})`}
-                onClick={() => send('SLIDE_NEXT')}
-                state={buffer.length > 0 ? 'selected' : 'disabled'}
-              />
-            </div>
-          )}
-
-          {hostEventButtons.length > 0 && (
-            <div className={styles.selectionControls}>
-              {hostEventButtons.map(
-                ({ eventId, eventName, label, sendType, state }) => (
-                  <Button
-                    key={eventId || label}
-                    label={label}
-                    onClick={() => {
-                      if (sendType === 'START_EVENT')
-                        send(sendType, { eventName });
-                      else send(sendType, { eventId });
-                    }}
-                    state={state}
-                  />
-                )
-              )}
-            </div>
+            <HostControls
+              players={players}
+              gameMeta={gameMeta}
+              buffer={buffer}
+              active={active}
+            />
           )}
         </section>
 

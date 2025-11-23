@@ -1,7 +1,7 @@
 // /shared/constants.js
 
 export const MAX_PLAYERS = 9; // Max players and max selectable buttons per player
-
+export const SIMULTANEOUS_PHASE_ACTIONS = true; // rule alternates
 export const ALL_KEYS = [
   '1',
   '2',
@@ -156,8 +156,8 @@ export const EVENTS = {
   },
 
   dummy: {
-    name: 'dummy',
-    description: 'A dummy event so everyone has a button to press.',
+    name: 'suspect',
+    description: 'Choose a player you suspect is a werewolf.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
     targetCondition: (player) => player.state.isAlive,
@@ -169,9 +169,9 @@ export const EVENTS = {
       resultType: 'perPlayer',
       allowTies: false, // cannot end event while a tie is in place.
     },
-    resolutionDesc: 'DID NOTHING',
+    resolutionDesc: 'suspected',
     resolution: (event, game) => {
-      return; // no effect, used to make sure everyone presses buttons during this phase.
+      return; // track their successful suspectsyh.
     },
   },
   kill: {
@@ -179,9 +179,7 @@ export const EVENTS = {
     description: 'Choose a player to murder in the night.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
-    targetCondition: (player, actor) =>
-      player.state.isAlive && player.id !== actor.id,
-
+    targetCondition: (player, actor) => player.state.isAlive,
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
       confirmReq: true,
@@ -218,7 +216,7 @@ export const EVENTS = {
     description: 'WRITE ME.',
     phase: ['night'],
     participantCondition: (player) => player.state.isAlive,
-    targetCondition: (player, actor) => player.state.isAlive && player != actor, // can we adjust this to be 'and target is not the player participating in the event'
+    targetCondition: (player, actor) => player.state.isAlive,
 
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],

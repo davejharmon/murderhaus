@@ -156,6 +156,33 @@ class GameManager {
     if (!result.success) return console.warn(result.message);
     this.handleActionResult(result);
   }
+
+  startAllEvents(initiatedBy = 'host') {
+    const pendingEventNames = this.events.getPendingEventNames();
+    if (!pendingEventNames.length) return;
+
+    pendingEventNames.forEach((eventName) => {
+      this.startEvent(eventName, initiatedBy);
+    });
+
+    console.log(
+      `[GAMEMGR] Started all events: ${pendingEventNames.join(', ')}`
+    );
+  }
+
+  resolveAllEvents() {
+    const activeEvents = this.events
+      .getActiveEvents()
+      .filter((e) => !e.resolved);
+    if (!activeEvents.length) return;
+
+    activeEvents.forEach((e) => this.resolveEvent(e.id));
+    console.log(
+      `[GAMEMGR] Resolved all events: ${activeEvents
+        .map((e) => e.eventName)
+        .join(', ')}`
+    );
+  }
 }
 
 export const gameManager = new GameManager();

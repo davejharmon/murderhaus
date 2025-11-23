@@ -49,12 +49,6 @@
   gap: 1rem;
 }
 
-.globalControls {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
 /* Players */
 .playersSection {
   display: flex;

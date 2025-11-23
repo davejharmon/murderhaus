@@ -1,0 +1,25 @@
+/* HostControls.module.css */
+
+/* Wrapper for all host buttons (events + global actions) */
+.hostControls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Global controls like NEXT PHASE / END GAME / SLIDE nav */
+.globalControls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Event buttons like START/RESOLVE/CLEAR events */
+.selectionControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}

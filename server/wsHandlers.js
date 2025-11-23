@@ -124,6 +124,18 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
+    case 'START_ALL_EVENTS': {
+      console.log('[WS] Starting all pending events');
+      gameManager.startAllEvents();
+      break;
+    }
+
+    case 'RESOLVE_ALL_EVENTS': {
+      console.log('[WS] Resolving all active events');
+      gameManager.resolveAllEvents();
+      break;
+    }
+
     case 'CLEAR_EVENT': {
       const { eventId } = payload;
       if (!eventId)

@@ -147,4 +147,18 @@ export class EventManager {
   getEventById(id) {
     return this.game.activeEvents.find((e) => e.id === id) || null;
   }
+
+  /** -------------------------------------------------
+   * Helper: get names of pending events
+   * ------------------------------------------------*/
+  getPendingEventNames() {
+    return [...this.pendingEvents];
+  }
+
+  /** -------------------------------------------------
+   * Helper: get all active events
+   * ------------------------------------------------*/
+  getActiveEvents() {
+    return this.game.activeEvents;
+  }
 }
