@@ -74,7 +74,7 @@ export class EventManager {
       player.updateKeymap(this.game.activeEvents);
     });
 
-    return { success: true, message: `[EVENTS] ${eventName} started.`, event };
+    return { success: true, message: `${event.id} started.`, event };
   }
 
   /** -------------------------------------------------
@@ -83,20 +83,23 @@ export class EventManager {
   resolveEvent(eventId) {
     const event = this.getEventById(eventId);
     if (!event) {
-      return { success: false, message: '[EVENTS] No such event.' };
+      return {
+        success: false,
+        message: `Event No such event: '${event.eventName}'.`,
+      };
     }
 
     if (event.resolved) {
       return {
         success: false,
-        message: '[EVENTS] Event has already resolved.',
+        message: `Event '${event.eventName}' already resolved.`,
       };
     }
 
     if (!event.isFullyComplete() && !event.eventDef.input.allowNoResponse) {
       return {
         success: false,
-        message: '[EVENTS] Cannot resolve — not all participants completed.',
+        message: `Event '${event.eventName}' cannot resolve — not all participants completed.`,
       };
     }
 
@@ -105,14 +108,11 @@ export class EventManager {
     if (typeof resolutionFn === 'function') {
       const result = resolutionFn(event, this.game);
       event.resolved = true;
-      return {
-        success: true,
-        message: result.msg,
-      };
+      return result;
     }
     return {
       success: false,
-      message: '[EVENTS] End of Resolve method, something went wrong.',
+      message: 'Event resolution not a function.',
     };
   }
 
@@ -138,7 +138,7 @@ export class EventManager {
     // TODO:
     // - Players recalc keymaps after event removal
 
-    return { success: true, message: `[EVENTS] Event cleared: ${eventId}` };
+    return { success: true, message: `${eventId} is over.` };
   }
 
   /** -------------------------------------------------

@@ -151,7 +151,10 @@ export const EVENTS = {
     resolutionDesc: 'ELIMINATED',
     resolution: (event, game) => {
       // if tie, start a tiebreaker event with just the most targeted participants, else
-      return game.resolveVote(event);
+      const fn = (player) => {
+        player.kill();
+      };
+      return game.resolveVote(event, fn);
     },
   },
 

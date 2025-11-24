@@ -14,8 +14,8 @@ export default function PlayerUpdate({ player, text, showRole = false }) {
     .filter(Boolean)
     .join(' ');
 
-  const mainLabel = showRole ? player.role : player.name;
-
+  const surtitle = showRole ? player.role : player.name;
+  const surtitleStyle = showRole ? { color: player.color } : undefined;
   return (
     <div className={styles.playerUpdateContainer}>
       <img
@@ -25,7 +25,7 @@ export default function PlayerUpdate({ player, text, showRole = false }) {
       />
 
       <div>
-        <div className={styles.targetName}>{mainLabel}</div>
+        <div style={surtitleStyle}>{surtitle}</div>
         <div className={styles.subtitle}>{text}</div>
       </div>
     </div>

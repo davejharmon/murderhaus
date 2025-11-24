@@ -218,12 +218,12 @@ export class Game {
     return this.playersByRole(roleName).map((p) => p.id);
   }
 
-  resolveVote(event) {
+  resolveVote(event, fn) {
     const resultsSlide = Slide.voteResults(event);
     const jumpTo = true;
     const frontRunners = event.getFrontrunners();
     this.slideManager.push(resultsSlide, jumpTo);
-    let msg;
+    let result;
     if (frontRunners.length === 1) {
       const player = this.getPlayer(frontRunners[0]);
       const voters = event.getVoterIds(player.id);
@@ -231,18 +231,22 @@ export class Game {
       this.slideManager.push(
         Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc)
       );
-      player.kill();
+      fn(player); // winner has fn performed.
+
       this.slideManager.push(
         Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc, true)
       );
 
-      msg = `[GAME] Vote winner: ${this.getPlayer(frontRunners[0]).name}`;
+      result = {
+        success: true,
+        message: `${player.name} has been ${event.eventDef.resolutionDesc}`,
+      };
     } else {
-      event.tiebreakVoting(frontRunners);
-      msg = `[GAME] Tiebreak vote started: ${frontRunners
-        .map((id) => this.getPlayer(id).name)
-        .join(', ')}`;
+      result = {
+        success: true,
+        message: `${frontRunners.length} frontrunners: tiebreak vote started.`,
+      };
     }
-    return msg;
+    return result;
   }
 }

@@ -21,7 +21,7 @@ class GameManager {
     this.view.setEvents(this.events);
   }
 
-  handleActionResult(
+  logResult(
     result,
     { player = null, type = 'system', updateView = true } = {}
   ) {
@@ -40,14 +40,14 @@ class GameManager {
   /** --- Game lifecycle --- */
   registerPlayer(id) {
     const result = this.game.addPlayer(id);
-    this.handleActionResult(result, { player: result.player });
+    this.logResult(result, { player: result.player });
     return result.player;
   }
 
   removePlayer(id) {
     const player = this.game.getPlayer(id);
     const result = this.game.removePlayer(id);
-    this.handleActionResult(result, { player });
+    this.logResult(result, { player });
   }
 
   /** --- Player management --- */
@@ -61,7 +61,7 @@ class GameManager {
     const result = player.set('name', name);
     result.message = `Player ${id} name set to ${name}`;
     // Send to logger + view updates
-    this.handleActionResult(result, { player });
+    this.logResult(result, { player });
 
     return result;
   }
@@ -75,7 +75,7 @@ class GameManager {
     const result = player.set('image', image);
     result.message = `Player ${id} image set to ${image}`;
     // Send to logger + view updates
-    this.handleActionResult(result, { player });
+    this.logResult(result, { player });
 
     return result;
   }
@@ -92,7 +92,7 @@ class GameManager {
     this.events.buildPendingEvents();
 
     // Handle role assignments / initial actions etc.
-    this.handleActionResult(result);
+    this.logResult(result);
   }
 
   nextPhase() {
@@ -100,7 +100,7 @@ class GameManager {
 
     // Re-initialize pending host events for the new phase
     this.events.buildPendingEvents();
-    this.handleActionResult(result);
+    this.logResult(result);
     this.slideManager.clear();
   }
 
@@ -122,19 +122,20 @@ class GameManager {
     const result = actor.handleInput(key, event);
     if (event) actor.updateKeymap(this.game.activeEvents);
 
-    this.handleActionResult(result, { player: actor });
+    this.logResult(result, { player: actor });
   }
 
   /** --- Host actions --- */
   hostAction(playerId, actionName) {
     const result = this.host.performHostAction(playerId, actionName);
-    this.handleActionResult(result);
+    this.logResult(result);
   }
 
   /** --- Events --- */
   startEvent(eventName, initiatedBy = 'host') {
     const result = this.events.startEvent(eventName, initiatedBy);
-    this.handleActionResult(result);
+    this.logResult(result);
+
     const playerIds = this.game.players.map((p) => p.id);
     const enemyIds = this.game.playerIDsByTeam('werewolves');
     console.log('[GAMEMGR] EnemyIds', enemyIds);
@@ -147,14 +148,15 @@ class GameManager {
   resolveEvent(eventId) {
     const result = this.events.resolveEvent(eventId);
     if (!result.success) return console.warn(result.message);
-    this.handleActionResult(result);
+    console.log(result);
+    this.logResult(result);
     this.clearEvent(eventId);
   }
 
   clearEvent(eventId) {
     const result = this.events.clearEvent(eventId);
     if (!result.success) return console.warn(result.message);
-    this.handleActionResult(result);
+    this.logResult(result);
   }
 
   startAllEvents(initiatedBy = 'host') {
@@ -164,10 +166,6 @@ class GameManager {
     pendingEventNames.forEach((eventName) => {
       this.startEvent(eventName, initiatedBy);
     });
-
-    console.log(
-      `[GAMEMGR] Started all events: ${pendingEventNames.join(', ')}`
-    );
   }
 
   resolveAllEvents() {
@@ -182,6 +180,7 @@ class GameManager {
         .map((e) => e.eventName)
         .join(', ')}`
     );
+    this.logResult({ success: true, message: `Resolved all events.` });
   }
 }
 

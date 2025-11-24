@@ -9,6 +9,7 @@ import anonImg from '../assets/anon.png'; // default portrait
 
 export const PlayerCard = React.memo(function PlayerCard({
   player,
+  activeEvents,
   actions = [],
   selectionGlyphs = [],
   DEBUG = false,
@@ -43,6 +44,18 @@ export const PlayerCard = React.memo(function PlayerCard({
     },
     [player.name]
   );
+
+  const participatingEvent = useMemo(() => {
+    if (!activeEvents) return null;
+    const pid = player.id;
+
+    // Find the event where this player's ID appears in participants[]
+    const ev = activeEvents.find(
+      (e) => Array.isArray(e.participants) && e.participants.includes(pid)
+    );
+
+    return ev ? ev.eventName : null;
+  }, [activeEvents, player.id]);
 
   const memoedselectionGlyphs = useMemo(() => {
     return selectionGlyphs.map(({ id, isConfirmed, col }) => (
@@ -96,6 +109,11 @@ export const PlayerCard = React.memo(function PlayerCard({
 
         <span className={styles.role} style={{ color: player.color || 'gray' }}>
           {player.role || 'Unassigned'}
+          {participatingEvent && (
+            <span className={styles.eventTag}>
+              {participatingEvent.toUpperCase()}
+            </span>
+          )}
         </span>
 
         {memoedselectionGlyphs.length > 0 && (
