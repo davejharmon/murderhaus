@@ -21,16 +21,14 @@ export const PHASES = [
   {
     name: 'day',
     description: 'Players discuss and vote on whom to lynch.',
-    playerActions: ['vote'],
     hostActions: ['kill', 'revive'],
     events: ['vote'], // ← restore this
   },
   {
     name: 'night',
     description: 'Special roles perform their night abilities.',
-    playerActions: ['kill', 'protect', 'investigate', 'commute'],
     hostActions: ['kill', 'revive'],
-    events: ['dummy', 'kill', 'investigate', 'protect'], // ← add these
+    events: ['suspect', 'kill', 'investigate', 'protect'], // ← add these
   },
 ];
 
@@ -158,11 +156,12 @@ export const EVENTS = {
     },
   },
 
-  dummy: {
+  suspect: {
     name: 'suspect',
     description: 'Choose a player you suspect is a werewolf.',
     phase: ['night'],
-    participantCondition: (player) => player.state.isAlive,
+    participantCondition: (player) =>
+      player.state.isAlive && player.role.name === 'villager',
     targetCondition: (player) => player.state.isAlive,
 
     input: {
@@ -181,7 +180,8 @@ export const EVENTS = {
     name: 'kill',
     description: 'Choose a player to murder in the night.',
     phase: ['night'],
-    participantCondition: (player) => player.state.isAlive,
+    participantCondition: (player) =>
+      player.state.isAlive && player.role.name === 'werewolf',
     targetCondition: (player, actor) => player.state.isAlive,
     input: {
       allowed: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
@@ -199,7 +199,8 @@ export const EVENTS = {
     name: 'investigate',
     description: 'WRITE ME.',
     phase: ['night'],
-    participantCondition: (player) => player.state.isAlive,
+    participantCondition: (player) =>
+      player.state.isAlive && player.role.name === 'seer',
     targetCondition: (player) => player.state.isAlive,
 
     input: {
@@ -218,7 +219,8 @@ export const EVENTS = {
     name: 'protect',
     description: 'WRITE ME.',
     phase: ['night'],
-    participantCondition: (player) => player.state.isAlive,
+    participantCondition: (player) =>
+      player.state.isAlive && player.role.name === 'doctor',
     targetCondition: (player, actor) => player.state.isAlive,
 
     input: {
@@ -241,8 +243,8 @@ export const ROLES = {
     name: 'villager',
     team: 'villagers',
     color: undefined,
-    defaultActions: ['dummy'],
-    defaultEvents: ['vote'],
+    defaultActions: [],
+    defaultEvents: ['vote', 'suspect'],
   },
   werewolf: {
     name: 'werewolf',
