@@ -129,6 +129,16 @@ export class Player {
         actionName: null,
         isHighlighted: false,
       };
+      this.participatingInEvent = null;
+
+      if (this.state.isAlive) {
+        for (const event of activeEvents) {
+          if (event.participants.includes(this.id)) {
+            this.participatingInEvent = event.eventName;
+            break;
+          }
+        }
+      }
     });
 
     // Skip if player is dead
@@ -319,6 +329,7 @@ export class Player {
       role: this.role?.name ?? null,
       team: this.team ?? null,
       color: this.color,
+      participatingInEvent: this.participatingInEvent,
       keyStates: this.state.keymap,
       state: {
         ...this.state,

@@ -202,7 +202,6 @@ export default function Host() {
                   variant='light'
                   selectionGlyphs={selectionGlyphs[p.id] || []}
                   phase={phase}
-                  activeEvents={gameMeta.activeEvents}
                   onPortraitClick={() => setModalPlayer(p)}
                 />
               );
