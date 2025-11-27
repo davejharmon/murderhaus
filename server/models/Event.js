@@ -107,6 +107,27 @@ export class Event {
       .map(([actorId]) => Number(actorId));
   }
 
+  set(updates = {}) {
+    const allowed = [
+      'participants',
+      'targets',
+      'phase',
+      'initiatedBy',
+      'createdAt',
+      'resolved',
+      'results',
+      'completedBy',
+    ];
+
+    for (const key of allowed) {
+      if (key in updates) {
+        this[key] = updates[key];
+      }
+    }
+
+    return this; // allows chaining
+  }
+
   getPublicState() {
     return {
       id: this.id,

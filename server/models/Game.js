@@ -194,6 +194,10 @@ export class Game {
     return this.players.filter((p) => !p.state.isAlive);
   }
 
+  getPlayerById(pid) {
+    return this.players.find((p) => p?.id === pid);
+  }
+
   playersBy(predicateFn) {
     return this.players.filter(predicateFn);
   }
@@ -242,9 +246,22 @@ export class Game {
         message: `${player.name} has been ${event.eventDef.resolutionDesc}`,
       };
     } else {
+      this.activeEvents
+        .find((e) => (e.id = event.id))
+        .set({
+          targets: frontRunners,
+          completedBy: [],
+          results: [],
+        });
+      event.participants.forEach((pid) => {
+        const player = this.getPlayerById(pid);
+        if (!player) return;
+        player.updateKeymap(this.activeEvents);
+      });
+
       result = {
-        success: true,
-        message: `${frontRunners.length} frontrunners: tiebreak vote started.`,
+        success: false,
+        message: `[GAME] ${frontRunners.length} frontrunners: tiebreak vote started.`,
       };
     }
     return result;

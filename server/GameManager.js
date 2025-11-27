@@ -139,10 +139,8 @@ class GameManager {
 
   resolveEvent(eventId) {
     const result = this.events.resolveEvent(eventId);
-    if (!result.success) return console.warn(result.message);
-    console.log(result);
     this.logResult(result);
-    this.clearEvent(eventId);
+    if (result.success === true) this.clearEvent(eventId);
   }
 
   clearEvent(eventId) {
@@ -159,12 +157,10 @@ class GameManager {
       this.startEvent(e, initiatedBy);
     });
     const activeEvents = this.events.getActiveEvents();
-    const event = activeEvents.length === 1 ? activeEvents[0] : null;
     const playerIds = this.game.players.map((p) => p.id);
     const enemyIds = this.game.playerIDsByTeam('werewolves');
-    console.log(event);
     this.slideManager.queueSlides([
-      Slide.eventStart(playerIds, enemyIds, event),
+      Slide.eventStart(playerIds, enemyIds, activeEvents),
       Slide.eventTimer(playerIds, enemyIds),
     ]);
   }
@@ -175,13 +171,10 @@ class GameManager {
       .filter((e) => !e.resolved);
     if (!activeEvents.length) return;
 
-    activeEvents.forEach((e) => this.resolveEvent(e.id));
-    console.log(
-      `[GAMEMGR] Resolved all events: ${activeEvents
-        .map((e) => e.eventName)
-        .join(', ')}`
-    );
-    this.logResult({ success: true, message: `Resolved all events.` });
+    activeEvents.forEach((e) => {
+      this.resolveEvent(e.id);
+    });
+    this.logResult({ success: true, message: `Resolved all events.` }); // nmeed to check these are all true.
   }
 }
 

@@ -110,16 +110,25 @@ export class Slide {
     return new Slide({ countdown: seconds, subtitle: subtitleText });
   }
 
-  static eventStart(playerIds = [], enemyIds = [], event) {
+  static eventStart(playerIds = [], enemyIds = [], activeEvents) {
+    const firstEvent = activeEvents[0];
+    const eventNames =
+      activeEvents.length >= 1
+        ? activeEvents.map((e) => e.eventName).join(', ')
+        : firstEvent.eventName;
+
+    const eventDesc =
+      activeEvents.length === 1
+        ? firstEvent.eventDef?.description
+        : 'check your console for action options';
+
     return new Slide({
       galleries: [{ playerIds }, { playerIds: enemyIds, anonWhileAlive: true }],
       title: {
-        text: `${event?.eventName} starting soon` ?? 'STARTING PHASE ACTIONS',
+        text: `${eventNames} starting soon` ?? 'STARTING PHASE ACTIONS',
       },
       subtitle: {
-        text:
-          event?.eventDef?.description ??
-          'Check your console for action options',
+        text: eventDesc,
       },
       countdown: 360,
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],

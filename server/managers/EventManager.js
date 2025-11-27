@@ -65,7 +65,7 @@ export class EventManager {
     this.pendingEvents.delete(eventName);
     // Activate events for players
     event.participants.forEach((pid) => {
-      const player = this.game.players.find((p) => p.id === pid);
+      const player = this.game.getPlayerById(pid);
       if (!player) return;
       player.updateKeymap(this.game.activeEvents);
     });
@@ -103,7 +103,7 @@ export class EventManager {
 
     if (typeof resolutionFn === 'function') {
       const result = resolutionFn(event, this.game);
-      event.resolved = true;
+      if (result.success === true) event.resolved = true;
       return result;
     }
     return {
