@@ -50,51 +50,49 @@ export class Event {
   }
 
   getFrontrunners() {
-    const values = Object.values(this.results);
+    const votes = Object.values(this.results).filter((v) => v != null);
 
-    if (values.length === 0) return [];
+    if (votes.length === 0) return [];
 
-    // Count frequency of each vote count
-    const freq = values.reduce((acc, v) => {
-      acc[v] = (acc[v] || 0) + 1;
+    // Count how many votes each target received
+    const tally = votes.reduce((acc, targetId) => {
+      acc[targetId] = (acc[targetId] || 0) + 1;
       return acc;
     }, {});
 
-    // Find max frequency
-    const maxFreq = Math.max(...Object.values(freq));
+    const max = Math.max(...Object.values(tally));
 
-    // Return all vote-count values with max frequency
-    return Object.keys(freq)
-      .filter((k) => freq[k] === maxFreq)
+    return Object.keys(tally)
+      .filter((id) => tally[id] === max)
       .map(Number)
       .sort((a, b) => a - b);
   }
 
-  tiebreakVoting(frontrunnerIds) {
-    if (!Array.isArray(frontrunnerIds) || frontrunnerIds.length === 0) {
-      throw new Error(
-        'tiebreakVoting requires a non-empty array of frontrunner IDs'
-      );
-    }
+  // tiebreakVoting(frontrunnerIds) {
+  //   if (!Array.isArray(frontrunnerIds) || frontrunnerIds.length === 0) {
+  //     throw new Error(
+  //       'tiebreakVoting requires a non-empty array of frontrunner IDs'
+  //     );
+  //   }
 
-    // Restrict targets to only frontrunners
-    this.targets = frontrunnerIds;
+  //   // Restrict targets to only frontrunners
+  //   this.targets = frontrunnerIds;
 
-    // Reset results so the vote starts fresh
-    this.results = {};
+  //   // Reset results so the vote starts fresh
+  //   this.results = {};
 
-    // Reset completed participants
-    this.completedBy = [];
+  //   // Reset completed participants
+  //   this.completedBy = [];
 
-    // Mark event as unresolved for new round
-    this.resolved = false;
+  //   // Mark event as unresolved for new round
+  //   this.resolved = false;
 
-    // Update createdAt to current time
-    this.createdAt = Date.now();
-    if (this.game?.slideManager) {
-      this.game.slideManager.push(Slide.eventTimer(this.game.players), true);
-    }
-  }
+  //   // Update createdAt to current time
+  //   this.createdAt = Date.now();
+  //   if (this.game?.slideManager) {
+  //     this.game.slideManager.push(Slide.eventTimer(this.game.players), true);
+  //   }
+  // }
 
   getVoterIds(value) {
     const confirmReq = this.eventDef?.input?.confirmReq || false;
@@ -117,6 +115,7 @@ export class Event {
       'resolved',
       'results',
       'completedBy',
+      'eventName',
     ];
 
     for (const key of allowed) {

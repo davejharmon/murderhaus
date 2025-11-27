@@ -135,11 +135,11 @@ export class Slide {
     });
   }
 
-  static eventTimer(playerIds = [], enemyIds = []) {
+  static eventTimer(playerIds = [], enemyIds = [], timer = 180) {
     return new Slide({
       galleries: [{ playerIds }, { playerIds: enemyIds, anonWhileAlive: true }],
       subtitle: { text: `${enemyIds.length} murderers remain` },
-      countdown: 45,
+      countdown: timer,
       order: ['galleries[0]', 'countdown', 'subtitle', 'galleries[1]'],
     });
   }

@@ -2,11 +2,10 @@
 import React, { useMemo } from 'react';
 import styles from './BigScreen.module.css';
 import anonImg from '../../assets/anon.png';
-
+import Title from './Title';
 export default function VoteResults({ players, voteData }) {
   const { results, completedBy, confirmReq } = voteData;
 
-  // Fast lookup by ID
   const playerMap = useMemo(
     () => new Map(players.map((p) => [p.id, p])),
     [players]
@@ -14,7 +13,6 @@ export default function VoteResults({ players, voteData }) {
 
   const counts = useMemo(() => {
     const tally = new Map();
-
     const voters = confirmReq ? completedBy : Object.keys(results).map(Number);
 
     voters.forEach((voterId) => {
@@ -34,6 +32,11 @@ export default function VoteResults({ players, voteData }) {
       .filter((row) => row.target)
       .sort((a, b) => b.voters.length - a.voters.length);
   }, [results, completedBy, confirmReq, playerMap]);
+
+  // --- Fallback if no votes ---
+  if (!counts.length) {
+    return <Title text='NO ACTION TAKEN' />;
+  }
 
   const tooMany = counts.length > 5;
 

@@ -225,7 +225,10 @@ export class Game {
   resolveVote(event, fn) {
     const resultsSlide = Slide.voteResults(event);
     const jumpTo = true;
-    const frontRunners = event.getFrontrunners();
+    const frontRunners = event.getFrontrunners().length
+      ? event.getFrontrunners()
+      : [...event.participants]; // if nobody is a frontrunner, everyone is.
+
     this.slideManager.push(resultsSlide, jumpTo);
     let result;
     if (frontRunners.length === 1) {
@@ -246,12 +249,17 @@ export class Game {
         message: `${player.name} has been ${event.eventDef.resolutionDesc}`,
       };
     } else {
+      const updatedName = !event.eventName.startsWith('TIEBREAK ') // not working for some reason
+        ? `TIEBREAK ${event.eventName}`
+        : event.eventName;
+
       this.activeEvents
-        .find((e) => (e.id = event.id))
+        .find((e) => e.id === event.id)
         .set({
           targets: frontRunners,
           completedBy: [],
-          results: [],
+          results: {},
+          eventName: updatedName,
         });
       event.participants.forEach((pid) => {
         const player = this.getPlayerById(pid);

@@ -140,7 +140,17 @@ class GameManager {
   resolveEvent(eventId) {
     const result = this.events.resolveEvent(eventId);
     this.logResult(result);
-    if (result.success === true) this.clearEvent(eventId);
+    if (result.success === true) {
+      this.clearEvent(eventId);
+    } // if false, for now assume its a tie.
+    const activeEvents = this.events.getActiveEvents();
+    const playerIds = this.game.players.map((p) => p.id);
+    const enemyIds = this.game.playerIDsByTeam('werewolves');
+    const timer = 30;
+    this.slideManager.queueSlides([
+      Slide.eventStart(playerIds, enemyIds, activeEvents),
+      Slide.eventTimer(playerIds, enemyIds, timer),
+    ]);
   }
 
   clearEvent(eventId) {
@@ -159,9 +169,10 @@ class GameManager {
     const activeEvents = this.events.getActiveEvents();
     const playerIds = this.game.players.map((p) => p.id);
     const enemyIds = this.game.playerIDsByTeam('werewolves');
+    const timer = 30;
     this.slideManager.queueSlides([
       Slide.eventStart(playerIds, enemyIds, activeEvents),
-      Slide.eventTimer(playerIds, enemyIds),
+      Slide.eventTimer(playerIds, enemyIds, timer),
     ]);
   }
 
