@@ -31,10 +31,6 @@ export class EventManager {
     return { success: true, message: '[EVENTS] Pending events built.' };
   }
 
-  getPendingEvents() {
-    return [...this.pendingEvents];
-  }
-
   /** -------------------------------------------------
    * Start an event
    * ------------------------------------------------*/
@@ -148,17 +144,25 @@ export class EventManager {
     return this.game.activeEvents.find((e) => e.id === id) || null;
   }
 
+  getEventByName(name) {
+    return this.game.activeEvents.find((e) => e.eventName === name) || null;
+  }
+
   /** -------------------------------------------------
    * Helper: get names of pending events
    * ------------------------------------------------*/
-  getPendingEventNames() {
-    return [...this.pendingEvents];
-  }
+  // getPendingEventNames() {
+  //   return [...this.pendingEvents];
+  // }
 
   /** -------------------------------------------------
    * Helper: get all active events
    * ------------------------------------------------*/
   getActiveEvents() {
     return this.game.activeEvents;
+  }
+
+  getPendingEvents() {
+    return [...this.pendingEvents];
   }
 }

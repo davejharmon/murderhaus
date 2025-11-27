@@ -135,14 +135,6 @@ class GameManager {
   startEvent(eventName, initiatedBy = 'host') {
     const result = this.events.startEvent(eventName, initiatedBy);
     this.logResult(result);
-
-    const playerIds = this.game.players.map((p) => p.id);
-    const enemyIds = this.game.playerIDsByTeam('werewolves');
-    console.log('[GAMEMGR] EnemyIds', enemyIds);
-    this.slideManager.queueSlides([
-      Slide.eventStart(playerIds, enemyIds, result.event),
-      Slide.eventTimer(playerIds, enemyIds),
-    ]);
   }
 
   resolveEvent(eventId) {
@@ -160,12 +152,21 @@ class GameManager {
   }
 
   startAllEvents(initiatedBy = 'host') {
-    const pendingEventNames = this.events.getPendingEventNames();
-    if (!pendingEventNames.length) return;
+    const pendingEvents = this.events.getPendingEvents();
+    if (!pendingEvents.length) return;
 
-    pendingEventNames.forEach((eventName) => {
-      this.startEvent(eventName, initiatedBy);
+    pendingEvents.forEach((e) => {
+      this.startEvent(e, initiatedBy);
     });
+    const activeEvents = this.events.getActiveEvents();
+    const event = activeEvents.length === 1 ? activeEvents[0] : null;
+    const playerIds = this.game.players.map((p) => p.id);
+    const enemyIds = this.game.playerIDsByTeam('werewolves');
+    console.log(event);
+    this.slideManager.queueSlides([
+      Slide.eventStart(playerIds, enemyIds, event),
+      Slide.eventTimer(playerIds, enemyIds),
+    ]);
   }
 
   resolveAllEvents() {

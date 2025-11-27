@@ -113,8 +113,14 @@ export class Slide {
   static eventStart(playerIds = [], enemyIds = [], event) {
     return new Slide({
       galleries: [{ playerIds }, { playerIds: enemyIds, anonWhileAlive: true }],
-      title: { text: `${event.eventName} starting soon` },
-      subtitle: { text: event.eventDef?.description ?? 'EVENT DEF MISSING' },
+      title: {
+        text: `${event?.eventName} starting soon` ?? 'STARTING PHASE ACTIONS',
+      },
+      subtitle: {
+        text:
+          event?.eventDef?.description ??
+          'Check your console for action options',
+      },
       countdown: 360,
       order: ['galleries[0]', 'title', 'subtitle', 'galleries[1]'],
     });

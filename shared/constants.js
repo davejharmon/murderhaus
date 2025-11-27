@@ -35,7 +35,7 @@ export const PHASES = [
 // --- Teams ---
 export const TEAMS = {
   villagers: { name: 'villagers', color: '#4db8ff' },
-  werewolves: { name: 'werewolves', color: '#be0000' },
+  werewolves: { name: 'werewolves', color: '#ff6b6b' },
 };
 
 // --- Host Actions ---

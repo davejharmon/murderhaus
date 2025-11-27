@@ -121,23 +121,28 @@ export default function Host() {
    * ---------------------------- */
   const selectionGlyphs = useMemo(() => {
     const map = {};
-    const voteEvent = activeEvents?.find((e) => e.eventName === 'vote');
-    if (!voteEvent) return map;
 
-    const { results = {}, completedBy = [] } = voteEvent;
+    // Loop through all active events that contain results
+    activeEvents
+      ?.filter((e) => e.results) // or any condition you want (e.eventName === "vote"...)
+      .forEach((event) => {
+        const { results = {}, completedBy = [] } = event;
 
-    Object.entries(results).forEach(([actorId, targetId]) => {
-      const actor = players.find((p) => p.id === Number(actorId));
-      if (!actor) return;
+        Object.entries(results).forEach(([actorId, targetId]) => {
+          const actor = players.find((p) => p.id === Number(actorId));
+          if (!actor) return;
 
-      if (!map[targetId]) map[targetId] = [];
+          if (!map[targetId]) map[targetId] = [];
 
-      map[targetId].push({
-        id: actor.id,
-        isConfirmed: completedBy.includes(actor.id),
-        col: actor.color,
+          map[targetId].push({
+            id: actor.id,
+            isConfirmed: completedBy.includes(actor.id),
+            col: actor.color,
+            eventName: event.eventName, // optional: include source event
+            eventId: event.id, // optional: include event ID for debugging
+          });
+        });
       });
-    });
 
     return map;
   }, [activeEvents, players]);
