@@ -171,9 +171,9 @@ export const EVENTS = {
       resultType: 'perPlayer',
       allowTies: false, // cannot end event while a tie is in place.
     },
-    resolutionDesc: 'suspected',
+    resolutionDesc: 'SUSPECTED',
     resolution: (event, game) => {
-      return; // track their successful suspectsyh.
+      return; // track their successful suspects.
     },
   },
   kill: {
