@@ -11,7 +11,6 @@ import { Slide } from './models/Slide.js';
 class GameManager {
   constructor() {
     this.game = new Game();
-    this.actions = new ActionManager(this.game);
     this.host = new HostManager(this.game);
     this.events = new EventManager(this.game);
     this.view = new ViewManager(this.game);
@@ -38,60 +37,48 @@ class GameManager {
   }
 
   /** --- Game lifecycle --- */
-  registerPlayer(id) {
-    const result = this.game.addPlayer(id);
+  registerPlayer(playerId) {
+    const result = this.game.addPlayer(playerId);
     this.logResult(result, { player: result.player });
     return result.player;
   }
 
-  removePlayer(id) {
-    const player = this.game.getPlayer(id);
-    const result = this.game.removePlayer(id);
+  removePlayer(playerId) {
+    const player = this.game.getPlayer(playerId);
+    const result = this.game.removePlayer(playerId);
     this.logResult(result, { player });
   }
 
   /** --- Player management --- */
-  updatePlayerName(id, name) {
-    const player = this.game.getPlayer(id);
-    if (!player) {
-      return { success: false, message: `Player ${id} not found` };
-    }
-
-    // Use new Player.set()
+  updatePlayerName(playerId, name) {
+    const player = this.game.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
     const result = player.set('name', name);
-    result.message = `Player ${id} name set to ${name}`;
-    // Send to logger + view updates
+    result.message = `Player ${playerId} name set to ${name}`;
     this.logResult(result, { player });
-
     return result;
   }
 
-  updatePlayerImage(id, image) {
-    const player = this.game.getPlayer(id);
-    if (!player) {
-      return { success: false, message: `Player ${id} not found` };
-    }
-    // Use new Player.set()
+  updatePlayerImage(playerId, image) {
+    const player = this.game.getPlayer(playerId);
+    if (!player)
+      return { success: false, message: `Player ${playerId} not found` };
     const result = player.set('image', image);
-    result.message = `Player ${id} image set to ${image}`;
-    // Send to logger + view updates
+    result.message = `Player ${playerId} image set to ${image}`;
     this.logResult(result, { player });
-
     return result;
   }
 
-  getPlayer(id) {
-    return this.game.getPlayer(id);
+  getPlayer(playerId) {
+    return this.game.getPlayer(playerId);
   }
   /** --- Game lifecycle --- */
   startGame() {
-    // Start the core game state
     const result = this.game.start();
 
     // Ensure all host-prompt events for the first phase are ready
     this.events.buildPendingEvents();
-
-    // Handle role assignments / initial actions etc.
     this.logResult(result);
   }
 
@@ -165,15 +152,15 @@ class GameManager {
 
     pendingEvents.forEach((e) => {
       this.startEvent(e, initiatedBy);
+      const activeEvents = this.events.getActiveEvents();
+      const playerIds = this.game.players.map((p) => p.id);
+      const enemyIds = this.game.playerIDsByTeam('werewolves');
+      const timer = 30;
+      this.slideManager.queueSlides([
+        Slide.eventStart(playerIds, enemyIds, activeEvents),
+        Slide.eventTimer(playerIds, enemyIds, timer),
+      ]);
     });
-    const activeEvents = this.events.getActiveEvents();
-    const playerIds = this.game.players.map((p) => p.id);
-    const enemyIds = this.game.playerIDsByTeam('werewolves');
-    const timer = 30;
-    this.slideManager.queueSlides([
-      Slide.eventStart(playerIds, enemyIds, activeEvents),
-      Slide.eventTimer(playerIds, enemyIds, timer),
-    ]);
   }
 
   resolveAllEvents() {

@@ -34,26 +34,27 @@ export class EventManager {
   /** -------------------------------------------------
    * Start an event
    * ------------------------------------------------*/
-  startEvent(eventName, initiatedBy = 'host') {
-    const phase = this.game.getCurrentPhase();
+  startEvent(eventName, initiator = 'host') {
+    const phaseIndex = this.game.phaseIndex();
     const eventDef = EVENTS[eventName];
-    if (!phase || !eventDef) {
-      return { success: false, message: '[EVENTS] Invalid event or phase.' };
-    }
-
-    if (initiatedBy === 'host' && !this.pendingEvents.has(eventName)) {
+    if (!phaseIndex || !eventDef) {
       return {
         success: false,
-        message: `[EVENTS] ${eventName} cannot be started at this time.`,
+        message: '[EVENTS] Invalid event or phase index.',
       };
     }
 
+    // Build participants
+    const participants = this.game.players
+      .filter((p) => eventDef.condition({ player, initiator }))
+      .map((p) => p.id);
+
+    participants.forEach((p) => {}); // TODO: FINISH ME
+
     // Create event — participants/targets auto-computed
     const event = new Event({
-      id: `${eventName}-${Date.now()}`,
       eventName,
-      eventDef,
-      game: this.game,
+      phaseIndex: this.game.phaseIndex,
       initiatedBy,
     });
 

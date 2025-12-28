@@ -96,21 +96,11 @@ export class Game {
     this.gameStarted = true;
     this.dayCount = 1;
     this.phaseIndex = 0;
-
-    // Assign roles
-    this.assignRoles();
-
-    // Initialize players for the first phase
-    const phase = this.getCurrentPhase();
-    this.players.forEach((p) => p.initializePhase());
-
-    return {
-      success: true,
-      message: `Game started: Day ${this.dayCount}, ${phase.name}`,
-    };
+    const result = this.assignRandomRoles();
+    return result;
   }
 
-  assignRoles() {
+  assignRandomRoles() {
     const total = this.players.length;
     const minimum = MINIMUM_ROLES[total] || {};
     const rolesToAssign = [];
@@ -134,10 +124,11 @@ export class Game {
     }
 
     // Assign to players
-    this.players.forEach((player, idx) => {
-      const role = rolesToAssign[idx];
+    this.players.forEach((player, i) => {
+      const role = rolesToAssign[i];
       player.assignRole(role.name);
     });
+    return { success: true, message: 'All roles assigned.' };
   }
 
   isGameOver() {

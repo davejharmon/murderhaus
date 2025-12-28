@@ -1,303 +1,126 @@
 // Player.js
-import {
-  ACTIONS,
-  ROLES,
-  TEAMS,
-  PHASES,
-  ALL_KEYS,
-  DEBUG_NAMES,
-} from '../../shared/constants.js';
+import { ROLES, TEAMS, DEBUG_NAMES, ACTION_KEYS } from '../../shared/constants';
 
+import { Action } from './Action.js';
 export class Player {
   constructor(id) {
     this.id = id;
     this.name = DEBUG_NAMES[id];
-    this.role = null;
-    this.team = null;
     this.color = '#666';
     this.image = `player${id}.png`;
+    this.role = null;
+    this.team = null;
+    this.isDead = false;
+    this.phaseDied = undefined; // null, or last phase that player died on
+    this.actions = new Map(); // key=actionName, value=Action
+    this.inventory = []; // items granting actions while owned
 
-    this.state = {
-      isAlive: true,
-      diedThisTurn: false,
-      actions: [], // all actions available to this player
-      inventory: [], // items granting actions while owned
-      keymap: {}, // keys bound to actions/events
-    };
-
-    // Initialize keymap with default keys
-    this.buildKeymap();
-  }
-
-  // -------------------------
-  // Initialization / Phase
-  // -------------------------
-
-  /** Populate keymap with default keys, all disabled initially */
-  buildKeymap() {
-    this.state.keymap = {};
-    ALL_KEYS.forEach((k) => {
-      this.state.keymap[k] = {
-        isDisabled: true,
-        eventId: null,
+    // Build console keys dynamically
+    const keys = {};
+    for (const key of ACTION_KEYS) {
+      keys[key] = {
         actionName: null,
         isHighlighted: false,
+        isPressed: false,
       };
-    });
+    }
+
+    this.console = {
+      bindings: {}, // actionName -> key (filled by binder)
+      state: {
+        dial: null,
+        confirmed: null,
+        keys,
+      },
+    };
+
+    this.views = []; // all slides available on terminal
+    this.viewIndex = 0; // current slide
   }
 
-  /** Called at the start of each phase */
-  initializePhase() {
-    this.state.diedThisTurn = false;
+  // -------------------------
+  // Game Setup
+  // -------------------------
 
-    this.state.actions.forEach((a) => {
-      a.selectedTarget = null;
-      a.active = false;
-      a.confirmed = false;
-      a.remainingUsesThisPhase = a.usesPerPhase ?? a.uses ?? 1;
-    });
-
-    this.buildKeymap();
-  }
-
-  /** --- Role assignment --- */
   assignRole(roleName) {
     const role = ROLES[roleName];
-    if (!role) throw new Error(`Role ${roleName} does not exist`);
+    if (!role)
+      return { success: false, message: `Error: ${roleName} does not exist.` };
 
     this.role = role;
     this.team = role.team;
     this.color = role.color ?? TEAMS[role.team]?.color ?? '#999';
 
-    // Initialize actions
-    this.state.actions = role.defaultActions.map((name) => {
-      const baseAction = { ...ACTIONS[name] };
-      return {
-        ...baseAction,
-        active: false,
-        selectedTarget: null,
-        confirmed: false,
-        remainingUsesThisPhase: baseAction.usesPerPhase ?? baseAction.uses ?? 1,
-      };
-    });
+    // Remove actions not in role
+    for (const name of this.actions.keys())
+      if (!role.actions.has(name)) this.removeAction(name);
+
+    // Add missing role actions
+    for (const name of role.actions) this.addAction(name);
+
+    return { success: true, message: `${roleName} assigned to ${this.name} ` };
   }
 
   // -------------------------
   // Action Management
   // -------------------------
 
-  /** Activate an action by name */
-  activateAction(actionName) {
-    const action = this.getAction(actionName);
-    if (action) action.active = true;
+  addAction(actionName) {
+    if (this.actions.has(actionName))
+      return { success: false, message: 'Error. Action exists.' };
+    const action = new Action(actionName);
+    this.actions.set(actionName, action);
   }
 
-  /** Check if player can use an action */
-  canUseAction(actionName) {
-    const action = this.getAction(actionName);
-    return (
-      action?.trigger === 'event' &&
-      action.remainingUsesThisPhase > 0 &&
-      this.state.isAlive
-    );
+  removeAction(actionName) {
+    this.actions.delete(actionName);
   }
 
-  /** Get available actions based on current phase */
-  getAvailableActions(game) {
-    const phase = PHASES.find((p) => p.name === game.getCurrentPhase()?.name);
-
-    return this.state.actions.filter((action) => {
-      if (!action.active) return false;
-      if (action.remainingUsesThisPhase <= 0) return false;
-
-      const phaseAllowed = phase?.playerActions?.includes(action.name);
-      return action.alwaysAvailable || phaseAllowed;
-    });
+  hasAction(actionName) {
+    return this.actions.has(actionName);
   }
 
+  getAction(actionName) {
+    return this.actions.get(actionName) ?? null;
+  }
+
+  getNightAction(actions) {
+    // return the action with the highest priority
+  }
   // -------------------------
-  // Keymap & Input
+  // Keybinding & Input Management
   // -------------------------
 
-  /** Update keymap based on active actions & events */
-  updateKeymap(activeEvents = []) {
-    // Reset all keys
-    Object.keys(this.state.keymap).forEach((k) => {
-      this.state.keymap[k] = {
-        isDisabled: true,
-        eventId: null,
-        actionName: null,
-        isHighlighted: false,
-      };
-      this.participatingInEvent = null;
+  // bind available inputs to an action that canPerform() based on priority;
+  bindInputs() {}
 
-      if (this.state.isAlive) {
-        for (const event of activeEvents) {
-          if (event.participants.includes(this.id)) {
-            this.participatingInEvent = event.eventName;
-            break;
-          }
-        }
-      }
-    });
+  // reset all inputs (eg. start of phase or event)
+  resetInputs() {}
 
-    // Skip if player is dead
-    if (!this.state.isAlive) return;
-
-    activeEvents.forEach((event) => {
-      // Skip events this player isn't participating in
-      if (!event.participants.includes(this.id)) return;
-
-      const actionName = event.eventName;
-      const eventId = event.id;
-      const actionDef = event.eventDef;
-      const results = event.results ?? {};
-      const completed = event.completedBy.includes(this.id);
-
-      // Only allow alive targets
-      const aliveTargets = event.targets.filter((tid) => {
-        const player = event.game?.players.find((p) => p.id === tid);
-        return !player || player.state?.isAlive !== false; // allow if alive or player info missing
-      });
-
-      const allowedKeys = (
-        actionDef.input?.allowed ?? aliveTargets.map(String)
-      ).filter((k) => aliveTargets.map(String).includes(k));
-
-      if (actionDef.input?.confirmReq) {
-        const playerSelection = results[this.id];
-
-        if (!completed) {
-          // enable allowed keys, highlight selection if chosen
-          allowedKeys.forEach((key) => {
-            this.state.keymap[key] = {
-              isDisabled: false,
-              eventId,
-              actionName,
-              isHighlighted: key === playerSelection,
-            };
-          });
-
-          if (playerSelection) {
-            this.state.keymap['confirm'] = {
-              isDisabled: false,
-              eventId,
-              actionName,
-              isHighlighted: true,
-            };
-          }
-        } else {
-          // completed: disable all keys, highlight chosen result
-          allowedKeys.forEach((key) => {
-            this.state.keymap[key] = {
-              isDisabled: true,
-              eventId,
-              actionName,
-              isHighlighted: key === results[this.id],
-            };
-          });
-          this.state.keymap['confirm'] = {
-            isDisabled: true,
-            eventId,
-            actionName,
-            isHighlighted: false,
-          };
-        }
-      } else {
-        // No confirm required: enable all alive target keys
-        allowedKeys.forEach((key) => {
-          this.state.keymap[key] = {
-            isDisabled: false,
-            eventId,
-            actionName,
-            isHighlighted: false,
-          };
-        });
-      }
-    });
-  }
-
-  /** Handle raw input from Keypad/WebSocket */
-  handleInput(key, event) {
-    const keyEntry = this.state.keymap[key];
-    if (!keyEntry) {
-      return { success: false, message: `[INPUT] Key "${key}" not recognized` };
-    }
-    if (keyEntry.isDisabled) {
-      return { success: false, message: `[INPUT] Key "${key}" is disabled` };
-    }
-
-    const { eventId } = keyEntry;
-
-    if (!eventId) {
-      return {
-        success: false,
-        message: `[INPUT] Key "${key}" is not associated with any active event`,
-      };
-    }
-
-    if (!event) {
-      return {
-        success: false,
-        message: `[INPUT] Event "${eventId}" not found`,
-      };
-    }
-
-    // Determine type of input
-    if (key === 'confirm') {
-      // Confirm marks completion for events requiring confirmation
-      event.recordResult(this.id, key, true);
-      return {
-        success: true,
-        message: `[INPUT] ${this.name} confirmed completion for ${event.eventName}`,
-        event,
-      };
-    }
-
-    // Otherwise, key is treated as a meaningful response (target selection)
-    event.recordResult(this.id, key, false);
-
-    return {
-      success: true,
-      message: `[INPUT] ${this.name} selected "${key}" for ${event.eventName}`,
-      event,
-    };
-  }
-
-  /** Handle interrupt keys (A/B, boolean) */
-  handleInterrupt(key, actionName) {
-    const action = this.getAction(actionName);
-    if (!action) {
-      return {
-        success: false,
-        message: `Interrupt action "${actionName}" not found`,
-      };
-    }
-
-    // TODO: implement remainingUses decrement, confirmation, etc.
-
-    return {
-      success: true,
-      message: `[INPUT] ${this.name} triggered interrupt "${actionName}" with "${key}"`,
-      action,
-    };
-  }
+  // handle input change (key press, confirm press, dial change)
+  handleInput() {}
 
   // -------------------------
   // State Updates
   // -------------------------
 
-  kill() {
-    this.state.isAlive = false;
-    this.state.diedThisTurn = true;
+  kill(context = { phaseIndex }) {
+    this.isDead = true;
+    this.phaseDied = phaseIndex;
   }
 
   rezz() {
-    this.state.isAlive = true;
-    this.state.diedThisTurn = false;
+    this.isDead = false;
+    this.phaseDied = undefined;
   }
 
-  /** Flexible setter */
+  // add an item to inventory and associate actions to actions
+  addItem(itemName) {}
+
+  // remove an item from inventory and associated actions from actions
+  removeItem(itemName) {}
+
+  // flexible setter
   set(key, value, inState = false) {
     if (inState) {
       if (!(key in this.state))
@@ -317,31 +140,18 @@ export class Player {
   // Public getters
   // -------------------------
 
-  getAction(name) {
-    return this.state.actions.find((a) => a.name === name) || null;
-  }
-
   getPublicState() {
     return {
       id: this.id,
       name: this.name,
+      color: this.color,
       image: this.image,
       role: this.role?.name ?? null,
       team: this.team ?? null,
-      color: this.color,
-      participatingInEvent: this.participatingInEvent,
-      keyStates: this.state.keymap,
-      state: {
-        ...this.state,
-        actions: this.state.actions.map((a) => ({
-          ...a,
-          name: a.name,
-          active: a.active,
-          confirmed: a.confirmed,
-          selectedTarget: a.selectedTarget,
-          remainingUsesThisPhase: a.remainingUsesThisPhase,
-        })),
-      },
+      isDead: this.isDead(),
+      console: this.console,
+      views: this.views,
+      viewIndex: this.viewIndex,
     };
   }
 }

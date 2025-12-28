@@ -1,29 +1,40 @@
+import { EVENTS } from '../../shared/constants';
+
 // /server/models/Event.js
 export class Event {
-  constructor({ id, eventName, eventDef, game, initiatedBy }) {
-    this.id = id ?? `${eventName}-${Math.random().toString(36).substr(2, 8)}`;
-    this.eventName = eventName;
-    this.eventDef = eventDef; // full event definition from EVENTS[name]
-    this.resolution = eventDef.resolution;
-    this.phase = game.getCurrentPhase()?.name || null;
-    this.initiatedBy = initiatedBy;
+  constructor(eventName, phaseIndex = undefined, initiatedBy = 'host') {
+    const eventDef = EVENTS[name];
+    if (!eventDef)
+      throw new Error(`Action "${name}" is not defined in ACTIONS`);
+    this.name = eventName;
+    this.def = eventDef;
+    this.phaseStarted = phaseIndex;
     this.createdAt = Date.now();
-
-    // Compute eligible participants based on participantCondition
-    this.participants = game.players
-      .filter((p) => p.state.isAlive && eventDef.participantCondition?.(p))
-      .map((p) => p.id);
-
-    // Compute eligible targets based on targetCondition
-    this.targets = game.players
-      .filter((p) => p.state.isAlive)
-      .filter((p) => eventDef.targetCondition?.(p, null))
-      .map((p) => p.id);
-
-    this.completedBy = []; // playerIds who confirmed
-    this.results = {}; // { actorId: selectedKey }
-    this.resolved = false;
+    this.initiatedBy = initiatedBy;
+    this.state = {
+      participants: [],
+    };
   }
+
+  // this.id = id ?? `${eventName}-${Math.random().toString(36).substr(2, 8)}`;
+  // this.eventName = eventName;
+  // this.eventDef = eventDef; // full event definition from EVENTS[name]
+  // this.resolution = eventDef.resolution;
+
+  // // Compute eligible participants based on participantCondition
+  // this.participants = game.players
+  //   .filter((p) => p.state.isAlive && eventDef.participantCondition?.(p))
+  //   .map((p) => p.id);
+
+  // // Compute eligible targets based on targetCondition
+  // this.targets = game.players
+  //   .filter((p) => p.state.isAlive)
+  //   .filter((p) => eventDef.targetCondition?.(p, null))
+  //   .map((p) => p.id);
+
+  // this.completedBy = []; // playerIds who confirmed
+  // this.results = {}; // { actorId: selectedKey }
+  // this.resolved = false;
 
   isParticipant(pid) {
     return this.participants.includes(pid);

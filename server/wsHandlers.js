@@ -32,23 +32,23 @@ export function handleWSMessage(ws, data) {
     }
 
     case 'QUERY_PLAYER_EXISTS': {
-      const { id } = payload;
-      const player = gameManager.getPlayer(id);
+      const { playerId } = payload;
+      const player = gameManager.getPlayer(playerId);
 
       // Inform client whether the player exists
       sendTo(ws, {
         type: 'PLAYER_EXISTS',
-        payload: { id, exists: !!player },
+        payload: { playerId, exists: !!player },
       });
 
       if (player) {
         // Subscribe the client to updates
-        subscribe(ws, `PLAYER_UPDATE:${id}`);
+        subscribe(ws, `PLAYER_UPDATE:${playerId}`);
         subscribe(ws, 'GAME_META_UPDATE');
 
         // Immediately push current state so this client is up-to-date
         sendTo(ws, {
-          type: `PLAYER_UPDATE:${id}`,
+          type: `PLAYER_UPDATE:${playerId}`,
           payload: player.getPublicState(),
         });
         sendTo(ws, {
@@ -61,7 +61,7 @@ export function handleWSMessage(ws, data) {
     }
 
     case 'REGISTER_PLAYER': {
-      const { id } = payload;
+      const { playerId } = payload;
       if (id == null)
         return sendTo(ws, {
           type: 'ERROR',
@@ -70,31 +70,31 @@ export function handleWSMessage(ws, data) {
 
       const player = gameManager.registerPlayer(id);
 
-      subscribe(ws, `PLAYER_UPDATE:${id}`);
+      subscribe(ws, `PLAYER_UPDATE:${playerId}`);
       subscribe(ws, 'GAME_META_UPDATE');
       subscribe(ws, 'PLAYERS_UPDATE');
       subscribe(ws, 'LOG_UPDATE');
 
-      sendTo(ws, { type: `PLAYER_UPDATE:${id}`, payload: player });
-      sendTo(ws, { type: 'REGISTERED', payload: { id } });
+      sendTo(ws, { type: `PLAYER_UPDATE:${playerId}`, payload: player });
+      sendTo(ws, { type: 'REGISTERED', payload: { playerId } });
       break;
     }
 
     case 'PLAYER_INPUT': {
-      const { actorId, key } = payload;
-      gameManager.playerInput(actorId, key);
+      const { playerId, key } = payload;
+      gameManager.playerInput(playerId, key);
       break;
     }
 
     case 'HOST_UPDATE_PLAYER_NAME': {
-      const { id, name } = payload;
-      gameManager.updatePlayerName(id, name);
+      const { playerId, name } = payload;
+      gameManager.updatePlayerName(playerId, name);
       break;
     }
 
     case 'HOST_UPDATE_PLAYER_IMAGE': {
-      const { id, image } = payload;
-      gameManager.updatePlayerImage(id, image);
+      const { playerId, image } = payload;
+      gameManager.updatePlayerImage(playerId, image);
       break;
     }
 
