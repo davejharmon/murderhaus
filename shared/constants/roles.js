@@ -6,7 +6,7 @@ export const ROLES = {
     color: undefined,
     grants: [
       // Villagers usually only vote
-      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },
 
@@ -16,7 +16,7 @@ export const ROLES = {
     color: '#ff6b6b',
     grants: [
       { action: 'VOTE', events: ['NIGHT_MURDER_VOTE'] },
-      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },
 
@@ -26,7 +26,7 @@ export const ROLES = {
     color: '#a1ff9b',
     grants: [
       { action: 'INVESTIGATE', events: ['NIGHT_ACTION_WINDOW'] }, // implement later
-      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },
 
@@ -36,7 +36,7 @@ export const ROLES = {
     color: '#9be2ff',
     grants: [
       { action: 'PROTECT', events: ['NIGHT_ACTION_WINDOW'] },
-      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },
 
@@ -45,9 +45,8 @@ export const ROLES = {
     team: 'villagers',
     color: '#ffd700',
     grants: [
-      { action: 'ONESHOT_DRAW', events: ['DAY_LYNCH_VOTE'] },
-      { action: 'ONESHOT_SHOOT', events: ['ONESHOT_SHOOT'] }, // triggered by the draw
-      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'ONESHOT', events: ['DAY_LYNCH'] }, // now uses the multi-step action
+      { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },
 };

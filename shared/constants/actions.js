@@ -1,4 +1,5 @@
-// shared/constants/actions.js
+import { OUTCOMES } from './outcomes.js';
+
 export const ACTIONS = {
   PROTECT: {
     name: 'PROTECT',
@@ -7,9 +8,8 @@ export const ACTIONS = {
     input: { confirmReq: true },
     autoStart: false,
     conditions: ({ actor }) => actor.isAlive,
-    resolution: ({ target, actor, event }) => {
-      event.addEffect({ type: 'PROTECT', target, actor });
-    },
+    resolution: ({ actor, target, game }) =>
+      OUTCOMES.PROTECT({ actor, target, game }),
   },
 
   KILL: {
@@ -19,9 +19,8 @@ export const ACTIONS = {
     input: { confirmReq: true },
     autoStart: false,
     conditions: ({ actor }) => actor.isAlive,
-    resolution: ({ target, actor, event }) => {
-      event.addEffect({ type: 'KILL', target, actor });
-    },
+    resolution: ({ actor, target, game }) =>
+      OUTCOMES.KILL({ actor, target, game }),
   },
 
   ONESHOT: {
@@ -33,7 +32,7 @@ export const ACTIONS = {
       {
         name: 'DRAW',
         input: { hotkey: ['HOTKEY_A'], confirmReq: false },
-        resolution: ({ actor, stepData }) => {
+        resolution: ({ stepData }) => {
           stepData.drawn = true;
           return { success: true, message: 'Pistol drawn! Select a target.' };
         },
@@ -48,12 +47,8 @@ export const ACTIONS = {
         },
         resolution: ({ actor, target, stepData, game }) => {
           if (!target) return { success: false, message: 'No target selected' };
-          game.applyEffect({ type: 'ONESHOT_KILL', actor, target });
           stepData.shot = target.id;
-          return {
-            success: true,
-            message: `${actor.name} shot ${target.name}`,
-          };
+          return OUTCOMES.KILL({ actor, target, game });
         },
       },
     ],
@@ -75,14 +70,7 @@ export const ACTIONS = {
       actor.hasItem('PHONE') &&
       event?.def?.name === 'DAY_LYNCH' &&
       event.currentStep?.name === 'PARDON',
-    resolution: ({ actor, target, event }) => {
-      if (!target) return { success: false, message: 'No target selected.' };
-
-      event.addEffect({ type: 'PARDON', actor, target });
-      return {
-        success: true,
-        message: `${actor.name} pardoned ${target.name}`,
-      };
-    },
+    resolution: ({ actor, target, game }) =>
+      OUTCOMES.PARDON({ actor, target, game }),
   },
 };

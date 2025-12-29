@@ -19,6 +19,7 @@ export class ViewManager {
     const all = this.game.players.map((p) => p.getPublicState());
     publish('PLAYERS_UPDATE', all);
   }
+  d;
 
   publishGameMeta() {
     const gameState = this.game.getPublicState();

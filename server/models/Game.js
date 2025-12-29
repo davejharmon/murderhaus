@@ -121,18 +121,20 @@ export class Game {
   }
 
   applyEffect(effect) {
+    // Minimal generic setter / dispatcher
     switch (effect.type) {
       case 'KILL':
         this.kill(effect.target);
-        break;
-      case 'PROTECT':
-        // Protects handled via canceling kills in resolution
         break;
       case 'GIVE_ITEM':
         this.giveItem(effect.target, effect.item);
         break;
       case 'ASSIGN_ROLE':
         this.assignRole(effect.target, effect.role);
+        break;
+      case 'PROTECT':
+      case 'PARDON':
+        // These are handled in OUTCOMES or event resolution, not directly
         break;
       default:
         logger.warn('Unknown effect type', effect);
