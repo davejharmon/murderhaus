@@ -1,12 +1,5 @@
-import {
-  MAX_PLAYERS,
-  PHASES,
-  MINIMUM_ROLES,
-  ROLES,
-  DEFAULT_ROLE,
-} from '../../shared/constants.js';
-import { Player } from './Player.js';
-import { logger } from '../utils/Logger.js';
+import { PHASES } from '../../shared/constants.js';
+import { Logger } from '../utils/Logger.js';
 import { Slide } from './Slide.js';
 
 export class Game {
@@ -137,7 +130,7 @@ export class Game {
         // These are handled in OUTCOMES or event resolution, not directly
         break;
       default:
-        logger.warn('Unknown effect type', effect);
+        Logger.warn('Unknown effect type', effect);
     }
   }
 
@@ -233,5 +226,14 @@ export class Game {
     }
 
     this.activeEvents.delete(event.id);
+  }
+
+  getPublicState() {
+    return {
+      phaseIndex: this.phaseIndex,
+      dayCount: this.dayCount,
+      players: [...this.players.values()].map((p) => p.getPublicState()),
+      activeEvents: [...this.activeEvents],
+    };
   }
 }

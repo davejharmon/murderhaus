@@ -1,5 +1,4 @@
 // /server/wsHandlers.js
-
 import { gameManager } from './GameManager.js';
 import { sendTo, subscribe } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
@@ -19,6 +18,9 @@ export function handleWSMessage(ws, data) {
   const { type, payload } = msg;
 
   switch (type) {
+    // -------------------------
+    // Subscriptions
+    // -------------------------
     case 'SUBSCRIBE': {
       const { channel } = payload;
       if (!channel)
@@ -31,61 +33,69 @@ export function handleWSMessage(ws, data) {
       break;
     }
 
+    // -------------------------
+    // Player Management
+    // -------------------------
     case 'QUERY_PLAYER_EXISTS': {
       const { playerId } = payload;
       const player = gameManager.getPlayer(playerId);
 
-      // Inform client whether the player exists
       sendTo(ws, {
         type: 'PLAYER_EXISTS',
         payload: { playerId, exists: !!player },
       });
 
       if (player) {
-        // Subscribe the client to updates
         subscribe(ws, `PLAYER_UPDATE:${playerId}`);
         subscribe(ws, 'GAME_META_UPDATE');
 
-        // Immediately push current state so this client is up-to-date
         sendTo(ws, {
           type: `PLAYER_UPDATE:${playerId}`,
           payload: player.getPublicState(),
         });
         sendTo(ws, {
           type: 'GAME_META_UPDATE',
-          payload: gameManager.game.getPublicState(), // or whatever your meta payload is
+          payload: gameManager.game.getPublicState(),
         });
       }
-
       break;
     }
 
     case 'REGISTER_PLAYER': {
       const { playerId } = payload;
-      if (id == null)
+      if (!playerId)
         return sendTo(ws, {
           type: 'ERROR',
-          payload: { message: 'Missing player id' },
+          payload: { message: 'Missing playerId' },
         });
 
-      const player = gameManager.registerPlayer(id);
+      const player = gameManager.registerPlayer(playerId);
 
       subscribe(ws, `PLAYER_UPDATE:${playerId}`);
       subscribe(ws, 'GAME_META_UPDATE');
       subscribe(ws, 'PLAYERS_UPDATE');
       subscribe(ws, 'LOG_UPDATE');
 
-      sendTo(ws, { type: `PLAYER_UPDATE:${playerId}`, payload: player });
+      sendTo(ws, {
+        type: `PLAYER_UPDATE:${playerId}`,
+        payload: player.getPublicState(),
+      });
       sendTo(ws, { type: 'REGISTERED', payload: { playerId } });
       break;
     }
 
+    // -------------------------
+    // Player Input
+    // -------------------------
     case 'PLAYER_INPUT': {
       const { playerId, key } = payload;
       gameManager.playerInput(playerId, key);
       break;
     }
 
+    // -------------------------
+    // Host Controls
+    // -------------------------
     case 'HOST_UPDATE_PLAYER_NAME': {
       const { playerId, name } = payload;
       gameManager.updatePlayerName(playerId, name);
@@ -105,47 +115,25 @@ export function handleWSMessage(ws, data) {
     }
 
     case 'START_EVENT': {
-      const { eventName, initiatedBy } = payload;
-      // Still using actionName because the event hasn’t been created yet
-      gameManager.startEvent(eventName, initiatedBy || 'host');
+      const { eventName } = payload;
+      gameManager.startEvent(eventName);
       break;
     }
 
     case 'RESOLVE_EVENT': {
       const { eventId } = payload;
-      console.log('[WS] Resolving', eventId);
       if (!eventId)
         return sendTo(ws, {
           type: 'ERROR',
           payload: { message: 'Missing eventId' },
         });
-
       gameManager.resolveEvent(eventId);
       break;
     }
 
-    case 'START_ALL_EVENTS': {
-      gameManager.startAllEvents();
-      break;
-    }
-
-    case 'RESOLVE_ALL_EVENTS': {
-      gameManager.resolveAllEvents();
-      break;
-    }
-
-    case 'CLEAR_EVENT': {
-      const { eventId } = payload;
-      if (!eventId)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Missing eventId' },
-        });
-
-      gameManager.clearEvent(eventId);
-      break;
-    }
-
+    // -------------------------
+    // Game Lifecycle
+    // -------------------------
     case 'START_GAME':
       gameManager.startGame();
       break;
@@ -154,18 +142,19 @@ export function handleWSMessage(ws, data) {
       gameManager.nextPhase();
       break;
 
-    // SLIDE MANAGEMENT
-
+    // -------------------------
+    // Slides (optional)
+    // -------------------------
     case 'SLIDE_NEXT':
-      gameManager.slideManager.next();
+      gameManager.slideManager?.next();
       break;
 
     case 'SLIDE_PREV':
-      gameManager.slideManager.prev();
+      gameManager.slideManager?.prev();
       break;
 
     case 'SLIDES_CLEAR':
-      gameManager.slideManager.clear();
+      gameManager.slideManager?.clear();
       break;
 
     default:

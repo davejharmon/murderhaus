@@ -1,178 +1,182 @@
-// server/GameManager.js
-import { Game } from './models/Game.js';
-import { ActionManager } from './managers/ActionManager.js';
-import { HostManager } from './managers/HostManager.js';
-import { EventManager } from './managers/EventManager.js';
-import { ViewManager } from './managers/ViewManager.js';
-import { SlideManager } from './managers/SlideManager.js';
-import { logger } from './utils/Logger.js';
-import { Slide } from './models/Slide.js';
+// /server/GameManager.js
+import { Game } from './Game.js';
+import { Player } from './Player.js';
+import { ACTIONS } from '../../shared/constants/actions.js';
+import { EVENTS } from '../../shared/constants/events.js';
+import { OUTCOMES } from '../../shared/outcomes.js';
+import { Logger } from './utils/Logger.js';
 
-class GameManager {
+export class GameManager {
   constructor() {
     this.game = new Game();
-    this.host = new HostManager(this.game);
-    this.events = new EventManager(this.game);
-    this.view = new ViewManager(this.game);
-    this.slideManager = new SlideManager();
-    this.slideManager.init(this.view);
-    this.game.slideManager = this.slideManager;
-    this.view.setEvents(this.events);
   }
 
-  logResult(
-    result,
-    { player = null, type = 'system', updateView = true } = {}
-  ) {
-    if (result.message)
-      logger.log(result.message, result.success === false ? 'warn' : type);
-
-    if (updateView) {
-      this.view.publishLog();
-      this.view.updatePlayerViews(); // includes publishGameMeta and publishAllPlayers
-      this.view.publishGameMeta(); // ensure meta is always fresh
+  // -------------------------
+  // Player Management
+  // -------------------------
+  registerPlayer(playerId) {
+    if (this.game.players.has(playerId)) {
+      const player = this.game.getPlayerById(playerId);
+      Logger.info(`Player reconnected: ${player.name}`, { player });
+      return player;
     }
 
-    if (player) this.view.publishPlayer(player);
-  }
-
-  /** --- Game lifecycle --- */
-  registerPlayer(playerId) {
-    const result = this.game.addPlayer(playerId);
-    this.logResult(result, { player: result.player });
-    return result.player;
-  }
-
-  removePlayer(playerId) {
-    const player = this.game.getPlayer(playerId);
-    const result = this.game.removePlayer(playerId);
-    this.logResult(result, { player });
-  }
-
-  /** --- Player management --- */
-  updatePlayerName(playerId, name) {
-    const player = this.game.getPlayer(playerId);
-    if (!player)
-      return { success: false, message: `Player ${playerId} not found` };
-    const result = player.set('name', name);
-    result.message = `Player ${playerId} name set to ${name}`;
-    this.logResult(result, { player });
-    return result;
-  }
-
-  updatePlayerImage(playerId, image) {
-    const player = this.game.getPlayer(playerId);
-    if (!player)
-      return { success: false, message: `Player ${playerId} not found` };
-    const result = player.set('image', image);
-    result.message = `Player ${playerId} image set to ${image}`;
-    this.logResult(result, { player });
-    return result;
+    const player = new Player(playerId);
+    this.game.players.set(playerId, player);
+    Logger.system(`Player registered: ${player.name}`, { player });
+    return player;
   }
 
   getPlayer(playerId) {
-    return this.game.getPlayer(playerId);
-  }
-  /** --- Game lifecycle --- */
-  startGame() {
-    const result = this.game.start();
-
-    // Ensure all host-prompt events for the first phase are ready
-    this.events.buildPendingEvents();
-    this.logResult(result);
+    return this.game.getPlayerById(playerId);
   }
 
-  nextPhase() {
-    const result = this.game.nextPhase();
-
-    // Re-initialize pending host events for the new phase
-    this.events.buildPendingEvents();
-    this.logResult(result);
-    this.slideManager.clear();
+  updatePlayerName(playerId, name) {
+    const player = this.getPlayer(playerId);
+    if (player) {
+      const oldName = player.name;
+      player.name = name;
+      Logger.info(`Player name updated: ${oldName} → ${name}`, { player });
+    }
   }
 
-  endGame() {
-    ///
+  updatePlayerImage(playerId, image) {
+    const player = this.getPlayer(playerId);
+    if (player) {
+      player.image = image;
+      Logger.info(`Player image updated`, { player });
+    }
   }
 
-  /** --- Player actions --- */
-  playerInput(actorId, key) {
-    const actor = this.game.getPlayer(actorId);
+  // -------------------------
+  // Action Handling
+  // -------------------------
+  hostAction(playerId, actionName) {
+    const action = this.game.startAction(playerId, actionName);
+    if (action) {
+      Logger.info(`Action started: ${actionName}`, {
+        player: this.getPlayer(playerId),
+      });
+    } else {
+      Logger.warn(`Failed to start action: ${actionName}`, {
+        playerId,
+      });
+    }
+    return action;
+  }
 
-    // Look up the event associated with this key
-    const keyEntry = actor.state.keymap[key];
-    let event = null;
-    if (keyEntry?.eventId) {
-      event = this.events.getEventById(keyEntry.eventId);
+  playerInput(playerId, input) {
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+
+    for (const action of player.actions.values()) {
+      if (action.state.active && !action.state.completed) {
+        const result = this.game.performActionStep(playerId, action.id, input);
+        if (result?.message) {
+          Logger.info(`Action step performed: ${action.def.name}`, {
+            player,
+            result,
+          });
+        }
+      }
+    }
+  }
+
+  // -------------------------
+  // Event Handling
+  // -------------------------
+  startEvent(eventName, initiatedBy = 'host') {
+    const eventDef = EVENTS[eventName];
+    if (!eventDef) {
+      Logger.warn(`Unknown event: ${eventName}`);
+      return null;
     }
 
-    const result = actor.handleInput(key, event);
-    if (event) actor.updateKeymap(this.game.activeEvents);
+    const event = {
+      id: `${eventName}-${Date.now()}`,
+      def: eventDef,
+      state: {
+        grants: new Map(),
+        inputs: new Map(),
+        results: new Map(),
+        pendingKills: [],
+      },
+      resolved: false,
+    };
 
-    this.logResult(result, { player: actor });
-  }
-
-  /** --- Host actions --- */
-  hostAction(playerId, actionName) {
-    const result = this.host.performHostAction(playerId, actionName);
-    this.logResult(result);
-  }
-
-  /** --- Events --- */
-  startEvent(eventName, initiatedBy = 'host') {
-    const result = this.events.startEvent(eventName, initiatedBy);
-    this.logResult(result);
+    this.game.startEvent(event);
+    Logger.system(`Event started: ${eventName}`, { event, initiatedBy });
+    return event;
   }
 
   resolveEvent(eventId) {
-    const result = this.events.resolveEvent(eventId);
-    this.logResult(result);
-    if (result.success === true) {
-      this.clearEvent(eventId);
-    } // if false, for now assume its a tie.
-    const activeEvents = this.events.getActiveEvents();
-    const playerIds = this.game.players.map((p) => p.id);
-    const enemyIds = this.game.playerIDsByTeam('werewolves');
-    const timer = 30;
-    this.slideManager.queueSlides([
-      Slide.eventStart(playerIds, enemyIds, activeEvents),
-      Slide.eventTimer(playerIds, enemyIds, timer),
-    ]);
+    const event = this.game.getEventById(eventId);
+    if (!event) return;
+
+    if (event.def.resolution?.apply) {
+      event.def.resolution.apply({
+        event,
+        game: this.game,
+        outcome: ({ actionName, actor, target, item, role, callback }) => {
+          const result = OUTCOMES[actionName]?.({
+            actor,
+            target,
+            game: this.game,
+            item,
+            role,
+            callback,
+          });
+          if (result?.message) Logger.info(result.message, { actor, target });
+          return result;
+        },
+      });
+    }
+
+    event.resolved = true;
+    this.game.endEvent(event, false);
+    Logger.system(`Event resolved: ${event.def.name}`, { event });
   }
 
-  clearEvent(eventId) {
-    const result = this.events.clearEvent(eventId);
-    if (!result.success) return console.warn(result.message);
-    this.logResult(result);
-  }
-
-  startAllEvents(initiatedBy = 'host') {
-    const pendingEvents = this.events.getPendingEvents();
-    if (!pendingEvents.length) return;
-
-    pendingEvents.forEach((e) => {
-      this.startEvent(e, initiatedBy);
-      const activeEvents = this.events.getActiveEvents();
-      const playerIds = this.game.players.map((p) => p.id);
-      const enemyIds = this.game.playerIDsByTeam('werewolves');
-      const timer = 30;
-      this.slideManager.queueSlides([
-        Slide.eventStart(playerIds, enemyIds, activeEvents),
-        Slide.eventTimer(playerIds, enemyIds, timer),
-      ]);
-    });
+  startAllEvents() {
+    const activeEvents = [...this.game.events.values()];
+    for (const event of activeEvents) {
+      if (!event.resolved) {
+        this.startEvent(event.def.name, 'system');
+      }
+    }
+    Logger.system(`All events started`);
   }
 
   resolveAllEvents() {
-    const activeEvents = this.events
-      .getActiveEvents()
-      .filter((e) => !e.resolved);
-    if (!activeEvents.length) return;
+    const activeEvents = this.game.getActiveEvents();
+    for (const event of activeEvents) {
+      this.resolveEvent(event.id);
+    }
+    Logger.system(`All events resolved`);
+  }
 
-    activeEvents.forEach((e) => {
-      this.resolveEvent(e.id);
-    });
-    this.logResult({ success: true, message: `Resolved all events.` }); // nmeed to check these are all true.
+  clearEvent(eventId) {
+    const event = this.game.getEventById(eventId);
+    if (!event) return;
+    this.game.endEvent(event);
+    Logger.system(`Event cleared: ${event.def.name}`, { event });
+  }
+
+  // -------------------------
+  // Game Phase / Flow
+  // -------------------------
+  startGame() {
+    this.game.gameStarted = true;
+    this.game.phaseIndex = 0;
+    this.game.dayCount = 0;
+    Logger.system(`Game started`);
+  }
+
+  nextPhase() {
+    const oldPhase = this.game.getCurrentPhase()?.name;
+    this.game.phaseIndex = (this.game.phaseIndex + 1) % this.game.phases.length;
+    const newPhase = this.game.getCurrentPhase()?.name;
+    Logger.system(`Phase changed: ${oldPhase} → ${newPhase}`);
   }
 }
 
