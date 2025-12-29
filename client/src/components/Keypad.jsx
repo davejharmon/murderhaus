@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from './Button';
 import { send } from '../ws';
-import { ALL_KEYS } from '@shared/constants';
+import { ACTION_KEYS } from '@shared/constants';
 import styles from './Keypad.module.css';
 
 export const Keypad = ({ player }) => {
@@ -19,7 +19,7 @@ export const Keypad = ({ player }) => {
 
   return (
     <div className={styles.keypad}>
-      {ALL_KEYS.map((key) => {
+      {ACTION_KEYS.map((key) => {
         const km = keymap[key] ?? {};
 
         return (

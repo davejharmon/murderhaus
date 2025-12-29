@@ -5,13 +5,13 @@ import {
   DIAL,
   CONFIRM,
   ACTIONS,
-} from '../../shared/constants';
+} from '../../shared/constants/index.js';
 import { Action } from './Action.js';
 
 export class Player {
   constructor({
     id,
-    name = DEBUG_NAMES[id],
+    name = DEBUG_NAMES[id - 1],
     color = '#666',
     image = `player${id}.png`,
     role = undefined,
@@ -131,5 +131,22 @@ export class Player {
 
   removeEvent(event) {
     this.events.delete(event.id);
+  }
+
+  /** Returns a sanitized object suitable for clients */
+  getPublicState() {
+    return {
+      id: this.id,
+      name: this.name,
+      color: this.color,
+      image: this.image,
+      role: this.role,
+      team: this.team,
+      isDead: this.isDead,
+      phaseDied: this.phaseDied,
+      availableActions:
+        this.getAvailableActions()?.map((a) => a.def.name) ?? [],
+      inventory: this.inventory,
+    };
   }
 }

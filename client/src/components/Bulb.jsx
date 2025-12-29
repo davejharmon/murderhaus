@@ -4,26 +4,23 @@ import styles from './Bulb.module.css';
 
 export function Bulb({ player, size = 40, phase }) {
   if (!player) return null;
-
-  const { color } = player;
-  const { isAlive, diedThisTurn, actions } = player.state;
-
+  const { isDead, availableActions } = player;
   // Derive UI states from the Player.js data structure
-  const selecting = actions.some(
+  const selecting = availableActions.some(
     (a) => a.selectedTarget !== null && !a.confirmed
   );
 
-  const confirmed = actions.some((a) => a.confirmed === true);
+  const confirmed = availableActions.some((a) => a.confirmed === true);
 
   const classes = [styles.bulb];
 
   if (!phase) classes.push(styles.default);
 
-  if (isAlive && phase === 'day') classes.push(styles.aliveDay);
-  if (isAlive && phase === 'night') classes.push(styles.aliveNight);
+  if (!isDead && phase === 'day') classes.push(styles.aliveDay);
+  if (!isDead && phase === 'night') classes.push(styles.aliveNight);
 
-  if (!isAlive) classes.push(styles.dead);
-  if (diedThisTurn) classes.push(styles.diedThisTurn);
+  if (isDead) classes.push(styles.dead);
+  // died this turn logic
 
   if (selecting) classes.push(styles.selectionEntered);
   if (confirmed) classes.push(styles.selectionConfirmed);

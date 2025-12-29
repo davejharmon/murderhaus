@@ -1,10 +1,13 @@
 // /server/GameManager.js
-import { Game } from './Game.js';
-import { Player } from './Player.js';
-import { ACTIONS } from '../../shared/constants/actions.js';
-import { EVENTS } from '../../shared/constants/events.js';
-import { OUTCOMES } from '../../shared/outcomes.js';
-import { Logger } from './utils/Logger.js';
+import { Game } from './models/Game.js';
+import { Player } from './models/Player.js';
+import {
+  ACTIONS,
+  EVENTS,
+  OUTCOMES,
+  CHANNELS,
+} from '../shared/constants/index.js';
+import { logger as Log } from './utils/Logger.js';
 
 export class GameManager {
   constructor() {
@@ -17,13 +20,13 @@ export class GameManager {
   registerPlayer(playerId) {
     if (this.game.players.has(playerId)) {
       const player = this.game.getPlayerById(playerId);
-      Logger.info(`Player reconnected: ${player.name}`, { player });
+      Log.info(`Player reconnected: ${player.name}`, { player });
       return player;
     }
 
-    const player = new Player(playerId);
+    const player = new Player({ id: playerId });
     this.game.players.set(playerId, player);
-    Logger.system(`Player registered: ${player.name}`, { player });
+    Log.system(`Player registered: ${player.name}`, { player });
     return player;
   }
 
@@ -36,7 +39,7 @@ export class GameManager {
     if (player) {
       const oldName = player.name;
       player.name = name;
-      Logger.info(`Player name updated: ${oldName} → ${name}`, { player });
+      Log.info(`Player name updated: ${oldName} → ${name}`, { player });
     }
   }
 
@@ -44,7 +47,7 @@ export class GameManager {
     const player = this.getPlayer(playerId);
     if (player) {
       player.image = image;
-      Logger.info(`Player image updated`, { player });
+      Log.info(`Player image updated`, { player });
     }
   }
 
@@ -54,11 +57,11 @@ export class GameManager {
   hostAction(playerId, actionName) {
     const action = this.game.startAction(playerId, actionName);
     if (action) {
-      Logger.info(`Action started: ${actionName}`, {
+      Log.info(`Action started: ${actionName}`, {
         player: this.getPlayer(playerId),
       });
     } else {
-      Logger.warn(`Failed to start action: ${actionName}`, {
+      Log.warn(`Failed to start action: ${actionName}`, {
         playerId,
       });
     }
@@ -73,7 +76,7 @@ export class GameManager {
       if (action.state.active && !action.state.completed) {
         const result = this.game.performActionStep(playerId, action.id, input);
         if (result?.message) {
-          Logger.info(`Action step performed: ${action.def.name}`, {
+          Log.info(`Action step performed: ${action.def.name}`, {
             player,
             result,
           });
@@ -88,7 +91,7 @@ export class GameManager {
   startEvent(eventName, initiatedBy = 'host') {
     const eventDef = EVENTS[eventName];
     if (!eventDef) {
-      Logger.warn(`Unknown event: ${eventName}`);
+      Log.warn(`Unknown event: ${eventName}`);
       return null;
     }
 
@@ -105,7 +108,7 @@ export class GameManager {
     };
 
     this.game.startEvent(event);
-    Logger.system(`Event started: ${eventName}`, { event, initiatedBy });
+    Log.system(`Event started: ${eventName}`, { event, initiatedBy });
     return event;
   }
 
@@ -126,7 +129,7 @@ export class GameManager {
             role,
             callback,
           });
-          if (result?.message) Logger.info(result.message, { actor, target });
+          if (result?.message) Log.info(result.message, { actor, target });
           return result;
         },
       });
@@ -134,7 +137,7 @@ export class GameManager {
 
     event.resolved = true;
     this.game.endEvent(event, false);
-    Logger.system(`Event resolved: ${event.def.name}`, { event });
+    Log.system(`Event resolved: ${event.def.name}`, { event });
   }
 
   startAllEvents() {
@@ -144,7 +147,7 @@ export class GameManager {
         this.startEvent(event.def.name, 'system');
       }
     }
-    Logger.system(`All events started`);
+    Log.system(`All events started`);
   }
 
   resolveAllEvents() {
@@ -152,14 +155,14 @@ export class GameManager {
     for (const event of activeEvents) {
       this.resolveEvent(event.id);
     }
-    Logger.system(`All events resolved`);
+    Log.system(`All events resolved`);
   }
 
   clearEvent(eventId) {
     const event = this.game.getEventById(eventId);
     if (!event) return;
     this.game.endEvent(event);
-    Logger.system(`Event cleared: ${event.def.name}`, { event });
+    Log.system(`Event cleared: ${event.def.name}`, { event });
   }
 
   // -------------------------
@@ -169,14 +172,14 @@ export class GameManager {
     this.game.gameStarted = true;
     this.game.phaseIndex = 0;
     this.game.dayCount = 0;
-    Logger.system(`Game started`);
+    Log.system(`Game started`);
   }
 
   nextPhase() {
     const oldPhase = this.game.getCurrentPhase()?.name;
     this.game.phaseIndex = (this.game.phaseIndex + 1) % this.game.phases.length;
     const newPhase = this.game.getCurrentPhase()?.name;
-    Logger.system(`Phase changed: ${oldPhase} → ${newPhase}`);
+    Log.system(`Phase changed: ${oldPhase} → ${newPhase}`);
   }
 }
 

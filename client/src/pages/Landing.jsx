@@ -8,10 +8,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { players = [], gameStarted } = useGameState([
-    'PLAYERS_UPDATE',
-    'GAME_META_UPDATE',
-  ]);
+  const { players = [], gameStarted } = useGameState(['GAME_UPDATE']);
   usePageTitle('Landing');
   const claimSeat = () => {
     const existingIds = new Set(players.map((p) => p.id));

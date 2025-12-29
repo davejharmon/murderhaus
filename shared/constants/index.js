@@ -23,3 +23,9 @@ export * from './hostActions.js';
 
 // Items
 export * from './items.js';
+
+// Debug
+export * from './debug.js';
+
+// Outcomes
+export * from './outcomes.js';

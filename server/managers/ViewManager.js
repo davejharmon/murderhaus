@@ -1,48 +1,41 @@
 import { publish } from '../utils/Broadcast.js';
-import { logger } from '../utils/Logger.js';
+import { logger as Log } from '../utils/Logger.js';
+import { CHANNELS } from '../../shared/constants/config.js';
 
 export class ViewManager {
   constructor(game) {
     this.game = game;
   }
 
-  setEvents(events) {
-    this.events = events;
-  }
-
-  publishPlayer(player) {
+  // Publish a single player's public state to their namespaced channel
+  publishPlayerState(player) {
     if (!player) return;
-    publish(`PLAYER_UPDATE:${player.id}`, player.getPublicState());
+    // Use consistent namespacing: PLAYER_UPDATE:<playerId>
+    const channel = `${CHANNELS.PLAYER_UPDATE}:${player.id}`;
+    publish(channel, player.getPublicState());
   }
 
-  publishAllPlayers() {
-    const all = this.game.players.map((p) => p.getPublicState());
-    publish('PLAYERS_UPDATE', all);
-  }
-  d;
-
-  publishGameMeta() {
-    const gameState = this.game.getPublicState();
-    publish('GAME_META_UPDATE', {
-      ...gameState,
-      pendingEvents: this.events?.getPendingEvents?.() ?? [],
-    });
+  // Publish the full game state to GAME_UPDATE channel
+  publishGameState() {
+    publish(CHANNELS.GAME_UPDATE, this.game.getPublicState());
   }
 
+  // Publish the current log entries
   publishLog() {
-    publish('LOG_UPDATE', logger.getEntries());
+    publish(CHANNELS.LOG_UPDATE, Log.getEntries());
   }
 
+  // Publish the current slide slice
   publishSlides(slideSlice) {
-    // slideSlice should be { buffer, active }
     if (!slideSlice) return;
-    publish('SLIDES_UPDATE', slideSlice);
+    publish(CHANNELS.SLIDES_UPDATE, slideSlice);
   }
 
-  updatePlayerViews() {
-    // Since Player.update is gone, just publish current state
-    this.game.players.forEach((p) => this.publishPlayer(p));
-    this.publishAllPlayers();
-    this.publishGameMeta();
+  // Publish all player states individually and the overall game state
+  updateAllPlayers() {
+    for (const player of this.game.players.values()) {
+      this.publishPlayerState(player);
+    }
+    this.publishGameState();
   }
 }

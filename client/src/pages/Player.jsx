@@ -15,41 +15,60 @@ export default function Player({ compact = false, id }) {
 
   usePageTitle(`Player ${playerId}`);
 
-  const { wsStatus, gameMeta, me, setMe } = useGameState(
-    ['PLAYER_UPDATE', 'GAME_META_UPDATE'],
-    playerId
-  );
+  // 🟢 Updated hook usage with simplified slices
+  const { wsStatus, game, me } = useGameState({ playerId });
 
+  // Track whether the player exists on server
   const [existsOnServer, setExistsOnServer] = useState(null);
+
+  // Prevent multiple sends for registration or query
   const registeredRef = useRef(false);
+  const queriedRef = useRef(false);
 
+  // ----------------------------
+  // Subscribe to PLAYER_EXISTS once
+  // ----------------------------
   useEffect(() => {
-    const unsub = subscribe(`PLAYER_UPDATE:${playerId}`, setMe);
-    return () => unsub();
-  }, [playerId, setMe]);
+    let mounted = true;
 
-  useEffect(() => {
     const unsub = subscribe('PLAYER_EXISTS', (data) => {
-      if (data.id === playerId) setExistsOnServer(data.exists);
+      if (!mounted) return;
+      if (data.playerId === playerId) setExistsOnServer(data.exists);
     });
-    send('QUERY_PLAYER_EXISTS', { id: playerId });
-    return () => unsub();
+
+    if (!queriedRef.current) {
+      queriedRef.current = true;
+      send('QUERY_PLAYER_EXISTS', { playerId });
+    }
+
+    return () => {
+      mounted = false;
+      unsub();
+    };
   }, [playerId]);
 
+  // ----------------------------
+  // Register player if not exists
+  // ----------------------------
   useEffect(() => {
     if (existsOnServer === null || registeredRef.current) return;
 
-    if (existsOnServer) {
-      console.log(`[PLAYER] Player ${playerId} already registered — skipping`);
+    if (!existsOnServer) {
+      console.log(`[DEBUG] Registering Player ${playerId}`);
+      send('REGISTER_PLAYER', { playerId });
     } else {
-      console.log(`[PLAYER] Registering player ${playerId}`);
-      send('REGISTER_PLAYER', { id: playerId });
+      console.log(`[DEBUG] Player ${playerId} already exists on server.`);
     }
+
     registeredRef.current = true;
   }, [existsOnServer, playerId]);
 
+  // ----------------------------
+  // Derived values
+  // ----------------------------
   const activeActions = useMemo(() => me?.availableActions ?? [], [me]);
   const roleColor = me?.color || 'gray';
+  const currentPhase = game?.phase; // phase is now inside game slice
 
   if (!me)
     return (
@@ -68,7 +87,7 @@ export default function Player({ compact = false, id }) {
             {me.role || 'Unassigned'}
           </div>
           <div className={styles.bulb}>
-            <Bulb player={me} phase={gameMeta.phase} />
+            <Bulb player={me} phase={currentPhase} />
           </div>
 
           {/* TinyScreen above keypad */}

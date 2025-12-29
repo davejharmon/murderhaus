@@ -19,7 +19,7 @@ import VoteResults from '../components/BigScreen/VoteResults';
 export default function BigScreen() {
   usePageTitle('Screen');
   const { active, buffer } = useSlides();
-  const { gameMeta } = useGameState(['GAME_META_UPDATE']);
+  const { gameMeta } = useGameState(['GAME_UPDATE']);
 
   const slide = buffer[active] || getFallbackSlide(gameMeta);
   if (!slide) return <div className={styles.container} />;

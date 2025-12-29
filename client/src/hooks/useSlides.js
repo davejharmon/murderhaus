@@ -1,12 +1,14 @@
+// src/hooks/useSlides.js
 import { useState, useEffect } from 'react';
-import { initGameBus, listenToSlides, getGameData } from '../state/GameBus';
+import { initGameBus, listenToSlice, getGameData } from '../state/GameBus';
 
 export function useSlides() {
   const [slides, setSlides] = useState(getGameData().slides);
 
   useEffect(() => {
     initGameBus();
-    const unsub = listenToSlides((slice) => {
+
+    const unsub = listenToSlice('SLIDES_UPDATE', (slice) => {
       setSlides(slice);
     });
 
@@ -14,7 +16,7 @@ export function useSlides() {
   }, []);
 
   const buffer = slides.buffer ?? [];
-  const activeIndex = slides.active ?? 0; // already an index
+  const activeIndex = slides.active ?? 0;
 
   return { buffer, active: activeIndex };
 }

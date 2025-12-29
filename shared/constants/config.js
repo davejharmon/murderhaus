@@ -13,3 +13,10 @@ export const MINIMUM_ROLES = {
   8: { murderer: 2, detective: 1 },
   9: { murderer: 2, detective: 1, doctor: 1 },
 };
+// Shared server/client channels
+export const CHANNELS = {
+  PLAYER_UPDATE: 'PLAYER_UPDATE', // single player, scoped
+  LOG_UPDATE: 'LOG_UPDATE',
+  GAME_UPDATE: 'GAME_UPDATE',
+  SLIDES_UPDATE: 'SLIDES_UPDATE',
+};

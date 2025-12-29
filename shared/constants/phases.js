@@ -1,3 +1,4 @@
+// /shared/constants/phases.js
 export const PHASES = {
   day: {
     name: 'day',

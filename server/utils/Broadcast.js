@@ -1,5 +1,5 @@
-// server/utils/Broadcast.js
 import { WebSocketServer, WebSocket } from 'ws';
+import { CHANNELS } from '../../shared/constants/index.js';
 
 let wss; // singleton
 const subscriptions = new Map(); // Map<string, Set<WebSocket>>
@@ -65,4 +65,9 @@ export function broadcast(message, exclude) {
       client.send(JSON.stringify(message));
     }
   });
+}
+
+// Optional helper: subscribe a WS to all main game channels
+export function subscribeAllMain(ws) {
+  Object.values(CHANNELS).forEach((ch) => subscribe(ws, ch));
 }

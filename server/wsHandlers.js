@@ -1,21 +1,22 @@
 // /server/wsHandlers.js
 import { gameManager } from './GameManager.js';
-import { sendTo, subscribe } from './utils/Broadcast.js';
+import { sendTo, subscribe, publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
 
 export function handleNewConnection(ws) {
+  // Transport-level handshake only
   sendTo(ws, { type: 'WELCOME', payload: { message: 'Connected' } });
 }
 
-export function handleWSMessage(ws, data) {
-  let msg;
-  try {
-    msg = JSON.parse(data);
-  } catch {
-    return sendTo(ws, { type: 'ERROR', payload: { message: 'Invalid JSON' } });
-  }
-
+export function handleWSMessage(ws, msg) {
   const { type, payload } = msg;
+
+  if (!type) {
+    return sendTo(ws, {
+      type: 'ERROR',
+      payload: { message: 'Missing message type' },
+    });
+  }
 
   switch (type) {
     // -------------------------
@@ -28,6 +29,7 @@ export function handleWSMessage(ws, data) {
           type: 'ERROR',
           payload: { message: 'Missing channel' },
         });
+
       subscribe(ws, channel);
       sendTo(ws, { type: 'SUBSCRIBED', payload: { channel } });
       break;
@@ -37,50 +39,40 @@ export function handleWSMessage(ws, data) {
     // Player Management
     // -------------------------
     case 'QUERY_PLAYER_EXISTS': {
-      const { playerId } = payload;
-      const player = gameManager.getPlayer(playerId);
-
-      sendTo(ws, {
-        type: 'PLAYER_EXISTS',
-        payload: { playerId, exists: !!player },
-      });
-
-      if (player) {
-        subscribe(ws, `PLAYER_UPDATE:${playerId}`);
-        subscribe(ws, 'GAME_META_UPDATE');
-
+      try {
+        const { playerId } = payload;
+        const player = gameManager.getPlayer(playerId);
         sendTo(ws, {
-          type: `PLAYER_UPDATE:${playerId}`,
-          payload: player.getPublicState(),
+          type: 'PLAYER_EXISTS',
+          payload: { playerId, exists: !!player },
         });
-        sendTo(ws, {
-          type: 'GAME_META_UPDATE',
-          payload: gameManager.game.getPublicState(),
-        });
+
+        if (player) {
+          subscribe(ws, `PLAYER_UPDATE:${playerId}`);
+          subscribe(ws, 'GAME_UPDATE');
+
+          publish(`PLAYER_UPDATE:${playerId}`, player.getPublicState());
+          publish('GAME_UPDATE', gameManager.game.getPublicState());
+        }
+      } catch (err) {
+        console.error('[ERROR] QUERY_PLAYER_EXISTS failed:', err);
       }
       break;
     }
 
     case 'REGISTER_PLAYER': {
       const { playerId } = payload;
-      if (!playerId)
-        return sendTo(ws, {
-          type: 'ERROR',
-          payload: { message: 'Missing playerId' },
-        });
 
       const player = gameManager.registerPlayer(playerId);
 
+      // Subscribe this WS to relevant channels
       subscribe(ws, `PLAYER_UPDATE:${playerId}`);
-      subscribe(ws, 'GAME_META_UPDATE');
-      subscribe(ws, 'PLAYERS_UPDATE');
-      subscribe(ws, 'LOG_UPDATE');
+      subscribe(ws, 'GAME_UPDATE');
 
-      sendTo(ws, {
-        type: `PLAYER_UPDATE:${playerId}`,
-        payload: player.getPublicState(),
-      });
-      sendTo(ws, { type: 'REGISTERED', payload: { playerId } });
+      publish(`PLAYER_UPDATE:${playerId}`, player.getPublicState()); // broadcast to all subscribers
+      publish('GAME_UPDATE', gameManager.game.getPublicState());
+
+      sendTo(ws, { type: 'REGISTERED', payload: { playerId } }); // only this client
       break;
     }
 
@@ -143,7 +135,7 @@ export function handleWSMessage(ws, data) {
       break;
 
     // -------------------------
-    // Slides (optional)
+    // Slides
     // -------------------------
     case 'SLIDE_NEXT':
       gameManager.slideManager?.next();

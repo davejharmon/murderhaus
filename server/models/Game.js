@@ -1,5 +1,5 @@
-import { PHASES } from '../../shared/constants.js';
-import { Logger } from '../utils/Logger.js';
+import { PHASES } from '../../shared/constants/index.js';
+import { logger as Log } from '../utils/Logger.js';
 import { Slide } from './Slide.js';
 
 export class Game {
@@ -130,7 +130,7 @@ export class Game {
         // These are handled in OUTCOMES or event resolution, not directly
         break;
       default:
-        Logger.warn('Unknown effect type', effect);
+        Log.warn('Unknown effect type', effect);
     }
   }
 
@@ -228,12 +228,22 @@ export class Game {
     this.activeEvents.delete(event.id);
   }
 
+  getPhase() {
+    const phaseKeys = Object.keys(PHASES); // e.g., ['day', 'night']
+    if (!this.gameStarted || phaseKeys.length === 0) return null;
+
+    const key = phaseKeys[this.phaseIndex % phaseKeys.length];
+    return PHASES[key] || null;
+  }
+
   getPublicState() {
     return {
+      phase: this.getPhase(),
       phaseIndex: this.phaseIndex,
       dayCount: this.dayCount,
       players: [...this.players.values()].map((p) => p.getPublicState()),
       activeEvents: [...this.activeEvents],
+      availableEvents: [], // to do
     };
   }
 }

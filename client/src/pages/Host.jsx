@@ -12,20 +12,18 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSlides } from '../hooks/useSlides';
 import HostControls from '../components/HostControls';
 export default function Host() {
-  const { players = [], gameMeta } = useGameState([
-    'PLAYERS_UPDATE',
-    'GAME_META_UPDATE',
-  ]);
+  const { game, log } = useGameState();
   const { active, buffer } = useSlides();
   usePageTitle('Host');
-
   const {
+    players = [],
     phase,
+    phaseIndex,
     gameStarted = false,
     dayCount = 0,
-    pendingEvents = [],
+    availableEvents = [],
     activeEvents = [],
-  } = gameMeta;
+  } = game;
 
   // Modal state
   const [modalPlayer, setModalPlayer] = useState(null);
@@ -58,7 +56,7 @@ export default function Host() {
     const buttons = [];
 
     // Pending events → START
-    pendingEvents?.forEach((eventName) => {
+    availableEvents?.forEach((eventName) => {
       const active = activeEvents?.some(
         (e) => e.eventName === eventName && !e.resolved
       );
@@ -102,7 +100,7 @@ export default function Host() {
       });
 
     return buttons;
-  }, [pendingEvents, activeEvents]);
+  }, [availableEvents, activeEvents]);
 
   /** ----------------------------
    * Host actions per player
