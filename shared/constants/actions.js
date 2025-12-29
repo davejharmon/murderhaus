@@ -1,68 +1,88 @@
-// /shared/constants/actions.js
-import { DIAL, CONFIRM, ACTION_KEYS } from './config.js';
-
+// shared/constants/actions.js
 export const ACTIONS = {
-  VOTE: {
-    name: 'vote',
-    description: 'Vote for a player',
-    input: { select: DIAL, confirm: CONFIRM },
-    max: { perPhase: Infinity, perGame: Infinity },
-    filter: ({ target, me }) => target !== me,
-    resolution: ({ event, actor, selection }) => {
-      event.vote(actor, selection);
-      return { success: true };
-    },
-  },
-
-  INVESTIGATE: {
-    name: 'investigate',
-    description: 'Investigate a player at night',
-    input: { select: DIAL, confirm: CONFIRM },
-    max: { perPhase: 1, perGame: Infinity },
-    filter: ({ target, me }) => target !== me,
-    resolution: ({ actor, selection }) => {
-      actor.investigate(selection);
-      return { success: true };
-    },
-  },
-
   PROTECT: {
-    name: 'protect',
-    description: 'Protect a player during night actions',
-    input: { select: DIAL, confirm: CONFIRM },
+    name: 'PROTECT',
+    description: 'Doctor protects a player from being killed',
     max: { perPhase: 1, perGame: Infinity },
-    filter: ({ target, me }) => target !== me,
-    resolution: ({ actor, selection }) => {
-      actor.addProtection(selection);
-      return { success: true };
+    input: { confirmReq: true },
+    autoStart: false,
+    conditions: ({ actor }) => actor.isAlive,
+    resolution: ({ target, actor, event }) => {
+      event.addEffect({ type: 'PROTECT', target, actor });
     },
   },
 
-  SUSPECT: {
-    name: 'suspect',
-    description: 'Select a player suspected of murder',
-    input: { select: DIAL, confirm: CONFIRM },
-    max: { perPhase: Infinity, perGame: Infinity },
-    conditions: () => true,
-    filter: ({ target, me }) => target !== me,
-    resolution: ({ actor, selection }) => {
-      actor.recordSuspect(selection);
-      return { success: true };
+  KILL: {
+    name: 'KILL',
+    description: 'Mafia attempts to kill a target',
+    max: { perPhase: 1, perGame: Infinity },
+    input: { confirmReq: true },
+    autoStart: false,
+    conditions: ({ actor }) => actor.isAlive,
+    resolution: ({ target, actor, event }) => {
+      event.addEffect({ type: 'KILL', target, actor });
     },
+  },
+
+  ONESHOT: {
+    name: 'ONESHOT',
+    description: 'Multi-step shooting action',
+    max: { perPhase: 1, perGame: 1 },
+    autoStart: true,
+    steps: [
+      {
+        name: 'DRAW',
+        input: { hotkey: ['HOTKEY_A'], confirmReq: false },
+        resolution: ({ actor, stepData }) => {
+          stepData.drawn = true;
+          return { success: true, message: 'Pistol drawn! Select a target.' };
+        },
+      },
+      {
+        name: 'SHOOT',
+        input: {
+          type: 'dial',
+          options: ({ game, actor }) =>
+            game.getAlivePlayers().filter((p) => p.id !== actor.id),
+          confirmReq: true,
+        },
+        resolution: ({ actor, target, stepData, game }) => {
+          if (!target) return { success: false, message: 'No target selected' };
+          game.applyEffect({ type: 'ONESHOT_KILL', actor, target });
+          stepData.shot = target.id;
+          return {
+            success: true,
+            message: `${actor.name} shot ${target.name}`,
+          };
+        },
+      },
+    ],
+    conditions: ({ actor, game }) =>
+      actor.isAlive &&
+      game.isDay() &&
+      actor.getActionUses('ONESHOT').perGame < 1 &&
+      (actor.role?.name === 'Vigilante' || actor.hasItem('PISTOL')),
   },
 
   PARDON: {
-    name: 'pardon',
-    description: 'Pardon inmate? Y/N',
-    input: { select: ACTION_KEYS, confirm: undefined },
-    // input: first two available action keys from A, B, C. Confirm undefined (not required, act on action keypress immediately)
+    name: 'PARDON',
+    description: 'Use a pardon to save a player from being killed',
     max: { perPhase: 1, perGame: Infinity },
-    filter: () => true, // only action keys bound to the pardon event
-    resolution: ({ event, actor, selection }) => {
-      if (selection === TRUE) {
-      }
-      // end the event early (no execution)
-      // push pardon flow slides
+    autoStart: true,
+    input: { hotkey: ['HOTKEY_A', 'HOTKEY_B'], confirmReq: false },
+    conditions: ({ actor, event }) =>
+      actor.isAlive &&
+      actor.hasItem('PHONE') &&
+      event?.def?.name === 'DAY_LYNCH' &&
+      event.currentStep?.name === 'PARDON',
+    resolution: ({ actor, target, event }) => {
+      if (!target) return { success: false, message: 'No target selected.' };
+
+      event.addEffect({ type: 'PARDON', actor, target });
+      return {
+        success: true,
+        message: `${actor.name} pardoned ${target.name}`,
+      };
     },
   },
 };

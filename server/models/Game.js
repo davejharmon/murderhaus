@@ -10,259 +10,226 @@ import { logger } from '../utils/Logger.js';
 import { Slide } from './Slide.js';
 
 export class Game {
-  constructor() {
-    this.players = [];
-    this.phaseIndex = 0;
-    this.dayCount = 0;
-    this.gameStarted = false;
-    this.activeEvents = [];
+  constructor({ phaseIndex = 0, dayCount = 0, gameStarted = false } = {}) {
+    // -------------------------
+    // Core game state
+    // -------------------------
+    this.players = new Map(); // playerId → Player
+    this.events = new Map(); // eventId → Event
+    this.activeEvents = new Set(); // eventIds of currently active events
+
+    this.phaseIndex = phaseIndex;
+    this.dayCount = dayCount;
+    this.gameStarted = gameStarted;
   }
 
-  /** --- Player management --- */
-  addPlayer(id) {
-    if (this.players.length >= MAX_PLAYERS) {
-      return { success: false, message: 'Max players reached' };
-    }
-    const player = new Player(id, this);
-    this.players.push(player);
-    return { success: true, message: `Player ${id} registered`, player };
+  // -------------------------
+  // Player getters
+  // -------------------------
+  getPlayerById(id) {
+    return this.players.get(id) || null;
   }
 
-  removePlayer(playerId) {
-    const index = this.players.findIndex((p) => p.id === playerId);
-    if (index === -1) {
-      return { success: false, message: `Player ${playerId} not found` };
-    }
-
-    const [removed] = this.players.splice(index, 1); // Remove player
-
-    // Optional: cleanup other game state that references this player
-    if (this.playersSelecting) {
-      delete this.playersSelecting[removed.id];
-    }
-
-    // Add more cleanup here if needed (votes, events, etc.)
-
-    return { success: true, message: `Player ${removed.id} has been kicked` };
-  }
-
-  getPlayer(id) {
-    return this.players.find((p) => p.id === id) || null;
-  }
-
-  /** Flexible setter for player properties */
-  setPlayerProperty(playerId, key, value, inState = false) {
-    const player = this.getPlayer(playerId);
-    if (!player)
-      return { success: false, message: `Player ${playerId} not found` };
-    return player.set(key, value, inState);
-  }
-
-  /** --- Phase management --- */
-  getCurrentPhase() {
-    const phase = PHASES[this.phaseIndex];
-    if (!phase) {
-      logger.log(
-        `Invalid phaseIndex: ${this.phaseIndex}, resetting`,
-        'error',
-        'Game.getCurrentPhase'
-      );
-      return { name: null, playerActions: [], hostActions: [], events: [] };
-    }
-    return phase;
-  }
-
-  nextPhase() {
-    this.phaseIndex = (this.phaseIndex + 1) % PHASES.length;
-    const phase = this.getCurrentPhase();
-    if (phase.name === 'day') this.dayCount++;
-
-    // Reset each player's per-phase state
-    this.players.forEach((p) => p.initializePhase());
-
-    return {
-      success: true,
-      message: `Phase started: Day ${this.dayCount}, ${phase.name}`,
-    };
-  }
-
-  /** --- Game lifecycle --- */
-  start() {
-    if (this.gameStarted)
-      return { success: false, message: 'Game already started' };
-    if (this.players.length < 4)
-      return { success: false, message: 'Not enough players' };
-
-    this.gameStarted = true;
-    this.dayCount = 1;
-    this.phaseIndex = 0;
-    const result = this.assignRandomRoles();
-    return result;
-  }
-
-  assignRandomRoles() {
-    const total = this.players.length;
-    const minimum = MINIMUM_ROLES[total] || {};
-    const rolesToAssign = [];
-
-    // Minimum roles
-    Object.entries(minimum).forEach(([roleName, count]) => {
-      for (let i = 0; i < count; i++) rolesToAssign.push(ROLES[roleName]);
-    });
-
-    // Fill remaining with default role
-    while (rolesToAssign.length < total)
-      rolesToAssign.push(ROLES[DEFAULT_ROLE]);
-
-    // Shuffle
-    for (let i = rolesToAssign.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [rolesToAssign[i], rolesToAssign[j]] = [
-        rolesToAssign[j],
-        rolesToAssign[i],
-      ];
-    }
-
-    // Assign to players
-    this.players.forEach((player, i) => {
-      const role = rolesToAssign[i];
-      player.assignRole(role.name);
-    });
-    return { success: true, message: 'All roles assigned.' };
-  }
-
-  isGameOver() {
-    const werewolvesAlive = this.getPlayersByRole('werewolf').some(
-      (p) => p.state.isAlive
-    );
-    const villagersAlive = this.getPlayersByRole('villager').some(
-      (p) => p.state.isAlive
-    );
-    return !werewolvesAlive || !villagersAlive;
-  }
-  getPublicState() {
-    const phase = this.getCurrentPhase(); // get from PHASES array
-
-    return {
-      gameStarted: this.gameStarted,
-      dayCount: this.dayCount,
-      phase: phase?.name || null,
-      players: this.players.map((p) => p.getPublicState()),
-      activeEvents: this.activeEvents,
-      pendingEvents: this.pendingEvents || [],
-      phaseIndex: this.phaseIndex, // optional but useful
-    };
-  }
-
-  /** --- Getter: all players currently making a selection --- */
-  get playersSelecting() {
-    const map = {};
-    this.players.forEach((p) => {
-      p.state.actions.forEach((a) => {
-        if (a.active && a.selectedTarget != null) {
-          if (!map[a.selectedTarget]) map[a.selectedTarget] = [];
-          map[a.selectedTarget].push({ id: p.id, confirmed: a.confirmed });
-        }
-      });
-    });
-    return map;
-  }
-
-  /** --- Convenience helpers --- */
   getAlivePlayers() {
-    return this.players.filter((p) => p.state.isAlive);
+    return [...this.players.values()].filter((p) => !p.isDead);
   }
 
   getPlayersByRole(roleName) {
-    return this.players.filter((p) => p.role?.name === roleName);
+    return [...this.players.values()].filter((p) => p.role?.name === roleName);
   }
 
-  get alivePlayers() {
-    return this.players.filter((p) => p.state.isAlive);
+  getPlayersWithItem(itemName) {
+    return [...this.players.values()].filter(
+      (p) => p.hasItem(itemName) && !p.isDead
+    );
   }
 
-  get deadPlayers() {
-    return this.players.filter((p) => !p.state.isAlive);
+  // -------------------------
+  // Event getters
+  // -------------------------
+  getEventById(id) {
+    return this.events.get(id) || null;
   }
 
-  getPlayerById(pid) {
-    return this.players.find((p) => p?.id === pid);
+  getActiveEvents() {
+    return [...this.activeEvents]
+      .map((id) => this.getEventById(id))
+      .filter(Boolean);
   }
 
-  playersBy(predicateFn) {
-    return this.players.filter(predicateFn);
-  }
+  getEventGrants(event) {
+    const alivePlayers = this.getAlivePlayers();
 
-  playerIDsBy(predicateFn) {
-    return this.players.filter(predicateFn).map((p) => p.id);
-  }
+    // Role-based grants
+    const roleGrants = alivePlayers.flatMap((player) => {
+      const role = player.role;
+      if (!role?.grants) return [];
+      return role.grants
+        .filter((g) => g.events.includes(event.name))
+        .map((g) => ({ action: g.action, to: [player] }));
+    });
 
-  playersByTeam(teamName) {
-    return this.playersBy((p) => p.team === teamName);
-  }
-
-  playerIDsByTeam(teamName) {
-    return this.playersByTeam(teamName).map((p) => p.id);
-  }
-
-  playersByRole(roleName) {
-    return this.playersBy((p) => p.role === roleName);
-  }
-
-  playerIDsByRole(roleName) {
-    return this.playersByRole(roleName).map((p) => p.id);
-  }
-
-  resolveVote(event, fn) {
-    const resultsSlide = Slide.voteResults(event);
-    const jumpTo = true;
-    const frontRunners = event.getFrontrunners().length
-      ? event.getFrontrunners()
-      : [...event.participants]; // if nobody is a frontrunner, everyone is.
-
-    this.slideManager.push(resultsSlide, jumpTo);
-    let result;
-    if (frontRunners.length === 1) {
-      const player = this.getPlayer(frontRunners[0]);
-      const voters = event.getVoterIds(player.id);
-      const resolutionDesc = event.eventDef.resolutionDesc;
-      this.slideManager.push(
-        Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc)
-      );
-      fn(player); // winner has fn performed.
-
-      this.slideManager.push(
-        Slide.playerUpdateWithGallery(player.id, voters, resolutionDesc, true)
-      );
-
-      result = {
-        success: true,
-        message: `${player.name} has been ${event.eventDef.resolutionDesc}`,
-      };
-    } else {
-      const updatedName = !event.eventName.startsWith('TIEBREAK ') // not working for some reason
-        ? `TIEBREAK ${event.eventName}`
-        : event.eventName;
-
-      this.activeEvents
-        .find((e) => e.id === event.id)
-        .set({
-          targets: frontRunners,
-          completedBy: [],
-          results: {},
-          eventName: updatedName,
-        });
-      event.participants.forEach((pid) => {
-        const player = this.getPlayerById(pid);
-        if (!player) return;
-        player.updateKeymap(this.activeEvents);
+    // Item-based grants
+    const itemGrants = alivePlayers.flatMap((player) => {
+      return [...player.inventory].flatMap((itemName) => {
+        const item = ITEMS[itemName];
+        if (!item?.grants) return [];
+        return item.grants
+          .filter((g) => g.events.includes(event.name))
+          .map((g) => ({ action: g.action, to: [player] }));
       });
+    });
 
-      result = {
-        success: false,
-        message: `[GAME] ${frontRunners.length} frontrunners: tiebreak vote started.`,
-      };
+    // Explicit grants passed on event creation
+    const explicitGrants = event.grants || [];
+
+    return [...explicitGrants, ...roleGrants, ...itemGrants];
+  }
+
+  // -------------------------
+  // Phase helpers
+  // -------------------------
+  getCurrentPhase() {
+    return PHASES[this.phaseIndex];
+  }
+
+  isDay() {
+    return this.getCurrentPhase().isDay;
+  }
+
+  isNight() {
+    return this.getCurrentPhase().isNight;
+  }
+
+  // -------------------------
+  // Player actions / effects
+  // -------------------------
+  kill(player) {
+    if (!player || player.isDead) return;
+    player.isDead = true;
+    player.phaseDied = this.phaseIndex;
+  }
+
+  assignRole(player, role) {
+    if (!player) return;
+    player.role = role;
+  }
+
+  giveItem(player, item) {
+    if (!player) return;
+    player.inventory.add(item);
+  }
+
+  applyEffect(effect) {
+    switch (effect.type) {
+      case 'KILL':
+        this.kill(effect.target);
+        break;
+      case 'PROTECT':
+        // Protects handled via canceling kills in resolution
+        break;
+      case 'GIVE_ITEM':
+        this.giveItem(effect.target, effect.item);
+        break;
+      case 'ASSIGN_ROLE':
+        this.assignRole(effect.target, effect.role);
+        break;
+      default:
+        logger.warn('Unknown effect type', effect);
     }
+  }
+
+  performActionStep(playerId, actionId, input = {}) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return { success: false, message: 'Player not found' };
+
+    const action = player.getActionById(actionId);
+    if (!action) return { success: false, message: 'Action not found' };
+
+    const step = action.currentStep;
+    if (!step) return { success: false, message: 'No step to perform' };
+
+    // Provide full context to step resolution
+    const result = step.resolution({
+      game: this,
+      actor: player,
+      event: this.getEventById(action.eventId), // optional if action tied to an event
+      input,
+      stepData: action.state.stepData,
+    });
+
+    if (result.success) {
+      action.state.stepIndex++;
+      if (action.state.stepIndex >= (action.def.steps?.length ?? 0)) {
+        action.state.completed = true;
+        action.state.active = false;
+      }
+    }
+
     return result;
+  }
+
+  /**
+   * Start an action for a player
+   */
+  startAction(playerId, actionName, eventId = null) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return null;
+
+    const def = ACTIONS[actionName];
+    if (!def) return null;
+
+    const action = new Action({ name: actionName, def, eventId });
+
+    // mark active if autoStart or event triggered
+    action.state.active = def.autoStart ?? false;
+    player.actions.set(action.id, action);
+
+    // If multi-step and first step has no input requirement, perform immediately
+    if (action.isMultiStep() && !action.currentStep.input?.confirmReq) {
+      this.performActionStep(playerId, action.id);
+    }
+
+    return action;
+  }
+
+  // -------------------------
+  // Event lifecycle
+  // -------------------------
+  startEvent(event, { isInterrupt = false } = {}) {
+    this.events.set(event.id, event);
+    this.activeEvents.add(event.id);
+    event.isInterrupt = isInterrupt;
+
+    const grants = this.getEventGrants(event);
+
+    grants.forEach((grant) => {
+      grant.to.forEach((actor) => {
+        const set = event.state.grants.get(actor.id) || new Set();
+        if (grant.action) set.add(grant.action);
+        event.state.grants.set(actor.id, set);
+
+        const map = event.state.inputs.get(actor.id) || new Map();
+
+        if (grant.action) {
+          // limit inputs to validTargets if provided
+          const targets = event.validTargets || this.getAlivePlayers();
+          targets.forEach((t) => map.set(t.id, null));
+        }
+
+        event.state.inputs.set(actor.id, map);
+      });
+    });
+  }
+
+  endEvent(event, andResolve = false) {
+    if (!event) return;
+
+    // Resolve before removing from active events
+    if (!event.resolved && andResolve) {
+      event.resolve(this);
+    }
+
+    this.activeEvents.delete(event.id);
   }
 }

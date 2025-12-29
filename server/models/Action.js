@@ -1,51 +1,32 @@
 // Action.js
-import { ACTIONS } from '../../shared/constants.js';
+let ACTION_ID_SEQ = 1;
 
 export class Action {
-  constructor(name) {
-    const actionDef = ACTIONS[name];
-    if (!actionDef)
-      throw new Error(`Action "${name}" is not defined in ACTIONS`);
+  constructor({ name, def }) {
+    if (!name) throw new Error('Action requires name');
+    if (!def) throw new Error('Action requires definition');
 
+    this.id = ACTION_ID_SEQ++;
     this.name = name;
-    this.def = actionDef;
+    this.def = def;
+
     this.state = {
       available: false,
       active: false,
       selection: null,
       confirmed: false,
-      uses: {
-        perPhase: 0,
-        perGame: 0,
-      },
+      uses: { perPhase: 0, perGame: 0 },
+      stepIndex: 0, // for multi-step actions
+      stepData: {}, // store step-specific selections/results
+      completed: false,
     };
   }
 
-  setSelection(selection) {
-    // TODO: if player doesn't exist, throw error.
-    this.state.selection = selection;
+  get currentStep() {
+    return this.def.steps?.[this.state.stepIndex] ?? null;
   }
 
-  canPerform(context = {}) {
-    const { input, max, conditions } = this.def;
-    // Check conditions
-    if (input.allowed && !input.allowed.includes(this.state.selection))
-      return { success: false, message: 'Invalid selection.' };
-    if (input.confirmReq && !this.state.confirmed)
-      return { success: false, message: 'Not confirmed.' };
-    if (conditions && !conditions(this, context))
-      return { success: false, message: 'Conditions failed.' };
-    if (this.state.uses.perPhase >= max.perPhase)
-      return { success: false, message: 'No uses left this phase.' };
-    if (this.state.uses.perGame >= max.perGame)
-      return { success: false, message: 'No uses left.' };
-
-    return { success: true };
-  }
-
-  resetForPhase() {
-    this.state.confirmed = false;
-    this.state.selection = null;
-    this.state.uses.perPhase = 0;
+  isMultiStep() {
+    return Array.isArray(this.def.steps) && this.def.steps.length > 0;
   }
 }

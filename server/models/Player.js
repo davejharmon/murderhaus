@@ -1,157 +1,135 @@
 // Player.js
-import { ROLES, TEAMS, DEBUG_NAMES, ACTION_KEYS } from '../../shared/constants';
-
+import {
+  DEBUG_NAMES,
+  ACTION_KEYS,
+  DIAL,
+  CONFIRM,
+  ACTIONS,
+} from '../../shared/constants';
 import { Action } from './Action.js';
+
 export class Player {
-  constructor(id) {
+  constructor({
+    id,
+    name = DEBUG_NAMES[id],
+    color = '#666',
+    image = `player${id}.png`,
+    role = undefined,
+    team = undefined,
+    isDead = false,
+    phaseDied = undefined,
+  }) {
+    if (id == null) throw new Error('Player requires id');
+
     this.id = id;
-    this.name = DEBUG_NAMES[id];
-    this.color = '#666';
-    this.image = `player${id}.png`;
-    this.role = null;
-    this.team = null;
-    this.isDead = false;
-    this.phaseDied = undefined; // null, or last phase that player died on
-    this.actions = new Map(); // key=actionName, value=Action
-    this.inventory = []; // items granting actions while owned
-
-    // Build console keys dynamically
-    const keys = {};
-    for (const key of ACTION_KEYS) {
-      keys[key] = {
-        actionName: null,
-        isHighlighted: false,
-        isPressed: false,
-      };
-    }
-
-    this.console = {
-      bindings: {}, // actionName -> key (filled by binder)
-      state: {
-        dial: null,
-        confirmed: null,
-        keys,
-      },
-    };
-
-    this.views = []; // all slides available on terminal
-    this.viewIndex = 0; // current slide
-  }
-
-  // -------------------------
-  // Game Setup
-  // -------------------------
-
-  assignRole(roleName) {
-    const role = ROLES[roleName];
-    if (!role)
-      return { success: false, message: `Error: ${roleName} does not exist.` };
+    this.name = name ?? `Player ${id}`;
+    this.color = color;
+    this.image = image;
 
     this.role = role;
-    this.team = role.team;
-    this.color = role.color ?? TEAMS[role.team]?.color ?? '#999';
+    this.team = team;
+    this.isDead = isDead;
+    this.phaseDied = phaseDied;
 
-    // Remove actions not in role
-    for (const name of this.actions.keys())
-      if (!role.actions.has(name)) this.removeAction(name);
+    this.actions = new Map(); // actionId → Action
+    this.inventory = new Set();
+    this.events = new Set(); // events the player is participating in
 
-    // Add missing role actions
-    for (const name of role.actions) this.addAction(name);
-
-    return { success: true, message: `${roleName} assigned to ${this.name} ` };
+    this.console = {
+      views: [],
+      viewIndex: 0,
+      input: {
+        dial: DIAL,
+        confirm: CONFIRM,
+        keys: structuredClone(ACTION_KEYS),
+      },
+    };
   }
 
-  // -------------------------
-  // Action Management
-  // -------------------------
+  /** Initialize all actions for the player */
+  initActions() {
+    Object.values(ACTIONS).forEach((def) => {
+      if (!this.actions.has(def.name)) {
+        const action = new Action({ name: def.name, def });
+        this.actions.set(def.name, action);
 
-  addAction(actionName) {
-    if (this.actions.has(actionName))
-      return { success: false, message: 'Error. Action exists.' };
-    const action = new Action(actionName);
-    this.actions.set(actionName, action);
+        // AutoStart if eligible
+        if (def.autoStart && def.conditions({ actor: this })) {
+          action.state.available = true;
+          this.bindHotkey(action);
+        }
+      }
+    });
   }
 
-  removeAction(actionName) {
-    this.actions.delete(actionName);
-  }
+  /** Bind a hotkey to an action if it has hotkey input */
+  bindHotkey(action) {
+    if (!action.def.input?.hotkey) return;
 
-  hasAction(actionName) {
-    return this.actions.has(actionName);
-  }
-
-  getAction(actionName) {
-    return this.actions.get(actionName) ?? null;
-  }
-
-  getNightAction(actions) {
-    // return the action with the highest priority
-  }
-  // -------------------------
-  // Keybinding & Input Management
-  // -------------------------
-
-  // bind available inputs to an action that canPerform() based on priority;
-  bindInputs() {}
-
-  // reset all inputs (eg. start of phase or event)
-  resetInputs() {}
-
-  // handle input change (key press, confirm press, dial change)
-  handleInput() {}
-
-  // -------------------------
-  // State Updates
-  // -------------------------
-
-  kill(context = { phaseIndex }) {
-    this.isDead = true;
-    this.phaseDied = phaseIndex;
-  }
-
-  rezz() {
-    this.isDead = false;
-    this.phaseDied = undefined;
-  }
-
-  // add an item to inventory and associate actions to actions
-  addItem(itemName) {}
-
-  // remove an item from inventory and associated actions from actions
-  removeItem(itemName) {}
-
-  // flexible setter
-  set(key, value, inState = false) {
-    if (inState) {
-      if (!(key in this.state))
-        console.warn(`[Player.set] Unknown state key: ${key}`);
-      this.state[key] = value;
-    } else {
-      if (!(key in this)) console.warn(`[Player.set] Unknown property: ${key}`);
-      this[key] = value;
+    for (const key of action.def.input.hotkey) {
+      if (!this.console.input.keys[key]?.bound) {
+        this.console.input.keys[key].bound = action.id;
+        action.state.hotkey = key;
+        break;
+      }
     }
-    return {
-      success: true,
-      message: `[PLAYER] ${this.name} set ${inState ? 'state.' : ''}${key}`,
-    };
   }
 
-  // -------------------------
-  // Public getters
-  // -------------------------
+  /** Get action instance by name */
+  getAction(name) {
+    return this.actions.get(name);
+  }
 
-  getPublicState() {
-    return {
-      id: this.id,
-      name: this.name,
-      color: this.color,
-      image: this.image,
-      role: this.role?.name ?? null,
-      team: this.team ?? null,
-      isDead: this.isDead(),
-      console: this.console,
-      views: this.views,
-      viewIndex: this.viewIndex,
-    };
+  /** Get current usage for an action */
+  getActionUses(name) {
+    const action = this.getAction(name);
+    return action?.state?.uses ?? { perPhase: 0, perGame: 0 };
+  }
+
+  /** Mark that this player has used an action (increments usage counters) */
+  useAction(actionName) {
+    const action = this.getAction(actionName);
+    if (!action) return;
+
+    if (!action.state.uses) action.state.uses = { perPhase: 0, perGame: 0 };
+    action.state.uses.perPhase += 1;
+    action.state.uses.perGame += 1;
+  }
+
+  /** Add an item to the player's inventory */
+  addItem(itemName) {
+    this.inventory.add(itemName);
+  }
+
+  /** Remove an item from the player's inventory */
+  removeItem(itemName) {
+    this.inventory.delete(itemName);
+  }
+
+  /** Check if the player has an item */
+  hasItem(itemName) {
+    return this.inventory.has(itemName);
+  }
+
+  /** Get all actions the player can currently take based on grants, phase, and autoStart */
+  getAvailableActions(event) {
+    const available = [];
+    this.actions.forEach((action) => {
+      const granted = event?.state.grants.get(this.id)?.has(action.def.name);
+      const usable =
+        granted &&
+        (!action.def.conditions ||
+          action.def.conditions({ actor: this, game: event?.game, event }));
+      if (usable) available.push(action);
+    });
+    return available;
+  }
+
+  addEvent(event) {
+    this.events.add(event.id);
+  }
+
+  removeEvent(event) {
+    this.events.delete(event.id);
   }
 }

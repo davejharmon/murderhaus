@@ -4,28 +4,50 @@ export const ROLES = {
     name: 'villager',
     team: 'villagers',
     color: undefined,
-    defaultActions: [],
-    defaultEvents: ['vote', 'suspect'],
+    grants: [
+      // Villagers usually only vote
+      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+    ],
   },
+
   murderer: {
     name: 'murderer',
     team: 'murderers',
     color: '#ff6b6b',
-    defaultActions: [],
-    defaultEvents: ['vote', 'kill'],
+    grants: [
+      { action: 'VOTE', events: ['NIGHT_MURDER_VOTE'] },
+      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+    ],
   },
+
   detective: {
     name: 'detective',
     team: 'villagers',
     color: '#a1ff9b',
-    defaultActions: [],
-    defaultEvents: ['vote', 'protect'],
+    grants: [
+      { action: 'INVESTIGATE', events: ['NIGHT_ACTION_WINDOW'] }, // implement later
+      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+    ],
   },
+
   doctor: {
     name: 'doctor',
     team: 'villagers',
     color: '#9be2ff',
-    defaultActions: [],
-    defaultEvents: ['vote', 'protect'],
+    grants: [
+      { action: 'PROTECT', events: ['NIGHT_ACTION_WINDOW'] },
+      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+    ],
+  },
+
+  vigilante: {
+    name: 'vigilante',
+    team: 'villagers',
+    color: '#ffd700',
+    grants: [
+      { action: 'ONESHOT_DRAW', events: ['DAY_LYNCH_VOTE'] },
+      { action: 'ONESHOT_SHOOT', events: ['ONESHOT_SHOOT'] }, // triggered by the draw
+      { action: 'VOTE', events: ['DAY_LYNCH_VOTE'] },
+    ],
   },
 };

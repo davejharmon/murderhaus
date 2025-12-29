@@ -1,54 +1,82 @@
-// /shared/constants/events.js
+// shared/constants/events.js
+const ACTION_WINDOW = {
+  name: 'ACTION_WINDOW',
+  description: 'Players perform actions for this event',
+  phase: ['ANY'],
+  inputs: {},
+  resolution: {
+    collect: 'all',
+    order: [],
+    apply: ({ event, game, outcome }) => {
+      event.def.resolution.order.forEach((actionName) => {
+        const tally = event.tally(actionName);
+        const target = tally.highest();
+        if (target) outcome({ target, event, game, actionName });
+      });
+    },
+  },
+};
+
 export const EVENTS = {
-  ONESHOT: {
-    name: 'oneshot',
-    description: 'Choose a player to kill immediately',
-    condition: ({ player, initiator }) => player === initiator,
-    filter: ({ player, initiator }) => player !== initiator && !player.isDead,
-    resolution: ({ target }) => {
-      target.kill();
-      return { success: true, message: 'Event ended' };
+  ACTION_WINDOW,
+
+  NIGHT_ACTION_WINDOW: {
+    ...ACTION_WINDOW,
+    name: 'NIGHT_ACTION_WINDOW',
+    description: 'All night role actions',
+    phase: ['NIGHT'],
+    resolution: {
+      collect: 'all',
+      order: ['PROTECT', 'KILL'], // priority order
+      apply: ({ event, game }) => {
+        event.resolveEffects(game);
+      },
     },
   },
-
-  VOTE_EXECUTE: {
-    name: 'vote_execute',
-    description: 'Public vote on who to execute',
-    condition: ({ player }) => !player.isDead,
-    filter: ({ player }) => !player.isDead,
-    resolution: ({ target }) => {
-      target.kill();
-      return { success: true, message: 'Event ended' };
-    },
+  NIGHT_MURDER_VOTE: {
+    name: 'NIGHT_MURDER_VOTE',
+    phase: ['NIGHT'],
+    onTie: 'TIEBREAKER',
+    resolution: { collect: 'vote', order: ['KILL'] },
+    grants: [
+      { action: 'KILL', to: ({ game }) => game.getPlayersByRole('murderer') },
+    ],
   },
-
-  VOTE_ASSIGN: {
-    name: 'vote_assign',
-    description: 'Assign a role to a player',
-    condition: ({ player }) => !player.isDead,
-    filter: ({ player }) => !player.isDead,
-    resolution: ({ event, game, role, target }) => {
-      target.assignRole(role);
-      return game.resolveEvent(event);
-    },
-  },
-
-  NIGHT_ACTIONS: {
-    name: 'night_actions',
-    description: 'All night actions are resolved simultaneously',
-    condition: ({ player }) => !player.isDead,
-    filter: () => true,
-    resolution: ({ game }) => game.resolveNightActions(),
-  },
-
-  PARDON: {
-    name: 'pardon',
-    description: 'Pardons a player during an execution vote',
-    condition: ({ player, initiator }) => player === initiator,
-    filter: ({ target }) => target.isDead,
-    resolution: ({ event, game, target }) => {
-      game.startEvent;
-      return game.resolveEvent(event);
-    },
+  DAY_LYNCH: {
+    name: 'DAY_LYNCH',
+    phase: ['DAY'],
+    steps: [
+      {
+        name: 'VOTE',
+        collect: 'vote',
+        resolution: ({ event, game }) => {
+          const topVoters = event.tally('VOTE').highest();
+          event.state.pendingKills = topVoters.map((id) =>
+            game.getPlayerById(id)
+          );
+          return { success: true };
+        },
+      },
+      {
+        name: 'PARDON',
+        collect: 'any',
+        resolution: ({ event, game }) => {
+          const pardons = event.state.results.get('PARDON') || [];
+          pardons.forEach(({ target }) => {
+            event.state.pendingKills = event.state.pendingKills.filter(
+              (p) => p.id !== target.id
+            );
+          });
+          return { success: true };
+        },
+      },
+      {
+        name: 'RESOLVE_DEATHS',
+        resolution: ({ event, game }) => {
+          event.state.pendingKills.forEach((player) => game.kill(player));
+          return { success: true };
+        },
+      },
+    ],
   },
 };

@@ -1,155 +1,142 @@
+// /server/models/Event.js
 import { EVENTS } from '../../shared/constants';
 
-// /server/models/Event.js
+let EVENT_ID_SEQ = 1;
+
 export class Event {
-  constructor(eventName, phaseIndex = undefined, initiatedBy = 'host') {
-    const eventDef = EVENTS[name];
-    if (!eventDef)
-      throw new Error(`Action "${name}" is not defined in ACTIONS`);
-    this.name = eventName;
-    this.def = eventDef;
-    this.phaseStarted = phaseIndex;
+  constructor({ name, phaseStarted, initiator = null }) {
+    const def = EVENTS[name];
+    if (!def) throw new Error(`Unknown event: ${name}`);
+
+    this.id = EVENT_ID_SEQ++;
+    this.name = name;
+    this.def = def;
+    this.phaseStarted = phaseStarted;
+    this.initiator = initiator;
+
+    this.resolved = false;
     this.createdAt = Date.now();
-    this.initiatedBy = initiatedBy;
+    this.endedAt = null;
+
     this.state = {
-      participants: [],
+      grants: new Map(), // actorId -> Set(actionName)
+      inputs: new Map(), // actionName -> Map(actorId -> selection)
+      results: new Map(), // effectType -> []
     };
+
+    // Optional: for tie-breakers
+    this.validTargets = null;
   }
 
-  // this.id = id ?? `${eventName}-${Math.random().toString(36).substr(2, 8)}`;
-  // this.eventName = eventName;
-  // this.eventDef = eventDef; // full event definition from EVENTS[name]
-  // this.resolution = eventDef.resolution;
-
-  // // Compute eligible participants based on participantCondition
-  // this.participants = game.players
-  //   .filter((p) => p.state.isAlive && eventDef.participantCondition?.(p))
-  //   .map((p) => p.id);
-
-  // // Compute eligible targets based on targetCondition
-  // this.targets = game.players
-  //   .filter((p) => p.state.isAlive)
-  //   .filter((p) => eventDef.targetCondition?.(p, null))
-  //   .map((p) => p.id);
-
-  // this.completedBy = []; // playerIds who confirmed
-  // this.results = {}; // { actorId: selectedKey }
-  // this.resolved = false;
-
-  isParticipant(pid) {
-    return this.participants.includes(pid);
+  // -------------------------
+  // Effects
+  // -------------------------
+  addEffect(effect) {
+    const arr = this.state.results.get(effect.type) || [];
+    arr.push(effect);
+    this.state.results.set(effect.type, arr);
   }
 
-  markCompleted(pid) {
-    if (!this.completedBy.includes(pid)) this.completedBy.push(pid);
+  resolveEffects(game) {
+    for (const [effectType, effects] of this.state.results) {
+      effects.forEach((effect) => game.applyEffect(effect));
+    }
   }
 
-  recordResult(actorId, selection, confirmed = true, initiatedByHost = false) {
-    const confirmReq = this.eventDef?.input?.confirmReq || false;
-    const prevSelection = this.results[actorId];
-    // Only toggle to null if NOT confirmed
-    if (selection === prevSelection) {
-      this.results[actorId] = null;
-    } else if (selection !== 'confirm') this.results[actorId] = selection;
+  resolve(game) {
+    if (this.resolved) return;
 
-    const isFinal = !confirmReq | confirmed;
-    if (isFinal) this.markCompleted(actorId);
-  }
-
-  isFullyComplete() {
-    return this.completedBy.length >= this.participants.length;
-  }
-
-  getFrontrunners() {
-    const votes = Object.values(this.results).filter((v) => v != null);
-
-    if (votes.length === 0) return [];
-
-    // Count how many votes each target received
-    const tally = votes.reduce((acc, targetId) => {
-      acc[targetId] = (acc[targetId] || 0) + 1;
-      return acc;
-    }, {});
-
-    const max = Math.max(...Object.values(tally));
-
-    return Object.keys(tally)
-      .filter((id) => tally[id] === max)
-      .map(Number)
-      .sort((a, b) => a - b);
-  }
-
-  // tiebreakVoting(frontrunnerIds) {
-  //   if (!Array.isArray(frontrunnerIds) || frontrunnerIds.length === 0) {
-  //     throw new Error(
-  //       'tiebreakVoting requires a non-empty array of frontrunner IDs'
-  //     );
-  //   }
-
-  //   // Restrict targets to only frontrunners
-  //   this.targets = frontrunnerIds;
-
-  //   // Reset results so the vote starts fresh
-  //   this.results = {};
-
-  //   // Reset completed participants
-  //   this.completedBy = [];
-
-  //   // Mark event as unresolved for new round
-  //   this.resolved = false;
-
-  //   // Update createdAt to current time
-  //   this.createdAt = Date.now();
-  //   if (this.game?.slideManager) {
-  //     this.game.slideManager.push(Slide.eventTimer(this.game.players), true);
-  //   }
-  // }
-
-  getVoterIds(value) {
-    const confirmReq = this.eventDef?.input?.confirmReq || false;
-    return Object.entries(this.results)
-      .filter(
-        ([actorId, selectedValue]) =>
-          selectedValue === value &&
-          (!confirmReq || this.completedBy.includes(Number(actorId)))
-      )
-      .map(([actorId]) => Number(actorId));
-  }
-
-  set(updates = {}) {
-    const allowed = [
-      'participants',
-      'targets',
-      'phase',
-      'initiatedBy',
-      'createdAt',
-      'resolved',
-      'results',
-      'completedBy',
-      'eventName',
-    ];
-
-    for (const key of allowed) {
-      if (key in updates) {
-        this[key] = updates[key];
-      }
+    if (this.def.resolution.collect === 'vote') {
+      this.resolveVoteEvent(game);
+    } else {
+      this.def.resolution.apply?.({ event: this, game });
     }
 
-    return this; // allows chaining
+    this.resolved = true;
+    this.endedAt = Date.now();
   }
 
-  getPublicState() {
+  // -------------------------
+  // Vote / Tally helpers
+  // -------------------------
+  addInput(actorId, actionName, selection) {
+    const actionMap = this.state.inputs.get(actionName);
+    if (!actionMap) return;
+    actionMap.set(actorId, selection);
+  }
+
+  tally(actionName) {
+    const actionMap = this.state.inputs.get(actionName);
+    if (!actionMap) return { counts: new Map(), highest: () => [] };
+
+    const counts = new Map();
+    for (const selection of actionMap.values()) {
+      if (!selection) continue;
+      const key = selection.id ?? selection;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
     return {
-      id: this.id,
-      eventName: this.eventName,
-      participants: this.participants,
-      targets: this.targets,
-      phase: this.phase,
-      initiatedBy: this.initiatedBy,
-      createdAt: this.createdAt,
-      resolved: this.resolved,
-      results: this.results,
-      completedBy: this.completedBy,
+      counts,
+      highest: () => {
+        let maxCount = 0;
+        let topSelections = [];
+        for (const [selection, count] of counts.entries()) {
+          if (count > maxCount) {
+            maxCount = count;
+            topSelections = [selection];
+          } else if (count === maxCount) {
+            topSelections.push(selection);
+          }
+        }
+        return topSelections; // always an array
+      },
     };
+  }
+
+  // -------------------------
+  // Tie / vote resolution
+  // -------------------------
+  resolveVoteEvent(game) {
+    const actionName = 'VOTE';
+    const onTie = this.def.onTie || 'AFFECT_NONE';
+
+    let topSelections = this.tally('VOTE').highest();
+
+    // filter validTargets if provided
+    if (this.validTargets) {
+      topSelections = topSelections.filter((id) =>
+        this.validTargets.includes(id)
+      );
+    }
+
+    if (topSelections.length === 0) return; // no votes
+
+    switch (onTie) {
+      case 'AFFECT_NONE':
+        break;
+      case 'AFFECT_ALL':
+        topSelections.forEach((id) =>
+          this.addEffect({ type: 'KILL', target: game.getPlayerById(id) })
+        );
+        break;
+      case 'TIEBREAKER':
+        const tiebreakEvent = new Event({
+          name: this.name,
+          phaseStarted: game.phaseIndex,
+          initiator: this.initiator,
+        });
+        tiebreakEvent.validTargets = topSelections;
+        tiebreakEvent.def = { ...this.def };
+        game.startEvent(tiebreakEvent);
+        break;
+
+      default:
+        console.warn('Unknown onTie:', onTie);
+    }
+  }
+
+  cancelEffect(type) {
+    this.state.results.set(type, []);
   }
 }
