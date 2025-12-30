@@ -2,14 +2,15 @@
 import React from 'react';
 import { useGameState } from '../hooks/useGameState';
 import styles from './History.module.css';
+import { DEBUG } from '../../../shared/constants';
 
 const LogEntry = React.memo(({ entry }) => {
   const { message, type = 'system', timestamp } = entry;
   const typeColors = {
     system: '#999',
-    player: '#555',
-    murder: '#d32f2f',
-    default: '#333',
+    warn: '#FFB300',
+    error: '#d32f2f',
+    info: '#777',
   };
   const color = typeColors[type] || typeColors.default;
   const ts = new Date(timestamp).toLocaleTimeString([], {
@@ -26,13 +27,17 @@ const LogEntry = React.memo(({ entry }) => {
 
 export default function History() {
   const { log = [] } = useGameState();
+  // filter out system messages if flag is false
+  const displayedLog = DEBUG.showSystemLogs
+    ? log
+    : log.filter((entry) => entry.type !== 'system');
   return (
     <div>
       <div className={styles.historyHeader}>
         <h3>History</h3>
       </div>
       <ul className={styles.historyList}>
-        {log.map((entry, i) => (
+        {displayedLog.map((entry, i) => (
           <LogEntry key={i} entry={entry} />
         ))}
       </ul>

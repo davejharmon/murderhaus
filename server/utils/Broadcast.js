@@ -69,5 +69,7 @@ export function broadcast(message, exclude) {
 
 // Optional helper: subscribe a WS to all main game channels
 export function subscribeAllMain(ws) {
-  Object.values(CHANNELS).forEach((ch) => subscribe(ws, ch));
+  Object.entries(CHANNELS).forEach(([key, ch]) => {
+    if (typeof ch === 'string') subscribe(ws, ch);
+  });
 }

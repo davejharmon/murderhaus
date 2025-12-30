@@ -33,7 +33,7 @@ export class GameManager {
 
     const player = new Player({ id: playerId });
     this.game.players.set(playerId, player);
-    Log.system(`Player registered: ${player.name}`, { player });
+    Log.info(`Player registered: ${player.name}`, { player });
     this.update();
     return player;
   }

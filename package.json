@@ -6,11 +6,12 @@
   "scripts": {
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
-    "dev": "concurrently \"npm run server\" \"wait-on tcp:8080 && npm run client\"",
+    "dev": "cross-env NODE_ENV=development concurrently \"npm run server\" \"npm run client\"",
     "devflow": "node devflow.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "open": "^10.2.0",
     "wait-on": "^9.0.1"
   }

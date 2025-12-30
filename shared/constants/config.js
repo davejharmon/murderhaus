@@ -20,3 +20,7 @@ export const CHANNELS = {
   GAME_UPDATE: 'GAME_UPDATE',
   SLIDES_UPDATE: 'SLIDES_UPDATE',
 };
+
+export const DEBUG = {
+  showSystemLogs: false,
+};

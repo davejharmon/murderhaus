@@ -3,52 +3,104 @@ import { gameManager } from './GameManager.js';
 import { handleWSMessage } from './wsHandlers.js';
 import { logger } from './utils/Logger.js';
 
-const wss = getWSS(8080);
+/* ================= EXIT DIAGNOSTICS ================= */
+
+function logExit(reason, extra) {
+  const stamp = new Date().toISOString();
+  console.error('\n========== SERVER EXIT ==========');
+  console.error('Time:', stamp);
+  console.error('Reason:', reason);
+  if (extra) console.error('Details:', extra);
+  console.error('Stack:\n', new Error().stack);
+  console.error('================================\n');
+}
+
+process.on('exit', (code) => {
+  logExit(`process exit event (${code})`);
+});
+
+process.on('beforeExit', (code) => {
+  logExit(`beforeExit(${code})`);
+});
 
 process.on('uncaughtException', (err) => {
-  console.error('[FATAL ERROR]', err);
+  logExit('uncaughtException', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+  });
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('[UNHANDLED REJECTION]', reason);
+  logExit('unhandledRejection', reason);
+  process.exit(1);
 });
+
+/* ===== Production-only shutdown handling ===== */
+
+if (process.env.NODE_ENV === 'production') {
+  process.on('SIGINT', () => {
+    logExit('SIGINT (production)');
+    if (wss) {
+      wss.close(() => process.exit(0));
+    } else {
+      process.exit(0);
+    }
+  });
+
+  process.on('SIGTERM', () => {
+    logExit('SIGTERM (production)');
+    process.exit(0);
+  });
+}
+
+/* ================= SERVER BOOT ================= */
+
+let wss;
+try {
+  wss = getWSS(8080);
+} catch (err) {
+  console.error('[WSS INIT FAILED]', err);
+  process.exit(1);
+}
+
+wss.on('error', (err) => {
+  console.error('[WSS ERROR]', err);
+});
+
+/* ================= CONNECTION HANDLING ================= */
 
 wss.on('connection', (ws) => {
   logger.log('Client connected', 'system');
 
-  // Auto-subscribe this client to all main channels
   subscribeAllMain(ws);
 
-  // Send current slices immediately if view exists
   if (gameManager.view) {
-    gameManager.view.publishAllPlayers();
-    gameManager.view.publishGameMeta();
-    gameManager.view.publishLog();
+    try {
+      gameManager.view.publishAllPlayers();
+      gameManager.view.publishGameMeta();
+      gameManager.view.publishLog();
+    } catch (err) {
+      logger.log(`⚠️ View publish failed: ${err.message}`, 'error');
+    }
   }
 
-  // Listen for messages from this client
   ws.on('message', (msg) => {
     try {
-      const str = msg.toString(); // <-- ensures it's a string
-      const data = JSON.parse(str); // <-- parse JSON
-      handleWSMessage(ws, data);
+      const str = msg.toString();
+      if (!str || str[0] !== '{') return;
+      handleWSMessage(ws, JSON.parse(str));
     } catch (err) {
-      logger.log(`⚠️ Error handling WS message: ${err.message}`, 'error');
+      logger.log(`⚠️ WS message error: ${err.message}`, 'error');
       sendTo(ws, {
         type: 'ERROR',
-        payload: { message: 'Invalid message format or internal server error' },
+        payload: { message: 'Invalid message format' },
       });
     }
   });
 
-  // Handle disconnect
   ws.on('close', () => {
     logger.log('Client disconnected', 'system');
   });
-});
-
-// Optional: graceful shutdown
-process.on('SIGINT', () => {
-  logger.log('Shutting down server...', 'system');
-  wss.close(() => process.exit(0));
 });
