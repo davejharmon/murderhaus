@@ -59,7 +59,7 @@ export const PlayerCard = React.memo(function PlayerCard({
 
   return (
     <div
-      className={`${styles.row} ${!player.state.isAlive ? styles.dead : ''} ${
+      className={`${styles.row} ${!player.isDead ? '' : styles.dead} ${
         variant === 'light' ? styles.light : ''
       }`}
       style={{ transition: '0.25s' }}

@@ -1,3 +1,6 @@
+import { CHANNELS } from '../../shared/constants/index.js';
+import { publish } from './Broadcast.js';
+
 // server/utils/logger.js
 class Logger {
   constructor(maxEntries = 1000) {
@@ -55,6 +58,7 @@ class Logger {
         contextStr ? ' | ' + contextStr : ''
       }${stackStr}`
     );
+    publish(CHANNELS.LOG_UPDATE, this.entries);
   }
 
   // Helper shortcuts

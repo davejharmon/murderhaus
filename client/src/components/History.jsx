@@ -25,8 +25,7 @@ const LogEntry = React.memo(({ entry }) => {
 });
 
 export default function History() {
-  const { log = [] } = useGameState(['LOG_UPDATE']);
-
+  const { log = [] } = useGameState();
   return (
     <div>
       <div className={styles.historyHeader}>

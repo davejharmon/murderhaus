@@ -1,4 +1,5 @@
 // /server/wsHandlers.js
+import { CHANNELS } from '../shared/constants/config.js';
 import { gameManager } from './GameManager.js';
 import { sendTo, subscribe, publish } from './utils/Broadcast.js';
 import { logger } from './utils/Logger.js';
@@ -48,7 +49,7 @@ export function handleWSMessage(ws, msg) {
         });
 
         if (player) {
-          subscribe(ws, `PLAYER_UPDATE:${playerId}`);
+          subscribe(ws, `PLAYER_UPDATE:${playerId}`); // replace these with constant references all through this file.
           subscribe(ws, 'GAME_UPDATE');
 
           publish(`PLAYER_UPDATE:${playerId}`, player.getPublicState());
@@ -71,6 +72,7 @@ export function handleWSMessage(ws, msg) {
 
       publish(`PLAYER_UPDATE:${playerId}`, player.getPublicState()); // broadcast to all subscribers
       publish('GAME_UPDATE', gameManager.game.getPublicState());
+      publish(CHANNELS.LOG_UPDATE, logger.getEntries());
 
       sendTo(ws, { type: 'REGISTERED', payload: { playerId } }); // only this client
       break;
