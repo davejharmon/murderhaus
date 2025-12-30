@@ -22,5 +22,5 @@ export const CHANNELS = {
 };
 
 export const DEBUG = {
-  showSystemLogs: false,
+  showDebugLogs: false,
 };

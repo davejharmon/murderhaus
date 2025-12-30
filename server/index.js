@@ -1,7 +1,7 @@
 import { getWSS, sendTo, subscribeAllMain } from './utils/Broadcast.js';
 import { gameManager } from './GameManager.js';
 import { handleWSMessage } from './wsHandlers.js';
-import { logger } from './utils/Logger.js';
+import { logger as Log } from './utils/Logger.js';
 
 /* ================= EXIT DIAGNOSTICS ================= */
 
@@ -72,7 +72,7 @@ wss.on('error', (err) => {
 /* ================= CONNECTION HANDLING ================= */
 
 wss.on('connection', (ws) => {
-  logger.log('Client connected', 'system');
+  Log.log('Client connected', 'debug');
 
   subscribeAllMain(ws);
 
@@ -82,7 +82,7 @@ wss.on('connection', (ws) => {
       gameManager.view.publishGameMeta();
       gameManager.view.publishLog();
     } catch (err) {
-      logger.log(`⚠️ View publish failed: ${err.message}`, 'error');
+      Log.log(`⚠️ View publish failed: ${err.message}`, 'error');
     }
   }
 
@@ -92,7 +92,7 @@ wss.on('connection', (ws) => {
       if (!str || str[0] !== '{') return;
       handleWSMessage(ws, JSON.parse(str));
     } catch (err) {
-      logger.log(`⚠️ WS message error: ${err.message}`, 'error');
+      Log.log(`⚠️ WS message error: ${err.message}`, 'error');
       sendTo(ws, {
         type: 'ERROR',
         payload: { message: 'Invalid message format' },
@@ -101,6 +101,6 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    logger.log('Client disconnected', 'system');
+    Log.log('Client disconnected', 'debug');
   });
 });

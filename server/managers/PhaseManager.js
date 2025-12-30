@@ -1,0 +1,26 @@
+import { logger as Log } from '../utils/Logger.js';
+
+export class PhaseManager {
+  constructor(gameManager) {
+    this.gameManager = gameManager;
+  }
+
+  startGame() {
+    const gm = this.gameManager;
+    gm.game.gameStarted = true;
+    gm.game.phaseIndex = 0;
+    Log.system('Game started');
+    gm.hostActionManager.refresh();
+    gm.update();
+  }
+
+  nextPhase() {
+    const gm = this.gameManager;
+    const oldPhase = gm.game.getPhase();
+    gm.game.phaseIndex++;
+    const newPhase = gm.game.getPhase();
+    Log.system(`Phase changed: ${oldPhase?.name ?? 'None'} → ${newPhase.name}`);
+    gm.hostActionManager.refresh();
+    gm.update();
+  }
+}

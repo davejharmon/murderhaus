@@ -8,9 +8,10 @@ const LogEntry = React.memo(({ entry }) => {
   const { message, type = 'system', timestamp } = entry;
   const typeColors = {
     system: '#999',
-    warn: '#FFB300',
-    error: '#d32f2f',
+    warn: '#66d',
+    error: '#d22',
     info: '#777',
+    debug: '#555',
   };
   const color = typeColors[type] || typeColors.default;
   const ts = new Date(timestamp).toLocaleTimeString([], {
@@ -28,9 +29,9 @@ const LogEntry = React.memo(({ entry }) => {
 export default function History() {
   const { log = [] } = useGameState();
   // filter out system messages if flag is false
-  const displayedLog = DEBUG.showSystemLogs
+  const displayedLog = DEBUG.showDebugLogs
     ? log
-    : log.filter((entry) => entry.type !== 'system');
+    : log.filter((entry) => entry.type !== 'debug');
   return (
     <div>
       <div className={styles.historyHeader}>

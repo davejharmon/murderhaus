@@ -1,169 +1,87 @@
-// import { EVENTS } from '../../shared/constants.js';
-// import { Event } from '../models/Event.js';
+import { EVENTS, OUTCOMES, CHANNELS } from '../../shared/constants/index.js';
+import { logger as Log } from '../utils/Logger.js';
 
-// export class EventManager {
-//   constructor(game) {
-//     this.game = game;
+export class EventManager {
+  constructor(gameManager) {
+    this.gameManager = gameManager;
+  }
 
-//     // Events the host can manually start in the current phase
-//     this.pendingEvents = new Set();
-//   }
+  startEvent(eventName, initiatedBy = 'host') {
+    const eventDef = EVENTS[eventName];
+    if (!eventDef) {
+      Log.warn(`Unknown event: ${eventName}`);
+      return null;
+    }
 
-//   /** -------------------------------------------------
-//    * Build host-startable events for the current phase
-//    * ------------------------------------------------*/
-//   buildPendingEvents() {
-//     const phase = this.game.getCurrentPhase();
-//     if (!phase) return { success: false, message: '[EVENTS] Invalid phase.' };
+    const event = {
+      id: `${eventName}-${Date.now()}`,
+      def: eventDef,
+      state: {
+        grants: new Map(),
+        inputs: new Map(),
+        results: new Map(),
+        pendingKills: [],
+      },
+      resolved: false,
+    };
 
-//     this.pendingEvents = new Set(
-//       (phase.events || []).filter((eventName) => {
-//         const eventDef = EVENTS[eventName];
-//         if (!eventDef) return false;
+    this.gameManager.game.startEvent(event);
+    Log.system(`Event started: ${eventName}`, { event, initiatedBy });
+    this.gameManager.update();
+    return event;
+  }
 
-//         // Check if any player meets participantCondition
-//         return this.game.players.some(
-//           (p) => p.state.isAlive && eventDef.participantCondition?.(p)
-//         );
-//       })
-//     );
+  resolveEvent(eventId) {
+    const event = this.gameManager.game.getEventById(eventId);
+    if (!event) return;
 
-//     return { success: true, message: '[EVENTS] Pending events built.' };
-//   }
+    if (event.def.resolution?.apply) {
+      event.def.resolution.apply({
+        event,
+        game: this.gameManager.game,
+        outcome: ({ actionName, actor, target, item, role, callback }) => {
+          const result = OUTCOMES[actionName]?.({
+            actor,
+            target,
+            game: this.gameManager.game,
+            item,
+            role,
+            callback,
+          });
+          if (result?.message) Log.info(result.message, { actor, target });
+          this.gameManager.update();
+          return result;
+        },
+      });
+    }
 
-//   /** -------------------------------------------------
-//    * Start an event
-//    * ------------------------------------------------*/
-//   startEvent(eventName, initiator = 'host') {
-//     const phaseIndex = this.game.phaseIndex();
-//     const eventDef = EVENTS[eventName];
-//     if (!phaseIndex || !eventDef) {
-//       return {
-//         success: false,
-//         message: '[EVENTS] Invalid event or phase index.',
-//       };
-//     }
+    event.resolved = true;
+    this.gameManager.game.endEvent(event, false);
+    Log.system(`Event resolved: ${event.def.name}`, { event });
+    this.gameManager.update();
+  }
 
-//     // Build participants
-//     const participants = this.game.players
-//       .filter((p) => eventDef.condition({ player, initiator }))
-//       .map((p) => p.id);
+  startAllEvents() {
+    const activeEvents = [...this.gameManager.game.events.values()];
+    for (const event of activeEvents) {
+      if (!event.resolved) this.startEvent(event.def.name, 'system');
+    }
+    Log.system('All events started');
+    this.gameManager.update();
+  }
 
-//     participants.forEach((p) => {}); // TODO: FINISH ME
+  resolveAllEvents() {
+    const activeEvents = this.gameManager.game.getActiveEvents();
+    for (const event of activeEvents) this.resolveEvent(event.id);
+    Log.system('All events resolved');
+    this.gameManager.update();
+  }
 
-//     // Create event — participants/targets auto-computed
-//     const event = new Event({
-//       eventName,
-//       phaseIndex: this.game.phaseIndex,
-//       initiatedBy,
-//     });
-
-//     if (!event.participants.length) {
-//       return { success: false, message: '[EVENTS] No eligible participants.' };
-//     }
-
-//     this.game.activeEvents.push(event);
-//     this.pendingEvents.delete(eventName);
-//     // Activate events for players
-//     event.participants.forEach((pid) => {
-//       const player = this.game.getPlayerById(pid);
-//       if (!player) return;
-//       player.updateKeymap(this.game.activeEvents);
-//     });
-
-//     return { success: true, message: `${event.id} started.`, event };
-//   }
-
-//   /** -------------------------------------------------
-//    * Resolve an event
-//    * ------------------------------------------------*/
-//   resolveEvent(eventId) {
-//     const event = this.getEventById(eventId);
-//     if (!event) {
-//       return {
-//         success: false,
-//         message: `Event No such event: '${event.eventName}'.`,
-//       };
-//     }
-
-//     if (event.resolved) {
-//       return {
-//         success: false,
-//         message: `Event '${event.eventName}' already resolved.`,
-//       };
-//     }
-
-//     if (!event.isFullyComplete() && !event.eventDef.input.allowNoResponse) {
-//       return {
-//         success: false,
-//         message: `Event '${event.eventName}' cannot resolve — not all participants completed.`,
-//       };
-//     }
-
-//     const resolutionFn = event.resolution;
-
-//     if (typeof resolutionFn === 'function') {
-//       const result = resolutionFn(event, this.game);
-//       if (result.success === true) event.resolved = true;
-//       return result;
-//     }
-//     return {
-//       success: false,
-//       message: 'Event resolution not a function.',
-//     };
-//   }
-
-//   /** -------------------------------------------------
-//    * Remove event from active list
-//    * ------------------------------------------------*/
-//   clearEvent(eventId) {
-//     const before = this.game.activeEvents.length;
-
-//     this.game.activeEvents = this.game.activeEvents.filter(
-//       (e) => e.id !== eventId
-//     );
-
-//     const removed = this.game.activeEvents.length < before;
-
-//     if (!removed) {
-//       return {
-//         success: false,
-//         message: `[EVENTS] clearEvent failed — no event with id ${eventId}`,
-//       };
-//     }
-
-//     // TODO:
-//     // - Players recalc keymaps after event removal
-
-//     return { success: true, message: `${eventId} is over.` };
-//   }
-
-//   /** -------------------------------------------------
-//    * Helper: find event by ID
-//    * ------------------------------------------------*/
-//   getEventById(id) {
-//     return this.game.activeEvents.find((e) => e.id === id) || null;
-//   }
-
-//   getEventByName(name) {
-//     return this.game.activeEvents.find((e) => e.eventName === name) || null;
-//   }
-
-//   /** -------------------------------------------------
-//    * Helper: get names of pending events
-//    * ------------------------------------------------*/
-//   // getPendingEventNames() {
-//   //   return [...this.pendingEvents];
-//   // }
-
-//   /** -------------------------------------------------
-//    * Helper: get all active events
-//    * ------------------------------------------------*/
-//   getActiveEvents() {
-//     return this.game.activeEvents;
-//   }
-
-//   getPendingEvents() {
-//     return [...this.pendingEvents];
-//   }
-// }
+  clearEvent(eventId) {
+    const event = this.gameManager.game.getEventById(eventId);
+    if (!event) return;
+    this.gameManager.game.endEvent(event);
+    Log.system(`Event cleared: ${event.def.name}`, { event });
+    this.gameManager.update();
+  }
+}

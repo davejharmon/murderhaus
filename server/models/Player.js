@@ -19,6 +19,7 @@ export class Player {
     team = undefined,
     isDead = false,
     phaseDied = undefined,
+    availableHostActions = [],
   }) {
     if (id == null) throw new Error('Player requires id');
 
@@ -31,7 +32,7 @@ export class Player {
     this.team = team;
     this.isDead = isDead;
     this.phaseDied = phaseDied;
-
+    this.availableHostActions = availableHostActions;
     this.actions = new Map(); // actionId → Action
     this.inventory = new Set();
     this.events = new Set(); // events the player is participating in
@@ -159,6 +160,7 @@ export class Player {
       phaseDied: this.phaseDied,
       availableActions:
         this.getAvailableActions()?.map((a) => a.def.name) ?? [],
+      availableHostActions: this.availableHostActions ?? [],
       inventory: this.inventory,
     };
   }

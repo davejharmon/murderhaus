@@ -71,6 +71,10 @@ class Logger {
     this.log(msg, 'system', opts);
   }
 
+  debug(msg, opts = {}) {
+    this.log(msg, 'debug', opts);
+  }
+
   getEntries(type) {
     return type ? this.entries.filter((e) => e.type === type) : this.entries;
   }

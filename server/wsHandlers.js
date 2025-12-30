@@ -2,7 +2,7 @@
 import { CHANNELS } from '../shared/constants/index.js';
 import { gameManager } from './GameManager.js';
 import { sendTo, subscribe, publish } from './utils/Broadcast.js';
-import { logger } from './utils/Logger.js';
+import { logger as Log } from './utils/Logger.js';
 
 export function handleNewConnection(ws) {
   // Transport-level handshake only
@@ -58,7 +58,7 @@ export function handleWSMessage(ws, msg) {
           publish(CHANNELS.GAME_UPDATE, gameManager.game.getPublicState());
         }
       } catch (err) {
-        logger.error('QUERY_PLAYER_EXISTS failed', { error: err });
+        Log.error('QUERY_PLAYER_EXISTS failed', { error: err });
       }
       break;
     }
@@ -73,7 +73,7 @@ export function handleWSMessage(ws, msg) {
 
       publish(CHANNELS.playerUpdate(playerId), player.getPublicState());
       publish(CHANNELS.GAME_UPDATE, gameManager.game.getPublicState());
-      publish(CHANNELS.LOG_UPDATE, logger.getEntries());
+      publish(CHANNELS.LOG_UPDATE, Log.getEntries());
 
       sendTo(ws, {
         type: 'REGISTERED',
@@ -157,7 +157,7 @@ export function handleWSMessage(ws, msg) {
       break;
 
     default:
-      logger.error(`Unknown message type: ${type}`);
+      Log.error(`Unknown message type: ${type}`);
       sendTo(ws, {
         type: 'ERROR',
         payload: { message: `Unknown message type: ${type}` },
