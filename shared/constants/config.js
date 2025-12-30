@@ -15,7 +15,7 @@ export const MINIMUM_ROLES = {
 };
 // Shared server/client channels
 export const CHANNELS = {
-  PLAYER_UPDATE: 'PLAYER_UPDATE', // single player, scoped
+  playerUpdate: (playerId) => `PLAYER_UPDATE:${playerId}`,
   LOG_UPDATE: 'LOG_UPDATE',
   GAME_UPDATE: 'GAME_UPDATE',
   SLIDES_UPDATE: 'SLIDES_UPDATE',

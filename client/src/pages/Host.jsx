@@ -12,14 +12,13 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSlides } from '../hooks/useSlides';
 import HostControls from '../components/HostControls';
 export default function Host() {
-  const { game, log } = useGameState();
+  const { game } = useGameState();
   const { active, buffer } = useSlides();
   usePageTitle('Host');
   const {
     players = [],
     phase,
-    phaseIndex,
-    gameStarted = false,
+    gameStarted,
     dayCount = 0,
     availableEvents = [],
     activeEvents = [],
@@ -144,7 +143,6 @@ export default function Host() {
 
     return map;
   }, [activeEvents, players]);
-
   return (
     <div className={styles.container}>
       <div className={styles.leftColumn}>
@@ -174,12 +172,7 @@ export default function Host() {
           {!gameStarted ? (
             <Button label='START GAME' onClick={() => send('START_GAME')} />
           ) : (
-            <HostControls
-              players={players}
-              gameMeta={gameMeta}
-              buffer={buffer}
-              active={active}
-            />
+            <HostControls game={game} buffer={buffer} active={active} />
           )}
         </section>
 

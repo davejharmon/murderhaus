@@ -10,9 +10,7 @@ export class ViewManager {
   // Publish a single player's public state to their namespaced channel
   publishPlayerState(player) {
     if (!player) return;
-    // Use consistent namespacing: PLAYER_UPDATE:<playerId>
-    const channel = `${CHANNELS.PLAYER_UPDATE}:${player.id}`;
-    publish(channel, player.getPublicState());
+    publish(CHANNELS.playerUpdate(player.id), player.getPublicState());
   }
 
   // Publish the full game state to GAME_UPDATE channel

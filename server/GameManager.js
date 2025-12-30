@@ -8,10 +8,16 @@ import {
   CHANNELS,
 } from '../shared/constants/index.js';
 import { logger as Log } from './utils/Logger.js';
+import { publish } from './utils/Broadcast.js';
 
 export class GameManager {
   constructor() {
     this.game = new Game();
+  }
+
+  update() {
+    publish(CHANNELS.GAME_UPDATE, this.game.getPublicState());
+    publish(CHANNELS.LOG_UPDATE, Log.getEntries());
   }
 
   // -------------------------
@@ -21,12 +27,14 @@ export class GameManager {
     if (this.game.players.has(playerId)) {
       const player = this.game.getPlayerById(playerId);
       Log.info(`Player reconnected: ${player.name}`, { player });
+      this.update();
       return player;
     }
 
     const player = new Player({ id: playerId });
     this.game.players.set(playerId, player);
     Log.system(`Player registered: ${player.name}`, { player });
+    this.update();
     return player;
   }
 
@@ -40,6 +48,7 @@ export class GameManager {
       const oldName = player.name;
       player.name = name;
       Log.info(`Player name updated: ${oldName} → ${name}`, { player });
+      this.update();
     }
   }
 
@@ -48,6 +57,7 @@ export class GameManager {
     if (player) {
       player.image = image;
       Log.info(`Player image updated`, { player });
+      this.update();
     }
   }
 
@@ -65,6 +75,7 @@ export class GameManager {
         playerId,
       });
     }
+    this.update();
     return action;
   }
 
@@ -83,6 +94,7 @@ export class GameManager {
         }
       }
     }
+    this.update();
   }
 
   // -------------------------
@@ -109,6 +121,7 @@ export class GameManager {
 
     this.game.startEvent(event);
     Log.system(`Event started: ${eventName}`, { event, initiatedBy });
+    this.update();
     return event;
   }
 
@@ -130,6 +143,7 @@ export class GameManager {
             callback,
           });
           if (result?.message) Log.info(result.message, { actor, target });
+          this.update();
           return result;
         },
       });
@@ -138,6 +152,7 @@ export class GameManager {
     event.resolved = true;
     this.game.endEvent(event, false);
     Log.system(`Event resolved: ${event.def.name}`, { event });
+    this.update();
   }
 
   startAllEvents() {
@@ -148,6 +163,7 @@ export class GameManager {
       }
     }
     Log.system(`All events started`);
+    this.update();
   }
 
   resolveAllEvents() {
@@ -156,6 +172,7 @@ export class GameManager {
       this.resolveEvent(event.id);
     }
     Log.system(`All events resolved`);
+    this.update();
   }
 
   clearEvent(eventId) {
@@ -163,6 +180,7 @@ export class GameManager {
     if (!event) return;
     this.game.endEvent(event);
     Log.system(`Event cleared: ${event.def.name}`, { event });
+    this.update();
   }
 
   // -------------------------
@@ -171,15 +189,19 @@ export class GameManager {
   startGame() {
     this.game.gameStarted = true;
     this.game.phaseIndex = 0;
-    this.game.dayCount = 0;
+    // Assign players without roles roles
+
     Log.system(`Game started`);
+    this.update();
   }
 
   nextPhase() {
-    const oldPhase = this.game.getCurrentPhase()?.name;
-    this.game.phaseIndex = (this.game.phaseIndex + 1) % this.game.phases.length;
-    const newPhase = this.game.getCurrentPhase()?.name;
-    Log.system(`Phase changed: ${oldPhase} → ${newPhase}`);
+    const oldPhase = this.game.getPhase();
+    this.phaseIndex++;
+    const newPhase = this.game.getPhase();
+    this.game.phase = newPhase;
+    Log.system(`Phase changed: ${oldPhase.name} → ${newPhase.name}`);
+    this.update();
   }
 }
 

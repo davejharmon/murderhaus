@@ -1,19 +1,23 @@
 import { PHASES } from '../../shared/constants/index.js';
 import { logger as Log } from '../utils/Logger.js';
-import { Slide } from './Slide.js';
 
 export class Game {
-  constructor({ phaseIndex = 0, dayCount = 0, gameStarted = false } = {}) {
+  constructor({
+    phase = undefined,
+    phaseIndex = undefined,
+    gameStarted = false,
+    gameOver = false,
+  } = {}) {
     // -------------------------
     // Core game state
     // -------------------------
     this.players = new Map(); // playerId → Player
     this.events = new Map(); // eventId → Event
     this.activeEvents = new Set(); // eventIds of currently active events
-
+    this.phase = phase;
     this.phaseIndex = phaseIndex;
-    this.dayCount = dayCount;
     this.gameStarted = gameStarted;
+    this.gameOver = gameOver;
   }
 
   // -------------------------
@@ -82,10 +86,6 @@ export class Game {
   // -------------------------
   // Phase helpers
   // -------------------------
-  getCurrentPhase() {
-    return PHASES[this.phaseIndex];
-  }
-
   isDay() {
     return this.getCurrentPhase().isDay;
   }
@@ -229,18 +229,28 @@ export class Game {
   }
 
   getPhase() {
-    const phaseKeys = Object.keys(PHASES); // e.g., ['day', 'night']
-    if (!this.gameStarted || phaseKeys.length === 0) return null;
-
-    const key = phaseKeys[this.phaseIndex % phaseKeys.length];
-    return PHASES[key] || null;
+    if (!this.gameStarted) return undefined;
+    return PHASES[this.phaseIndex % PHASES.length];
   }
 
+  getDay() {
+    if (!this.gameStarted) return undefined;
+    return Math.floor(phaseIndex / PHASES.length);
+  }
+
+  getMetaphase() {
+    if (!this.gameStarted && !this.gameOver) return 'PREGAME';
+    if (this.gameOver) return 'POSTGAME';
+    return 'GAME';
+  }
   getPublicState() {
     return {
-      phase: this.getPhase(),
+      phase: this.getPhase?.key,
+      metaphase: this.getMetaphase(),
+      gameStarted: this.gameStarted,
+      gameOver: this.gameOver,
       phaseIndex: this.phaseIndex,
-      dayCount: this.dayCount,
+      dayCount: this.getDay(),
       players: [...this.players.values()].map((p) => p.getPublicState()),
       activeEvents: [...this.activeEvents],
       availableEvents: [], // to do

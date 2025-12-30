@@ -8,19 +8,8 @@ import {
 import { send } from '../ws';
 import styles from './HostControls.module.css';
 
-export default function HostControls({
-  players = [],
-  gameMeta = {},
-  buffer = {},
-  active,
-}) {
-  const {
-    gameStarted,
-    phase,
-    pendingEvents = [],
-    activeEvents = [],
-  } = gameMeta;
-
+export default function HostControls({ game = {}, buffer = {}, active }) {
+  const { phase, gameStarted, pendingEvents = [], activeEvents = [] } = game;
   /** ----------------------------
    * Host buttons for events
    * ---------------------------- */

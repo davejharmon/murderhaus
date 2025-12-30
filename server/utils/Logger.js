@@ -58,7 +58,6 @@ class Logger {
         contextStr ? ' | ' + contextStr : ''
       }${stackStr}`
     );
-    publish(CHANNELS.LOG_UPDATE, this.entries);
   }
 
   // Helper shortcuts

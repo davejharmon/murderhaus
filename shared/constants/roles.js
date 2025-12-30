@@ -45,7 +45,7 @@ export const ROLES = {
     team: 'villagers',
     color: '#ffd700',
     grants: [
-      { action: 'ONESHOT', events: ['DAY_LYNCH'] }, // now uses the multi-step action
+      { action: 'ONESHOT' }, // now uses the multi-step action
       { action: 'VOTE', events: ['DAY_LYNCH'] },
     ],
   },

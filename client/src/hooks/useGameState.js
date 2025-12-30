@@ -16,9 +16,10 @@ export function useGameState({ playerId = null } = {}) {
   const [wsStatus, setWsStatus] = useState('disconnected');
   const [game, setGame] = useState({
     phase: baseData.phase,
+    gameStarted: baseData.gameStarted,
+    gameOver: baseData.gameOver,
     phaseIndex: baseData.phaseIndex,
     dayCount: baseData.dayCount,
-    gameStarted: baseData.gameStarted,
     players: baseData.players,
     activeEvents: baseData.activeEvents,
     availableEvents: baseData.availableEvents,
@@ -47,9 +48,11 @@ export function useGameState({ playerId = null } = {}) {
       listenToSlice('GAME_UPDATE', (data) => {
         setGame({
           phase: data.phase,
+          metaphase: data.metaphase,
+          gameStarted: data.gameStarted,
+          gameOver: data.gameOver,
           phaseIndex: data.phaseIndex,
           dayCount: data.dayCount,
-          gameStarted: data.gameStarted,
           players: data.players ?? [],
           activeEvents: data.activeEvents ?? [],
           availableEvents: data.availableEvents ?? [],

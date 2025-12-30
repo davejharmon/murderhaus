@@ -5,6 +5,7 @@ import {
   DIAL,
   CONFIRM,
   ACTIONS,
+  ROLES,
 } from '../../shared/constants/index.js';
 import { Action } from './Action.js';
 
@@ -44,6 +45,10 @@ export class Player {
         keys: structuredClone(ACTION_KEYS),
       },
     };
+  }
+
+  assignRole(roleName) {
+    this.role = ROLES[roleName];
   }
 
   /** Initialize all actions for the player */
@@ -123,6 +128,14 @@ export class Player {
       if (usable) available.push(action);
     });
     return available;
+  }
+
+  addAction(grants) {
+    grants.forEach((action) => {
+      // if action isn't already present in actions
+      const newAction = new Action(action, ACTIONS[action]);
+      this.actions.add(newAction);
+    });
   }
 
   addEvent(event) {

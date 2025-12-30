@@ -5,9 +5,11 @@ import { subscribe, subscribeServerChannel } from '../ws';
 const gameData = {
   gameMeta: {
     phase: undefined,
+    metaphase: 'PREGAME',
     phaseIndex: undefined,
     dayCount: undefined,
-    gameStarted: undefined,
+    gameStarted: false,
+    gameOver: false,
     players: [], // only public player state
     activeEvents: [],
     availableEvents: [],
