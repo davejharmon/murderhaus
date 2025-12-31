@@ -18,8 +18,9 @@ export * from './actions.js';
 // Events
 export * from './events.js';
 
-// Host Actions
+// Host Actions & Controls
 export * from './hostActions.js';
+export * from './hostControls.js';
 
 // Items
 export * from './items.js';

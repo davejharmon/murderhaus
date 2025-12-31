@@ -94,6 +94,21 @@ export function handleWSMessage(ws, msg) {
     // -------------------------
     // Host Controls
     // -------------------------
+
+    case 'HOST_CONTROL': {
+      const { type, id, ctx = {} } = payload; // context: metaphase, buffer, activeEvents, availableEvents
+      try {
+        gameManager.hostExecute(type, id, ctx);
+      } catch (err) {
+        Log.error(`HOST_CONTROL ${id} failed`, { error: err });
+        sendTo(ws, {
+          type: 'ERROR',
+          payload: { message: `Control execution failed: ${err.message}` },
+        });
+      }
+      break;
+    }
+
     case 'HOST_UPDATE_PLAYER_NAME': {
       const { playerId, name } = payload;
       gameManager.updatePlayerName(playerId, name);
@@ -103,12 +118,6 @@ export function handleWSMessage(ws, msg) {
     case 'HOST_UPDATE_PLAYER_IMAGE': {
       const { playerId, image } = payload;
       gameManager.updatePlayerImage(playerId, image);
-      break;
-    }
-
-    case 'HOST_ACTION': {
-      const { playerId, actionName } = payload;
-      gameManager.hostAction(playerId, actionName);
       break;
     }
 
@@ -129,32 +138,6 @@ export function handleWSMessage(ws, msg) {
       gameManager.resolveEvent(eventId);
       break;
     }
-
-    // -------------------------
-    // Game Lifecycle
-    // -------------------------
-    case 'START_GAME':
-      gameManager.startGame();
-      break;
-
-    case 'NEXT_PHASE':
-      gameManager.nextPhase();
-      break;
-
-    // -------------------------
-    // Slides
-    // -------------------------
-    case 'SLIDE_NEXT':
-      gameManager.slideManager?.next();
-      break;
-
-    case 'SLIDE_PREV':
-      gameManager.slideManager?.prev();
-      break;
-
-    case 'SLIDES_CLEAR':
-      gameManager.slideManager?.clear();
-      break;
 
     default:
       Log.error(`Unknown message type: ${type}`);

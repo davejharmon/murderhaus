@@ -17,7 +17,7 @@ export class GameLogicManager {
     Log.system(`Player killed: ${player.name}`, { player });
 
     // Refresh host actions after state change
-    this.gameManager.hostActionManager.refresh(player.id);
+    this.gameManager.hostManager.refresh(player.id);
     this.gameManager.update();
 
     return { success: true };
@@ -33,7 +33,7 @@ export class GameLogicManager {
 
     Log.system(`Player resurrected: ${player.name}`, { player });
 
-    this.gameManager.hostActionManager.refresh(player.id);
+    this.gameManager.hhostManagerostActionManager.refresh(player.id);
     this.gameManager.update();
 
     return { success: true };
@@ -45,7 +45,7 @@ export class GameLogicManager {
 
     Log.system(`Role assigned: ${roleName} → ${player.name}`, { player });
 
-    this.gameManager.hostActionManager.refresh(player.id);
+    this.gameManager.hostManager.refresh(player.id);
     this.gameManager.update();
 
     return { success: true };

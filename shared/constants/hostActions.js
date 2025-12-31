@@ -16,9 +16,4 @@ export const HOST_ACTIONS = {
     label: '🧑‍⚕️',
     options: { target: 'PLAYER', metaphase: 'GAME' },
   },
-
-  RENAME_PLAYER: {
-    label: 'Rename Player',
-    options: { target: 'PLAYER', metaphase: 'GAME', input: 'STRING' },
-  },
 };

@@ -9,8 +9,8 @@ export class PhaseManager {
     const gm = this.gameManager;
     gm.game.gameStarted = true;
     gm.game.phaseIndex = 0;
-    Log.system('Game started');
-    gm.hostActionManager.refresh();
+    Log.system('[PHASE_MGR] Game started');
+    gm.hostManager.refresh();
     gm.update();
   }
 
@@ -19,8 +19,12 @@ export class PhaseManager {
     const oldPhase = gm.game.getPhase();
     gm.game.phaseIndex++;
     const newPhase = gm.game.getPhase();
-    Log.system(`Phase changed: ${oldPhase?.name ?? 'None'} → ${newPhase.name}`);
-    gm.hostActionManager.refresh();
+    Log.system(
+      `[PHASE_MGR] Phase changed: ${oldPhase?.name ?? 'None'} → ${
+        newPhase.name
+      }`
+    );
+    gm.hostManager.refresh();
     gm.update();
   }
 }

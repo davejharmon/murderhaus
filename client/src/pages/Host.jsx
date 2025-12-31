@@ -12,16 +12,17 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useSlides } from '../hooks/useSlides';
 import HostControls from '../components/HostControls';
 export default function Host() {
+  // game state
   const { game } = useGameState();
-  const { active, buffer } = useSlides();
   usePageTitle('Host');
   const {
-    players = [],
     phase,
+    metaphase,
     gameStarted,
-    dayCount = 0,
-    availableEvents = [],
+    dayCount,
+    players = [],
     activeEvents = [],
+    availableEvents = [],
   } = game;
 
   // Modal state
@@ -51,98 +52,82 @@ export default function Host() {
   /** ----------------------------
    * Host buttons for events
    * ---------------------------- */
-  const hostEventButtons = useMemo(() => {
-    const buttons = [];
+  // const hostEventButtons = useMemo(() => {
+  //   const buttons = [];
 
-    // Pending events → START
-    availableEvents?.forEach((eventName) => {
-      const active = activeEvents?.some(
-        (e) => e.eventName === eventName && !e.resolved
-      );
-      if (!active) {
-        const def = EVENTS[eventName];
-        buttons.push({
-          eventId: null,
-          eventName,
-          label: `START ${def?.label ?? eventName.toUpperCase()}`,
-          sendType: 'START_EVENT',
-          state: 'unlocked',
-        });
-      }
-    });
+  //   // Pending events → START
+  //   availableEvents?.forEach((eventName) => {
+  //     const def = EVENTS[eventName];
+  //     buttons.push({
+  //       eventId: null,
+  //       eventName,
+  //       label: `START ${def?.label ?? eventName.toUpperCase()}`,
+  //       sendType: 'START_EVENT',
+  //       state: 'unlocked',
+  //     });
+  //   });
 
-    // Active events → RESOLVE
-    activeEvents
-      ?.filter((e) => !e.resolved)
-      .forEach((e) => {
-        const def = EVENTS[e.eventName];
-        buttons.push({
-          eventId: e.id,
-          label: `RESOLVE ${def?.label ?? e.eventName.toUpperCase()}`,
-          sendType: 'RESOLVE_EVENT',
-          state: 'selected',
-        });
-      });
+  //   // Active events → RESOLVE
+  //   activeEvents
+  //     ?.filter((e) => !e.resolved)
+  //     .forEach((e) => {
+  //       const def = EVENTS[e.eventName];
+  //       buttons.push({
+  //         eventId: e.id,
+  //         label: `RESOLVE ${def?.label ?? e.eventName.toUpperCase()}`,
+  //         sendType: 'RESOLVE_EVENT',
+  //         state: 'selected',
+  //       });
+  //     });
 
-    // Resolved events → CLEAR
-    activeEvents
-      ?.filter((e) => e.resolved)
-      .forEach((e) => {
-        const def = EVENTS[e.eventName];
-        buttons.push({
-          eventId: e.id,
-          eventName: e.eventName,
-          label: `CLEAR ${def?.label ?? e.eventName.toUpperCase()}`,
-          sendType: 'CLEAR_EVENT',
-          state: 'locked',
-        });
-      });
+  //   // Resolved events → CLEAR
+  //   activeEvents
+  //     ?.filter((e) => e.resolved)
+  //     .forEach((e) => {
+  //       const def = EVENTS[e.eventName];
+  //       buttons.push({
+  //         eventId: e.id,
+  //         eventName: e.eventName,
+  //         label: `CLEAR ${def?.label ?? e.eventName.toUpperCase()}`,
+  //         sendType: 'CLEAR_EVENT',
+  //         state: 'locked',
+  //       });
+  //     });
 
-    return buttons;
-  }, [availableEvents, activeEvents]);
-
-  /** ----------------------------
-   * Host actions per player
-   * ---------------------------- */
-  const hostActions = useMemo(() => {
-    const allActions = Object.values(HOST_ACTIONS);
-    return allActions.filter((action) => {
-      if (!gameStarted) return action.pregame === true;
-      if (!phase) return false;
-      return action.phase?.includes(phase);
-    });
-  }, [gameStarted, phase]);
+  //   return buttons;
+  // }, [availableEvents, activeEvents]);
 
   /** ----------------------------
    * Vote selectors mapping
    * ---------------------------- */
-  const selectionGlyphs = useMemo(() => {
-    const map = {};
+  // const selectionGlyphs = useMemo(() => {
+  //   const map = {};
 
-    // Loop through all active events that contain results
-    activeEvents
-      ?.filter((e) => e.results) // or any condition you want (e.eventName === "vote"...)
-      .forEach((event) => {
-        const { results = {}, completedBy = [] } = event;
+  //   // Loop through all active events that contain results
+  //   activeEvents
+  //     ?.filter((e) => e.results) // or any condition you want (e.eventName === "vote"...)
+  //     .forEach((event) => {
+  //       const { results = {}, completedBy = [] } = event;
 
-        Object.entries(results).forEach(([actorId, targetId]) => {
-          const actor = players.find((p) => p.id === Number(actorId));
-          if (!actor) return;
+  //       Object.entries(results).forEach(([actorId, targetId]) => {
+  //         const actor = players.find((p) => p.id === Number(actorId));
+  //         if (!actor) return;
 
-          if (!map[targetId]) map[targetId] = [];
+  //         if (!map[targetId]) map[targetId] = [];
 
-          map[targetId].push({
-            id: actor.id,
-            isConfirmed: completedBy.includes(actor.id),
-            col: actor.color,
-            eventName: event.eventName, // optional: include source event
-            eventId: event.id, // optional: include event ID for debugging
-          });
-        });
-      });
+  //         map[targetId].push({
+  //           id: actor.id,
+  //           isConfirmed: completedBy.includes(actor.id),
+  //           col: actor.color,
+  //           eventName: event.eventName, // optional: include source event
+  //           eventId: event.id, // optional: include event ID for debugging
+  //         });
+  //       });
+  //     });
 
-    return map;
-  }, [activeEvents, players]);
+  //   return map;
+  // }, [activeEvents, players]);
+
   return (
     <div className={styles.container}>
       <div className={styles.leftColumn}>
@@ -169,35 +154,34 @@ export default function Host() {
         </header>
 
         <section className={styles.controls}>
-          {!gameStarted ? (
-            <Button label='START GAME' onClick={() => send('START_GAME')} />
-          ) : (
-            <HostControls game={game} buffer={buffer} active={active} />
-          )}
+          <HostControls
+            metaphase={metaphase}
+            activeEvents={activeEvents}
+            availableEvents={availableEvents}
+          />
         </section>
 
         <section className={styles.playersSection}>
           <div className={styles.playerList}>
             {players.map((p) => {
-              const availableActions = hostActions.filter((action) =>
-                action.conditions({ player: p, game: gameMeta })
-              );
+              const hostActionButtons = p.availableActions.map((action) => ({
+                label: action, // get this from defs
+                handler: () => {
+                  send('HOST_ACTION', {
+                    playerId: p.id,
+                    actionName: action,
+                  });
+                },
+              }));
 
               return (
                 <PlayerCard
                   key={p.id}
                   player={p}
-                  actions={availableActions.map((action) => ({
-                    label: action.label,
-                    action: () =>
-                      send('HOST_ACTION', {
-                        playerId: p.id,
-                        actionName: action.name,
-                      }),
-                  }))}
-                  variant='light'
-                  selectionGlyphs={selectionGlyphs[p.id] || []}
+                  hostActionButtons={hostActionButtons}
+                  // selectionGlyphs={selectionGlyphs[p.id] || []}
                   phase={phase}
+                  metaphase={metaphase}
                   onPortraitClick={() => setModalPlayer(p)}
                 />
               );
