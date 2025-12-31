@@ -18,7 +18,6 @@ export default function Host() {
   const {
     players = [],
     phase,
-    phaseIndex,
     gameStarted,
     dayCount = 0,
     availableEvents = [],
@@ -151,7 +150,7 @@ export default function Host() {
           <h1>Dashboard</h1>
           <h2>
             {gameStarted
-              ? `${phase || 'Unknown'} ${dayCount} (#${phaseIndex})`
+              ? `DAY ${dayCount}, PHASE: ${phase || 'Unknown'}`
               : 'GAME NOT STARTED'}
           </h2>
 
