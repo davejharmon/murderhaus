@@ -71,7 +71,7 @@ export class GameManager {
   hostControl(id, ctx) {
     const control = HOST_CONTROLS[id];
     control.execute(this, ctx);
-    this.update();
+    this.update({ controls: true });
   }
 
   // -------------------------

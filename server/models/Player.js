@@ -8,6 +8,7 @@ import {
   ROLES,
   HOST_CONTROLS,
 } from '../../shared/constants/index.js';
+import { logger } from '../utils/Logger.js';
 import { Action } from './Action.js';
 
 export class Player {
@@ -63,48 +64,32 @@ export class Player {
       .map((control) => control.id);
   }
 
+  kill(phaseIndex, initiatedBy = 'host') {
+    this.isDead = true;
+    this.phaseDied = phaseIndex;
+    logger.log(`🔪${this.name} has been killed by ${initiatedBy}`);
+  }
+
+  rezz(initiatedBy = 'host') {
+    this.isDead = false;
+    this.phaseDied = null;
+    logger.log(`🪦${this.name} has been rezzed by ${initiatedBy}`);
+  }
+
   assignRole(roleName) {
-    this.role = ROLES[roleName];
+    console.log('roleName', roleName);
+    const role = ROLES[roleName];
+    this.role = role.name;
+    this.team = role.team;
+    this.color = role.color;
+    logger.log(`⛑️${this.name} has been asssigned the role ${roleName}`);
   }
 
-  /** Initialize all actions for the player */
-  initActions() {
-    Object.values(ACTIONS).forEach((def) => {
-      if (!this.actions.has(def.name)) {
-        const action = new Action({ name: def.name, def });
-        this.actions.set(def.name, action);
-
-        // AutoStart if eligible
-        if (def.autoStart && def.conditions({ actor: this })) {
-          action.state.available = true;
-          this.bindHotkey(action);
-        }
-      }
-    });
-  }
-
-  /** Bind a hotkey to an action if it has hotkey input */
-  bindHotkey(action) {
-    if (!action.def.input?.hotkey) return;
-
-    for (const key of action.def.input.hotkey) {
-      if (!this.console.input.keys[key]?.bound) {
-        this.console.input.keys[key].bound = action.id;
-        action.state.hotkey = key;
-        break;
-      }
-    }
-  }
+  // OLD LOGIC
 
   /** Get action instance by name */
   getAction(name) {
     return this.actions.get(name);
-  }
-
-  /** Get current usage for an action */
-  getActionUses(name) {
-    const action = this.getAction(name);
-    return action?.state?.uses ?? { perPhase: 0, perGame: 0 };
   }
 
   /** Mark that this player has used an action (increments usage counters) */
@@ -125,11 +110,6 @@ export class Player {
   /** Remove an item from the player's inventory */
   removeItem(itemName) {
     this.inventory.delete(itemName);
-  }
-
-  /** Check if the player has an item */
-  hasItem(itemName) {
-    return this.inventory.has(itemName);
   }
 
   /** Get all actions the player can currently take based on grants, phase, and autoStart */

@@ -75,40 +75,40 @@ export const HOST_CONTROLS = {
   // -------------------------
   RENAME_PLAYER: {
     id: 'RENAME_PLAYER',
-    label: 'Rename Player',
+    label: '✍️ Rename',
     type: 'player',
     condition: (player) => true,
     disabledReason: 'Write me',
-    execute: (player, { newName }) => player.rename(newName),
+    execute: (gm, { playerId }) => gm.getPlayer(playerId).rename(newName),
   },
 
   KILL_PLAYER: {
     id: 'KILL_PLAYER',
-    label: 'Kill Player',
+    label: '🔪 Kill',
     type: 'player',
     condition: (player) => player.isDead === false,
-    execute: (player) => {
-      player.kill();
+    execute: (gm, { playerId }) => {
+      gm.getPlayer(playerId).kill(gm.game.phaseIndex);
     },
   },
 
   REZ_PLAYER: {
     id: 'REZ_PLAYER',
-    label: 'Rezz Player',
+    label: '🪦 Rezz',
     type: 'player',
     condition: (player) => player.isDead === true,
-    execute: (player) => {
-      player.rezz();
+    execute: (gm, { playerId }) => {
+      gm.getPlayer(playerId).rezz();
     },
   },
 
   ASSIGN_ROLE: {
     id: 'ASSIGN_ROLE',
-    label: 'Assign Role',
+    label: '🧑‍⚕️ Assign',
     type: 'player',
     condition: () => true,
-    execute: (player, { newRole }) => {
-      player.assignRole(newRole);
+    execute: (gm, { playerId }) => {
+      gm.getPlayer(playerId).assignRole('DOCTOR');
     },
   },
 };

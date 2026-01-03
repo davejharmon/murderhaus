@@ -17,7 +17,8 @@ export class Game {
   // -------------------------
   // Player getters
   // -------------------------
-  getPlayerById(id) {
+  getPlayerById(playerId) {
+    const id = playerId;
     return this.players.get(id) || null;
   }
 
@@ -33,10 +34,6 @@ export class Game {
     return [...this.players.values()].filter(
       (p) => p.hasItem(itemName) && !p.isDead
     );
-  }
-
-  getAlivePlayers() {
-    return this.players.filter((p) => p.isDead !== true);
   }
 
   // -------------------------

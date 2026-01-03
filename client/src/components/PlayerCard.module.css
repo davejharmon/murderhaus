@@ -17,7 +17,7 @@
 }
 
 .dead {
-  opacity: 0.5;
+  background-color: #232323;
 }
 
 .leftSection {

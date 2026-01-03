@@ -7,6 +7,7 @@ import styles from './PlayerCard.module.css';
 import { send } from '../ws';
 import anonImg from '../assets/anon.png';
 import { useGameState } from '../hooks/useGameState';
+import { HOST_CONTROLS } from '../../../shared/constants';
 
 export const PlayerCard = ({ player, onPortraitClick, phase }) => {
   const [name, setName] = useState(player.name || '');
@@ -36,6 +37,7 @@ export const PlayerCard = ({ player, onPortraitClick, phase }) => {
     },
     [player.name]
   );
+  console.log('hostControls', player.hostControls);
   return (
     <div
       className={`${styles.row} ${!player.isDead ? '' : styles.dead} `}
@@ -80,7 +82,18 @@ export const PlayerCard = ({ player, onPortraitClick, phase }) => {
       </div>
 
       <div className={styles.rightSection}>
-        <Button key={'i'} label={'act'} onClick={() => {}} />
+        {player.hostControls.map((control) => (
+          <Button
+            key={control}
+            label={HOST_CONTROLS[control].label}
+            onClick={() =>
+              send('HOST_CONTROL', {
+                id: control,
+                ctx: { playerId: player.id },
+              })
+            }
+          />
+        ))}
       </div>
     </div>
   );
