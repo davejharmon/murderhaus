@@ -5,17 +5,10 @@ import { Button } from './Button';
 import { NumberEmoji } from './NumberEmoji';
 import styles from './PlayerCard.module.css';
 import { send } from '../ws';
-import anonImg from '../assets/anon.png'; // default portrait
+import anonImg from '../assets/anon.png';
+import { useGameState } from '../hooks/useGameState';
 
-export const PlayerCard = React.memo(function PlayerCard({
-  player,
-  actions = [],
-  selectionGlyphs = [],
-  DEBUG = false,
-  variant = 'dark',
-  phase,
-  onPortraitClick, // <-- new prop
-}) {
+export const PlayerCard = ({ player, onPortraitClick, phase }) => {
   const [name, setName] = useState(player.name || '');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -43,25 +36,9 @@ export const PlayerCard = React.memo(function PlayerCard({
     },
     [player.name]
   );
-
-  const participatingEvent = player.participatingInEvent;
-
-  const memoedselectionGlyphs = useMemo(() => {
-    return selectionGlyphs.map(({ id, isConfirmed, col }) => (
-      <NumberEmoji
-        key={`vote-${id}`}
-        number={id}
-        color={col}
-        isConfirmed={isConfirmed}
-      />
-    ));
-  }, [selectionGlyphs]);
-
   return (
     <div
-      className={`${styles.row} ${!player.isDead ? '' : styles.dead} ${
-        variant === 'light' ? styles.light : ''
-      }`}
+      className={`${styles.row} ${!player.isDead ? '' : styles.dead} `}
       style={{ transition: '0.25s' }}
     >
       <div className={styles.leftSection}>
@@ -96,33 +73,15 @@ export const PlayerCard = React.memo(function PlayerCard({
           </span>
         )}
 
-        <span className={styles.role} style={{ color: player.color || 'gray' }}>
-          {player.role || 'Unassigned'}
-          {participatingEvent && (
-            <span className={styles.eventTag}>
-              {participatingEvent.toUpperCase()}
-            </span>
-          )}
-        </span>
-
-        {memoedselectionGlyphs.length > 0 && (
-          <div className={styles.selections}>{memoedselectionGlyphs}</div>
-        )}
+        <span
+          className={styles.role}
+          style={{ color: player.color || 'gray' }}
+        ></span>
       </div>
 
       <div className={styles.rightSection}>
-        {actions.map((act, i) => (
-          <Button key={i} label={act.label} onClick={act.action} />
-        ))}
+        <Button key={'i'} label={'act'} onClick={() => {}} />
       </div>
-
-      {DEBUG && (
-        <div className={styles.debug}>
-          {Object.entries(player)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join(', ')}
-        </div>
-      )}
     </div>
   );
-});
+};

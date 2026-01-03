@@ -5,19 +5,22 @@ import { logger as Log } from './utils/Logger.js';
 import { publish } from './utils/Broadcast.js';
 import { EventManager } from './managers/EventManager.js';
 import { PhaseManager } from './managers/PhaseManager.js';
-import { GameLogicManager } from './managers/GameLogicManager.js';
 
 export class GameManager {
   constructor() {
     this.game = new Game();
-    this.gameLogic = new GameLogicManager(this.game);
+    // this.gameLogic = new GameLogicManager(this.game);
     // this.hostManager = new HostManager(this);
     this.eventManager = new EventManager(this);
     this.phaseManager = new PhaseManager(this);
   }
 
-  update({ events = false } = {}) {
+  update({ events = false, controls = false } = {}) {
     if (events) this.eventManager.update();
+    if (controls)
+      this.game.players.forEach((player) => {
+        player.updateHostControls();
+      });
     publish(CHANNELS.GAME_UPDATE, this.game.getPublicState());
     publish(CHANNELS.LOG_UPDATE, Log.getEntries());
   }

@@ -14,10 +14,8 @@ export default function Player({ compact = false, id }) {
   if (isNaN(playerId)) throw new Error('Invalid player ID');
 
   usePageTitle(`Player ${playerId}`);
-
   // 🟢 Updated hook usage with simplified slices
-  const { wsStatus, game, me } = useGameState({ playerId });
-
+  const { wsStatus, game, me } = useGameState(playerId);
   // Track whether the player exists on server
   const [existsOnServer, setExistsOnServer] = useState(null);
 

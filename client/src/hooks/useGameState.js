@@ -7,7 +7,7 @@ import { subscribeStatus } from '../ws';
  * Simplified game state hook
  * Slices: game (players + phase + activeEvents), log, slides, me
  */
-export function useGameState({ playerId = null } = {}) {
+export function useGameState(playerId = null) {
   const baseData = getGameData();
 
   // -----------------------------

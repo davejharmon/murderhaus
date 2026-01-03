@@ -64,11 +64,22 @@ export function listenToSlice(type, fn, playerId = null) {
       updateFns.PLAYER_UPDATE.set(playerId, new Set());
     }
     updateFns.PLAYER_UPDATE.get(playerId).add(fn);
+
+    // 🔁 replay current slice if available
+    const slice = gameData.playerSlices.get(playerId);
+    if (slice) fn(slice);
+
     return () => updateFns.PLAYER_UPDATE.get(playerId)?.delete(fn);
-  } else {
-    updateFns[type].add(fn);
-    return () => updateFns[type].delete(fn);
   }
+
+  updateFns[type].add(fn);
+
+  // 🔁 replay current slice
+  if (type === 'GAME_UPDATE') fn(gameData.gameMeta);
+  if (type === 'LOG_UPDATE') fn(gameData.log);
+  if (type === 'SLIDES_UPDATE') fn(gameData.slides);
+
+  return () => updateFns[type].delete(fn);
 }
 
 export function getGameData() {

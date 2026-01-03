@@ -9,6 +9,7 @@ import Modal from '../components/Modal';
 import styles from './Host.module.css';
 import { usePageTitle } from '../hooks/usePageTitle';
 import HostControls from '../components/HostControls';
+import { HOST_CONTROLS } from '../../../shared/constants';
 export default function Host() {
   // game state
   const { wsStatus, game } = useGameState();
@@ -47,36 +48,6 @@ export default function Host() {
     }
   };
 
-  /** ----------------------------
-   * Vote selectors mapping
-   * ---------------------------- */
-  // const selectionGlyphs = useMemo(() => {
-  //   const map = {};
-
-  //   // Loop through all active events that contain results
-  //   activeEvents
-  //     ?.filter((e) => e.results) // or any condition you want (e.eventName === "vote"...)
-  //     .forEach((event) => {
-  //       const { results = {}, completedBy = [] } = event;
-
-  //       Object.entries(results).forEach(([actorId, targetId]) => {
-  //         const actor = players.find((p) => p.id === Number(actorId));
-  //         if (!actor) return;
-
-  //         if (!map[targetId]) map[targetId] = [];
-
-  //         map[targetId].push({
-  //           id: actor.id,
-  //           isConfirmed: completedBy.includes(actor.id),
-  //           col: actor.color,
-  //           eventName: event.eventName, // optional: include source event
-  //           eventId: event.id, // optional: include event ID for debugging
-  //         });
-  //       });
-  //     });
-
-  //   return map;
-  // }, [activeEvents, players]);
   return (
     <div className={styles.container}>
       <div className={styles.leftColumn}>
@@ -127,10 +98,11 @@ export default function Host() {
                 <PlayerCard
                   key={p.id}
                   player={p}
-                  hostActionButtons={hostActionButtons}
-                  // selectionGlyphs={selectionGlyphs[p.id] || []}
+                  // player={p}
+                  // hostControls={hostPlayerControls}
+                  // // selectionGlyphs={selectionGlyphs[p.id] || []}
                   phase={phase}
-                  metaphase={metaphase}
+                  // metaphase={metaphase}
                   onPortraitClick={() => setModalPlayer(p)}
                 />
               );

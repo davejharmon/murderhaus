@@ -19,7 +19,7 @@ export default function HostControls({
     }),
     [metaphase, buffer, active]
   );
-  console.log(hostContext);
+
   const hostButtons = useMemo(() => {
     return Object.values(HOST_CONTROLS)
       .filter(

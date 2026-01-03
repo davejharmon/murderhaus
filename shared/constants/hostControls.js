@@ -70,44 +70,6 @@ export const HOST_CONTROLS = {
     execute: ({ gm, eventId }) => gm.eventManager.startEvent(eventId),
   },
 
-  // START_EVENT: {
-  //   // TO DO: Fix me to just send one event
-  //   id: 'START_EVENT',
-  //   type: 'game',
-  //   getButtons: ({ availableEvents = [] }) =>
-  //     availableEvents.map((eventName) => ({
-  //       id: `START_EVENT:${eventName}`,
-  //       label: `Start ${eventName.replaceAll('_', ' ')}`,
-  //       send: {
-  //         type: 'START_EVENT',
-  //         payload: { eventName },
-  //       },
-  //     })),
-  //   execute: ({ gm, ctx }) => gm.startEvent(ctx.eventName),
-  // },
-
-  // RESOLVE_EVENT: {
-  //   // TO DO: Fix me to just send one event
-  //   id: 'RESOLVE_EVENT',
-  //   type: 'game',
-  //   getButtons: ({ activeEvents = [] }) =>
-  //     activeEvents.map((eventName) => ({
-  //       id: `RESOLVE_EVENT:${eventName}`,
-  //       label: `Resolve ${eventName.replaceAll('_', ' ')}`,
-  //       send: {
-  //         type: 'RESOLVE_EVENT',
-  //         payload: { eventName },
-  //       },
-  //     })),
-  //   execute: ({ gm, ctx }) => gm.resolveEvent(ctx.eventId),
-  // },
-
-  // NEXT SLIDE
-  // PREV SLIDE
-  // LAST SLIDE
-  // END GAME
-  // RESTART GAME
-
   // -------------------------
   // Player Controls
   // -------------------------
@@ -115,8 +77,38 @@ export const HOST_CONTROLS = {
     id: 'RENAME_PLAYER',
     label: 'Rename Player',
     type: 'player',
-    condition: () => true,
+    condition: (player) => true,
     disabledReason: 'Write me',
-    execute: ({ gm, ctx }) => gm.updatePlayerName(ctx.eventId, ctx.newName),
+    execute: (player, { newName }) => player.rename(newName),
+  },
+
+  KILL_PLAYER: {
+    id: 'KILL_PLAYER',
+    label: 'Kill Player',
+    type: 'player',
+    condition: (player) => player.isDead === false,
+    execute: (player) => {
+      player.kill();
+    },
+  },
+
+  REZ_PLAYER: {
+    id: 'REZ_PLAYER',
+    label: 'Rezz Player',
+    type: 'player',
+    condition: (player) => player.isDead === true,
+    execute: (player) => {
+      player.rezz();
+    },
+  },
+
+  ASSIGN_ROLE: {
+    id: 'ASSIGN_ROLE',
+    label: 'Assign Role',
+    type: 'player',
+    condition: () => true,
+    execute: (player, { newRole }) => {
+      player.assignRole(newRole);
+    },
   },
 };

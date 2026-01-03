@@ -6,6 +6,7 @@ import {
   CONFIRM,
   ACTIONS,
   ROLES,
+  HOST_CONTROLS,
 } from '../../shared/constants/index.js';
 import { Action } from './Action.js';
 
@@ -19,7 +20,7 @@ export class Player {
     team = undefined,
     isDead = false,
     phaseDied = undefined,
-    availableHostActions = [],
+    hostControls = [],
   }) {
     if (id == null) throw new Error('Player requires id');
 
@@ -32,7 +33,7 @@ export class Player {
     this.team = team;
     this.isDead = isDead;
     this.phaseDied = phaseDied;
-    this.availableHostActions = availableHostActions;
+    this.hostControls = hostControls;
     this.actions = new Map(); // actionId → Action
     this.inventory = new Set();
     this.events = new Set(); // events the player is participating in
@@ -46,6 +47,20 @@ export class Player {
         keys: structuredClone(ACTION_KEYS),
       },
     };
+  }
+
+  updateHostControls() {
+    this.hostControls = Object.values(HOST_CONTROLS)
+      .filter((control) => control.type === 'player')
+      .filter((control) => {
+        try {
+          return control.condition(this);
+        } catch (err) {
+          // Defensive: bad control should not crash the game
+          return { success: false, message: 'Condition badly phrased' };
+        }
+      })
+      .map((control) => control.id);
   }
 
   assignRole(roleName) {
@@ -160,7 +175,7 @@ export class Player {
       phaseDied: this.phaseDied,
       availableActions:
         this.getAvailableActions()?.map((a) => a.def.name) ?? [],
-      availableHostActions: this.availableHostActions ?? [],
+      hostControls: this.hostControls ?? [],
       inventory: this.inventory,
     };
   }

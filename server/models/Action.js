@@ -21,12 +21,4 @@ export class Action {
       completed: false,
     };
   }
-
-  get currentStep() {
-    return this.def.steps?.[this.state.stepIndex] ?? null;
-  }
-
-  isMultiStep() {
-    return Array.isArray(this.def.steps) && this.def.steps.length > 0;
-  }
 }

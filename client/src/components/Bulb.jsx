@@ -4,7 +4,7 @@ import styles from './Bulb.module.css';
 
 export function Bulb({ player, size = 40, phase }) {
   if (!player) return null;
-  const { isDead, availableActions } = player;
+  const { isDead, availableActions = [] } = player;
   // Derive UI states from the Player.js data structure
   const selecting = availableActions.some(
     (a) => a.selectedTarget !== null && !a.confirmed
