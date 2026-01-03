@@ -3,7 +3,6 @@ import { Player } from './models/Player.js';
 import { CHANNELS, HOST_CONTROLS } from '../shared/constants/index.js';
 import { logger as Log } from './utils/Logger.js';
 import { publish } from './utils/Broadcast.js';
-import { HostManager } from './managers/HostManager.js';
 import { EventManager } from './managers/EventManager.js';
 import { PhaseManager } from './managers/PhaseManager.js';
 import { GameLogicManager } from './managers/GameLogicManager.js';
@@ -12,12 +11,13 @@ export class GameManager {
   constructor() {
     this.game = new Game();
     this.gameLogic = new GameLogicManager(this.game);
-    this.hostManager = new HostManager(this);
+    // this.hostManager = new HostManager(this);
     this.eventManager = new EventManager(this);
     this.phaseManager = new PhaseManager(this);
   }
 
-  update() {
+  update({ events = false } = {}) {
+    if (events) this.eventManager.update();
     publish(CHANNELS.GAME_UPDATE, this.game.getPublicState());
     publish(CHANNELS.LOG_UPDATE, Log.getEntries());
   }
@@ -65,45 +65,11 @@ export class GameManager {
   // -------------------------
   // Host actions
   // -------------------------
-  hostExecute(type, id, ctx) {
-    this.hostManager.execute(type, id, ctx);
+  hostControl(id, ctx) {
+    const control = HOST_CONTROLS[id];
+    control.execute(this, ctx);
     this.update();
   }
-
-  /**
-   * Execute a host control by id
-   * ctx is optional context: { availableEvents, activeEvents, metaphase, buffer, active }
-   */
-
-  /**
-   * Get all available host buttons (for rendering)
-   */
-  getHostButtons(ctx = {}) {
-    return Object.values(this.HOST_CONTROLS).flatMap((control) => {
-      if (control.getButtons) {
-        return control.getButtons(ctx);
-      }
-      if (control.condition?.(ctx)) {
-        return [
-          {
-            id: control.id,
-            label: control.label,
-            send: { type: 'HOST_CONTROL', payload: { id: control.id } },
-          },
-        ];
-      }
-      return [];
-    });
-    this.update();
-  }
-
-  // executeHostAction(actionKey, player, value) {
-  //   return this.hostManager.execute(actionKey, player, value);
-  // }
-
-  // getAvailableHostActions(player) {
-  //   return this.hostManager.getAvailable(player);
-  // }
 
   // -------------------------
   // Player input
@@ -123,17 +89,6 @@ export class GameManager {
       }
     }
     this.update();
-  }
-
-  // -------------------------
-  // Phase management
-  // -------------------------
-  startGame() {
-    this.phaseManager.startGame();
-  }
-
-  nextPhase() {
-    this.phaseManager.nextPhase();
   }
 
   // -------------------------

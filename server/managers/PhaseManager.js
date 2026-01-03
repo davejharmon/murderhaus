@@ -10,8 +10,7 @@ export class PhaseManager {
     gm.game.gameStarted = true;
     gm.game.phaseIndex = 0;
     Log.system('[PHASE_MGR] Game started');
-    gm.hostManager.refresh();
-    gm.update();
+    gm.update({ events: true });
   }
 
   nextPhase() {
@@ -24,7 +23,6 @@ export class PhaseManager {
         newPhase.name
       }`
     );
-    gm.hostManager.refresh();
-    gm.update();
+    gm.update({ events: true });
   }
 }

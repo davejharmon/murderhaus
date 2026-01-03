@@ -30,7 +30,6 @@ const LogEntry = React.memo(({ entry }) => {
 
 export default function History() {
   const { log = [] } = useGameState();
-
   const visibleLog = DEBUG.showDebugLogs
     ? log
     : log.filter((entry) => entry.type !== 'debug');

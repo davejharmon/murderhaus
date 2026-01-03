@@ -54,7 +54,6 @@ export default function Player({ compact = false, id }) {
     if (existsOnServer === null || registeredRef.current) return;
 
     if (!existsOnServer) {
-      console.log(`[DEBUG] Registering Player ${playerId}`);
       send('REGISTER_PLAYER', { playerId });
     } else {
       console.log(`[DEBUG] Player ${playerId} already exists on server.`);

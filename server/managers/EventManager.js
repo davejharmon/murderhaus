@@ -6,6 +6,8 @@ export class EventManager {
     this.gameManager = gameManager;
   }
 
+  update() {}
+
   startEvent(eventName, initiatedBy = 'host') {
     const eventDef = EVENTS[eventName];
     if (!eventDef) {

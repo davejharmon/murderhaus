@@ -16,7 +16,7 @@ export * from './roles.js';
 export * from './actions.js';
 
 // Events
-export * from './events.js';
+export * from './events_old.js';
 
 // Host Actions & Controls
 export * from './hostActions.js';

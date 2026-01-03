@@ -96,9 +96,9 @@ export function handleWSMessage(ws, msg) {
     // -------------------------
 
     case 'HOST_CONTROL': {
-      const { type, id, ctx = {} } = payload; // context: metaphase, buffer, activeEvents, availableEvents
+      const { id, ctx = {} } = payload; // context: metaphase, buffer, activeEvents, availableEvents
       try {
-        gameManager.hostExecute(type, id, ctx);
+        gameManager.hostControl(id, ctx);
       } catch (err) {
         Log.error(`HOST_CONTROL ${id} failed`, { error: err });
         sendTo(ws, {

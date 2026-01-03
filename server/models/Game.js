@@ -32,12 +32,17 @@ export class Game {
     );
   }
 
+  getAlivePlayers() {
+    return this.players.filter((p) => p.isDead !== true);
+  }
+
   // -------------------------
   // Event getters
   // -------------------------
   getEventById(id) {
     return this.events.get(id) || null;
   }
+
   getActiveEvents() {
     return [...this.activeEvents]
       .map((id) => this.getEventById(id))
@@ -67,6 +72,37 @@ export class Game {
 
     const explicitGrants = event.grants || [];
     return [...explicitGrants, ...roleGrants, ...itemGrants];
+  }
+
+  // -------------------------
+  // Event lifecycle
+  // -------------------------
+  startEvent(event, { isInterrupt = false } = {}) {
+    this.events.set(event.id, event);
+    this.activeEvents.add(event.id);
+    event.isInterrupt = isInterrupt;
+
+    const grants = this.getEventGrants(event);
+    grants.forEach((grant) => {
+      grant.to.forEach((actor) => {
+        const set = event.state.grants.get(actor.id) || new Set();
+        if (grant.action) set.add(grant.action);
+        event.state.grants.set(actor.id, set);
+
+        const map = event.state.inputs.get(actor.id) || new Map();
+        const targets = grant.action
+          ? event.validTargets || this.getAlivePlayers()
+          : [];
+        targets.forEach((t) => map.set(t.id, null));
+        event.state.inputs.set(actor.id, map);
+      });
+    });
+  }
+
+  endEvent(event, andResolve = false) {
+    if (!event) return;
+    if (!event.resolved && andResolve) event.resolve(this);
+    this.activeEvents.delete(event.id);
   }
 
   // -------------------------
@@ -175,37 +211,6 @@ export class Game {
       this.performActionStep(playerId, action.id);
     }
     return action;
-  }
-
-  // -------------------------
-  // Event lifecycle
-  // -------------------------
-  startEvent(event, { isInterrupt = false } = {}) {
-    this.events.set(event.id, event);
-    this.activeEvents.add(event.id);
-    event.isInterrupt = isInterrupt;
-
-    const grants = this.getEventGrants(event);
-    grants.forEach((grant) => {
-      grant.to.forEach((actor) => {
-        const set = event.state.grants.get(actor.id) || new Set();
-        if (grant.action) set.add(grant.action);
-        event.state.grants.set(actor.id, set);
-
-        const map = event.state.inputs.get(actor.id) || new Map();
-        const targets = grant.action
-          ? event.validTargets || this.getAlivePlayers()
-          : [];
-        targets.forEach((t) => map.set(t.id, null));
-        event.state.inputs.set(actor.id, map);
-      });
-    });
-  }
-
-  endEvent(event, andResolve = false) {
-    if (!event) return;
-    if (!event.resolved && andResolve) event.resolve(this);
-    this.activeEvents.delete(event.id);
   }
 
   // -------------------------

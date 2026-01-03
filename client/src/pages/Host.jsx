@@ -1,5 +1,5 @@
 // src/pages/Host.jsx
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { send } from '../ws';
 import { Button } from '../components/Button';
 import { PlayerCard } from '../components/PlayerCard';
@@ -7,13 +7,11 @@ import { useGameState } from '../hooks/useGameState';
 import History from '../components/History';
 import Modal from '../components/Modal';
 import styles from './Host.module.css';
-import { EVENTS, HOST_ACTIONS } from '@shared/constants';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useSlides } from '../hooks/useSlides';
 import HostControls from '../components/HostControls';
 export default function Host() {
   // game state
-  const { game } = useGameState();
+  const { wsStatus, game } = useGameState();
   usePageTitle('Host');
   const {
     phase,
@@ -50,54 +48,6 @@ export default function Host() {
   };
 
   /** ----------------------------
-   * Host buttons for events
-   * ---------------------------- */
-  // const hostEventButtons = useMemo(() => {
-  //   const buttons = [];
-
-  //   // Pending events → START
-  //   availableEvents?.forEach((eventName) => {
-  //     const def = EVENTS[eventName];
-  //     buttons.push({
-  //       eventId: null,
-  //       eventName,
-  //       label: `START ${def?.label ?? eventName.toUpperCase()}`,
-  //       sendType: 'START_EVENT',
-  //       state: 'unlocked',
-  //     });
-  //   });
-
-  //   // Active events → RESOLVE
-  //   activeEvents
-  //     ?.filter((e) => !e.resolved)
-  //     .forEach((e) => {
-  //       const def = EVENTS[e.eventName];
-  //       buttons.push({
-  //         eventId: e.id,
-  //         label: `RESOLVE ${def?.label ?? e.eventName.toUpperCase()}`,
-  //         sendType: 'RESOLVE_EVENT',
-  //         state: 'selected',
-  //       });
-  //     });
-
-  //   // Resolved events → CLEAR
-  //   activeEvents
-  //     ?.filter((e) => e.resolved)
-  //     .forEach((e) => {
-  //       const def = EVENTS[e.eventName];
-  //       buttons.push({
-  //         eventId: e.id,
-  //         eventName: e.eventName,
-  //         label: `CLEAR ${def?.label ?? e.eventName.toUpperCase()}`,
-  //         sendType: 'CLEAR_EVENT',
-  //         state: 'locked',
-  //       });
-  //     });
-
-  //   return buttons;
-  // }, [availableEvents, activeEvents]);
-
-  /** ----------------------------
    * Vote selectors mapping
    * ---------------------------- */
   // const selectionGlyphs = useMemo(() => {
@@ -127,7 +77,6 @@ export default function Host() {
 
   //   return map;
   // }, [activeEvents, players]);
-
   return (
     <div className={styles.container}>
       <div className={styles.leftColumn}>
